@@ -42,6 +42,9 @@
   <div id="overlay"><div id="gameOverContent"></div></div>
   <script>
   (function(){
+        // ── Preload bird sprite ──
+    const birdSprite = new Image();
+    birdSprite.src = 'assets/birdieV1.png';
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
@@ -218,7 +221,7 @@ document.addEventListener('keydown',   initMusic);
 
     // ── Bird object ──
     const bird = {
-      x:80, y:H/2, vel:0, rad:16, gravity:0.25, lift:5,
+      x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
       draw(){
         if(shieldCount>0){
           ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
@@ -251,16 +254,11 @@ document.addEventListener('keydown',   initMusic);
           ctx.beginPath(); ctx.arc(this.x,this.y,this.rad+8,0,2*Math.PI); ctx.stroke();
           ctx.restore();
         }
-        ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(Math.min(Math.PI/4,this.vel/10));
-        ctx.fillStyle = superTimer>0 ? '#FFFF00' : '#FF6F00';
-        ctx.strokeStyle= '#E65100'; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.arc(0,0,this.rad,0,2*Math.PI); ctx.fill(); ctx.stroke();
-        ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(-6,-4,3,0,2*Math.PI); ctx.fill();
-        ctx.fillStyle='#FFC107'; ctx.beginPath();
-        ctx.moveTo(this.rad*0.7,0);
-        ctx.lineTo(this.rad*0.7+12,-6);
-        ctx.lineTo(this.rad*0.7+12,6);
-        ctx.closePath(); ctx.fill();
+        // draw bird sprite
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(Math.min(Math.PI/4, this.vel/10));
+        ctx.drawImage(birdSprite, -32, -32, 64, 64);
         ctx.restore();
       },
       flap(){ this.vel=-this.lift; playTone(300,0.08); },
