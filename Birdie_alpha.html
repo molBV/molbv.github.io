@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Birdy V7.2 – Super Bird (Responsive)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:100%; height:100%;
+      overflow:hidden; position:relative;
+      background:#70d0ee;
+    }
+    canvas {
+      position:absolute;
+    }
+    #score {
+      position:absolute; top:20px; left:50%;
+      transform:translateX(-50%);
+      color:#fff; font:2rem sans-serif;
+      text-shadow:2px 2px 4px #000;
+      z-index:10;
+    }
+    #overlay {
+      display:none; position:absolute; top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.7);
+      color:#fff; font:18px sans-serif;
+      text-align:center; padding-top:80px;
+      z-index:20;
+    }
+    #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
+    #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="score">0</div>
+  <div id="overlay"><div id="gameOverContent"></div></div>
+  <script>
+  (function(){
+    // ── Responsive canvas setup ──
+    const canvas = document.getElementById('gameCanvas'),
+          ctx    = canvas.getContext('2d');
+    const ORIGINAL_WIDTH  = canvas.width,
+          ORIGINAL_HEIGHT = canvas.height;
+    function resizeCanvas(){
+      const scale = Math.min(
+        window.innerWidth  / ORIGINAL_WIDTH,
+        window.innerHeight / ORIGINAL_HEIGHT
+      );
+      const dispW = ORIGINAL_WIDTH * scale,
+            dispH = ORIGINAL_HEIGHT * scale;
+      canvas.style.width  = dispW + 'px';
+      canvas.style.height = dispH + 'px';
+      canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
+      canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ── Audio setup ──
+// ── Audio setup (Random Earworm Generator) ──
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+
+//–– Scale & Chords in C major ––
+const scale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // C D E F G A B
+const chords = {
+  I:  [0,2,4],   // C E G
+  V:  [4,6,1],   // G B D
+  vi: [5,0,2],   // A C E
+  IV: [3,5,0]    // F A C
+};
+const progSets = [
+  ['I','V','vi','IV'],
+  ['I','vi','IV','V'],
+  ['I','IV','V','IV']
+];
+
+//–– Pick a random progression each session ––
+const progression = progSets[Math.floor(Math.random()*progSets.length)];
+
+//–– Playback settings ––
+const chordDur = 2.5;    // seconds per chord
+const motifLen = 4;      // notes per motif
+let motifPattern = [];    // will fill with scale indices
+
+//–– Build a simple motif: random walk on the scale ––
+function genMotif(){
+  motifPattern = [];
+  let idx = 0;
+  for(let i=0;i<motifLen;i++){
+    idx = Math.max(0, Math.min(scale.length-1, idx + (Math.floor(Math.random()*3)-1)));
+    motifPattern.push(idx);
+  }
+}
+
+//–– Play one chord as arpeggio ––
+function playChord(chordType, startTime){
+  const tones = chords[chordType];
+  tones.forEach((deg,i)=>{
+    const freq = scale[deg];
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime + i*0.1);
+    g.gain.setValueAtTime(0, startTime + i*0.1);
+    g.gain.linearRampToValueAtTime(0.08, startTime + i*0.1 + 0.1);
+    g.gain.linearRampToValueAtTime(0, startTime + chordDur - 0.1);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(startTime + i*0.1);
+    osc.stop(startTime + chordDur);
+  });
+}
+
+//–– Play the motif over a chord ––
+function playMotif(startTime){
+  motifPattern.forEach((deg,i)=>{
+    const t = startTime + (i * chordDur / motifLen);
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(scale[deg], t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 0.05);
+    g.gain.linearRampToValueAtTime(0, t + 0.3);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  });
+}
+
+//–– Scheduler: loop progression + motif ––
+function startJingle(){
+  const now = audioCtx.currentTime + 0.2;
+  genMotif();
+  progression.forEach((chord,i)=>{
+    const chordTime = now + i*chordDur;
+    playChord(chord, chordTime);
+    playMotif(chordTime);
+  });
+  // after full cycle, regenerate motif & loop
+  setTimeout(startJingle, progression.length * chordDur * 1000);
+}
+
+//–– Unlock & kick off on first interaction ––
+function initMusic(){
+  audioCtx.resume().then(startJingle);
+  document.removeEventListener('mousedown', initMusic);
+  document.removeEventListener('keydown',   initMusic);
+}
+document.addEventListener('mousedown', initMusic);
+document.addEventListener('keydown',   initMusic);
+
+
+    // ── Simple SFX ──
+    function playTone(freq, dur=0.1){
+      const o = audioCtx.createOscillator(),
+            g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = 'square'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    }
+
+    // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+    const scoreEl = document.getElementById('score');
+    const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
+    const STATE = { Start:0, Play:1, Over:2 };
+    let state=STATE.Start, frames=0, score=0,
+        superTimer=0, shieldCount=0, pipeCount=0;
+    const baseAppleProb=0.03, baseMushProb=0.08;
+    const cycleLength=6000;
+    const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
+    const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
+    const pipes=[], apples=[], mushrooms=[];
+    const appleR=10, mushroomR=12, initialGap=200, minGap=140, pipeW=60, baseSpeed=2;
+    const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
+    const clouds=[], trees=[];
+    for(let i=0;i<7;i++){
+      clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
+      trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
+    }
+
+    // ── Utility functions (from V6.8) :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
+    function hexToRgb(hex){ hex=hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(h=>h+h).join(''); return { r:parseInt(hex.slice(0,2),16), g:parseInt(hex.slice(2,4),16), b:parseInt(hex.slice(4,6),16) }; }
+    function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=>Math.round(x).toString(16).padStart(2,'0')).join(''); }
+    function lerpColor(a,b,t){ const ca=hexToRgb(a), cb=hexToRgb(b); return rgbToHex(ca.r+(cb.r-ca.r)*t, ca.g+(cb.g-ca.g)*t, ca.b+(cb.b-ca.b)*t); }
+    function shade(col,amt){ if(col[0]==='#') col=col.slice(1); const num=parseInt(col,16), r=(num>>16)+amt, g=((num>>8)&255)+amt, b=(num&255)+amt; const rr=Math.max(0,Math.min(255,r)), gg=Math.max(0,Math.min(255,g)), bb=Math.max(0,Math.min(255,b)); return '#'+((rr<<16)|(gg<<8)|bb).toString(16).padStart(6,'0'); }
+
+    // ── Background drawing ──
+    function drawCloud(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.fillStyle='rgba(255,255,255,0.8)'; [0,30,60].forEach(px=>{ ctx.beginPath(); ctx.arc(px,0,20,0,2*Math.PI); ctx.fill(); }); ctx.restore(); }
+    function drawTree(x,base,h){ ctx.fillStyle='#8D6E63'; ctx.fillRect(x,base-h,10,h); ctx.fillStyle='#388E3C'; ctx.beginPath(); ctx.moveTo(x-15,base-h+20); ctx.lineTo(x+5,base-h-20); ctx.lineTo(x+25,base-h+20); ctx.closePath(); ctx.fill(); }
+    function drawBackground(){
+      const tC=(frames%cycleLength)/cycleLength, wN=Math.sin(tC*Math.PI),
+            topC=lerpColor(dayColor1,nightColor1,wN),
+            botC=lerpColor(dayColor2,nightColor2,wN),
+            grad=ctx.createLinearGradient(0,0,0,H);
+      grad.addColorStop(0,topC); grad.addColorStop(1,botC);
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+      const phase = tC<0.5 ? tC*2 : (tC-0.5)*2,
+            arcX = W*phase,
+            arcY = 150 - 100*Math.sin(Math.PI*phase);
+      if(tC<0.5){ ctx.fillStyle='yellow'; ctx.beginPath(); ctx.arc(arcX,arcY,30,0,2*Math.PI); ctx.fill(); }
+      else {
+        ctx.fillStyle='#eee'; ctx.beginPath(); ctx.arc(arcX,arcY,25,0,2*Math.PI); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.globalAlpha=wN*0.8;
+        stars.forEach(s=>ctx.fillRect(s.x,s.y,2,2));
+        ctx.globalAlpha=1;
+      }
+      clouds.forEach(c=>{ c.x-=0.3; if(c.x<-80) c.x=W+80; drawCloud(c.x,c.y,c.s); });
+      trees.forEach(t=>{ t.x-=1; if(t.x< -20) t.x=W+20; drawTree(t.x,H,t.h); });
+    }
+
+    // ── Bird object ──
+    const bird = {
+      x:80, y:H/2, vel:0, rad:16, gravity:0.25, lift:5,
+      draw(){
+        if(shieldCount>0){
+          ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
+          for(let i=0;i<8;i++){
+            const ang=(Math.PI*2/8)*i,
+                  x1=this.x+(this.rad+2)*Math.cos(ang),
+                  y1=this.y+(this.rad+2)*Math.sin(ang),
+                  x2=this.x+(this.rad+8)*Math.cos(ang),
+                  y2=this.y+(this.rad+8)*Math.sin(ang);
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          }
+          ctx.restore();
+        }
+        if(superTimer>0){
+          ctx.save(); ctx.strokeStyle='yellow'; ctx.lineWidth=8; ctx.globalAlpha=0.6;
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.rad+8,0,2*Math.PI); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(Math.min(Math.PI/4,this.vel/10));
+        ctx.fillStyle = superTimer>0 ? '#FFFF00' : '#FF6F00';
+        ctx.strokeStyle= '#E65100'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(0,0,this.rad,0,2*Math.PI); ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(-6,-4,3,0,2*Math.PI); ctx.fill();
+        ctx.fillStyle='#FFC107'; ctx.beginPath();
+        ctx.moveTo(this.rad*0.7,0);
+        ctx.lineTo(this.rad*0.7+12,-6);
+        ctx.lineTo(this.rad*0.7+12,6);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      },
+      flap(){ this.vel=-this.lift; playTone(300,0.08); },
+      update(){
+        if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
+        else {
+          this.vel += this.gravity; this.y += this.vel;
+          if(this.y+this.rad>H){ this.y=H-this.rad; if(state===STATE.Play) endGame(); }
+          if(this.y-this.rad<0){ this.y=this.rad; this.vel=0; }
+        }
+      },
+      reset(){ this.y=H/2; this.vel=0; }
+    };
+
+    // ── Pipes & pickups ──
+    function spawnPipe(){
+      pipeCount++;
+      const decay = Math.pow(0.9,Math.floor(pipeCount/10)),
+            appP  = baseAppleProb * decay,
+            mushP = baseMushProb  * decay;
+      const topH = 50 + Math.random()*(H/2),
+            gap  = Math.max(minGap, initialGap - Math.floor(pipeCount/10)*10),
+            color=pipeColors[Math.floor(pipeCount/10)%pipeColors.length];
+      pipes.push({ x:W, top:topH, gap, color, passed:false });
+      if(Math.random()<appP) apples.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
+      if(Math.random()<mushP) mushrooms.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
+    }
+    function drawPipes(){
+      pipes.forEach(p=>{
+        ctx.fillStyle=p.color;
+        ctx.fillRect(p.x,0,pipeW,p.top);
+        ctx.fillRect(p.x,p.top+p.gap,pipeW,H-p.top-p.gap);
+        ctx.fillStyle=shade(p.color,-20);
+        ctx.fillRect(p.x-2,p.top-8,pipeW+4,8);
+        ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
+      });
+    }
+    function updatePipes(){
+      if(state!==STATE.Play) return;
+      const speed = baseSpeed + pipeCount/200;
+      if(frames%90===0) spawnPipe();
+      pipes.forEach((p,i)=>{
+        p.x -= speed;
+        if(!p.passed && p.x+pipeW<bird.x){ p.passed=true; score++; updateScore(); playTone(600,0.08); }
+        if(bird.x+bird.rad>p.x && bird.x-bird.rad<p.x+pipeW){
+          if(bird.y-bird.rad<p.top || bird.y+bird.rad>p.top+p.gap){
+            if(superTimer>0){ pipes.splice(i,1); score++; updateScore(); playTone(900,0.2); }
+            else if(shieldCount>0){ shieldCount--; pipes.splice(i,1); updateScore(); playTone(1750,0.2); }
+            else endGame();
+          }
+        }
+        if(p.x+pipeW<0) pipes.splice(i,1);
+      });
+      apples.forEach((a,i)=>{
+        a.x-=speed;
+        if(!a.taken){
+          ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(a.x,a.y,appleR,0,2*Math.PI); ctx.fill();
+          ctx.fillStyle='green'; ctx.beginPath(); ctx.ellipse(a.x+6,a.y-appleR/2,4,8,Math.PI/4,0,2*Math.PI); ctx.fill();
+          if(Math.hypot(bird.x-a.x,bird.y-a.y)<bird.rad+appleR){ a.taken=true; superTimer=300; playTone(1200,0.2); }
+        }
+        if(a.x+appleR<0||a.taken) apples.splice(i,1);
+      });
+      mushrooms.forEach((m,i)=>{
+        m.x-=speed;
+        if(!m.taken){
+          ctx.fillStyle='#8B4513'; ctx.fillRect(m.x-4,m.y,8,12);
+          ctx.fillStyle='#FF0000'; ctx.beginPath(); ctx.arc(m.x,m.y,mushroomR,Math.PI,0); ctx.fill();
+          if(Math.hypot(bird.x-m.x,bird.y-m.y)<bird.rad+mushroomR){ m.taken=true; shieldCount++; updateScore(); playTone(1500,0.2); }
+        }
+        if(m.x+mushroomR<0||m.taken) mushrooms.splice(i,1);
+      });
+    }
+
+    // ── Score, Game Over, High Scores ──
+    function updateScore(){ let txt=score; if(shieldCount>0) txt+=` 🍄×${shieldCount}`; scoreEl.textContent=txt; }
+    function endGame(){ state=STATE.Over; playTone(100,0.3); showOverlay(); }
+    function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); pipes.length=0; apples.length=0; mushrooms.length=0; pipeCount=0; frames=0; superTimer=0; bird.reset(); }
+    function showOverlay(){
+      const ov=document.getElementById('overlay'), ct=document.getElementById('gameOverContent');
+      ov.style.display='block';
+      let hs=JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
+      ct.innerHTML=`
+        <h2>Game Over!</h2>
+        <p>Your score: ${score}</p>
+        <label>Enter your name:</label><br/>
+        <input id="nameInput" type="text" maxlength="10"/><br/>
+        <button id="saveBtn">Save Score</button>`;
+      document.getElementById('saveBtn').onclick=()=>{
+        const name=document.getElementById('nameInput').value.trim()||'Anon';
+        hs.push({name,score}); hs.sort((a,b)=>b.score-a.score); hs.splice(10);
+        localStorage.setItem('birdyHighScores',JSON.stringify(hs));
+        showHighScores(hs);
+      };
+    }
+    function showHighScores(hs){
+      const ct=document.getElementById('gameOverContent');
+      let html=`<h2>Top 10</h2><ol style="text-align:left;display:inline-block;">`;
+      hs.forEach(i=>html+=`<li>${i.name} – ${i.score}</li>`);
+      html+=`</ol><br/><button id="retryBtn">Play Again</button>`;
+      ct.innerHTML=html;
+      document.getElementById('retryBtn').onclick=()=>{
+        document.getElementById('overlay').style.display='none';
+        resetGame();
+      };
+    }
+
+    // ── Input & Main Loop ──
+    // Kickoff on click, key, or touch
+['mousedown','touchstart','keydown'].forEach(evt=>{
+  document.addEventListener(evt, initMusic, {passive:true});
+});
+
+// Flap on click or touch
+function flapHandler(e){
+  if(state === STATE.Start) state = STATE.Play;
+  else if(state === STATE.Play) bird.flap();
+}
+canvas.addEventListener('mousedown', flapHandler);
+canvas.addEventListener('touchstart',  flapHandler, {passive:true});
+document.addEventListener('keydown', e=>{
+  if (e.code === 'Space' || e.code === 'ArrowUp') flapHandler();
+});
+    function drawUI(){
+      if(state===STATE.Start){
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#fff'; ctx.textAlign='center';
+        ctx.font='32px sans-serif'; ctx.fillText('🐦 Birdy V7.2',W/2,H/2-20);
+        ctx.font='18px sans-serif'; ctx.fillText('Space/Click to Start',W/2,H/2+20);
+      }
+    }
+    function loop(){
+      frames++;
+      drawBackground();
+      if(state===STATE.Play){
+        bird.draw(); drawPipes(); updatePipes(); bird.update();
+      } else {
+        bird.draw(); drawUI();
+      }
+      if(superTimer>0) superTimer--;
+      requestAnimationFrame(loop);
+    }
+    updateScore();
+    loop();
+
+  })();
+  </script>
+</body>
+</html>
