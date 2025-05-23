@@ -414,7 +414,11 @@ if (Math.random() < coinP) {
   scoreEl.textContent = txt;
 }
     function endGame(){ state=STATE.Over; playTone(100,0.3); showOverlay(); }
-    function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); pipes.length=0; apples.length=0; mushrooms.length=0; pipeCount=0; frames=0; superTimer=0; bird.reset(); }
+    function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); 
+                         coinCount = 0; coinBoostExpiries = []; coins.length = 0;
+                         pipes.length=0; apples.length=0; mushrooms.length=0; 
+                         currentSpeed = baseSpeed;
+                         pipeCount=0; frames=0; superTimer=0; bird.reset(); }
     function showOverlay(){
       const ov=document.getElementById('overlay'), ct=document.getElementById('gameOverContent');
       ov.style.display='block';
