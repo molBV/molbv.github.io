@@ -49,7 +49,7 @@
   <div id="overlay"><div id="gameOverContent"></div></div>
     <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
 <script type="module">
-  // 1️⃣ Only use the CDN imports (remove the “firebase/app” & “firebase/analytics” imports)
+  // ── 1) FIREBASE SETUP ───────────────────────────────────────
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import {
     getFirestore,
@@ -58,37 +58,35 @@
     serverTimestamp
   } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-  // 2️⃣ Paste your config (from Project Settings → SDK snippet) here:
   const firebaseConfig = {
     apiKey:             "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
     authDomain:         "ultimate-birdie.firebaseapp.com",
     projectId:          "ultimate-birdie",
-    storageBucket:      "ultimate-birdie.appspot.com",      // ← note .appspot.com
+    storageBucket:      "ultimate-birdie.appspot.com",
     messagingSenderId:  "1061733247954",
     appId:              "1:1061733247954:web:5ad19583381cc09a7c760b",
-    measurementId:      "G-54KDN5XG60"                     // optional
+    measurementId:      "G-54KDN5XG60"
   };
 
-  // 3️⃣ Initialize
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  // 4️⃣ Exposed helper to write a score
-  export async function saveGlobalScore(name, score) {
+  // write a score
+  async function saveGlobalScore(name, score) {
     try {
       await addDoc(collection(db, "leaderboard"), {
         name, score, ts: serverTimestamp()
       });
     } catch(e) {
-      console.warn("Firestore write failed, falling back to localStorage", e);
+      console.warn("Firestore write failed…", e);
       let hs = JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
       hs.push({name,score});
       localStorage.setItem('birdyHighScores', JSON.stringify(hs));
     }
   }
 
-  // 5️⃣ Exposed helper to fetch the top 10
-  export async function fetchTopGlobalScores() {
+  // fetch top-10
+  async function fetchTopGlobalScores() {
     try {
       const q    = query(
         collection(db, "leaderboard"),
@@ -98,17 +96,18 @@
       const snap = await getDocs(q);
       return snap.docs.map(d => d.data());
     } catch(e) {
-      console.warn("Firestore read failed, falling back", e);
+      console.warn("Firestore read failed…", e);
       return JSON.parse(localStorage.getItem('birdyHighScores')||'[]')
                    .sort((a,b)=>b.score - a.score)
                    .slice(0,10);
     }
   }
-    // 6️⃣ expose to window so non-module scripts can call them
+
   window.saveGlobalScore      = saveGlobalScore;
   window.fetchTopGlobalScores = fetchTopGlobalScores;
-  </script>
-  <script defer>
+
+
+  // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
         // ── Preload bird sprite ──
     const birdSprite = new Image();
@@ -564,21 +563,23 @@ document.addEventListener('keydown', e=>{
     }
     updateScore();
     loop();
-  // ── On page load, fetch & render the global top-10 ──
-  ;(async()=>{
-    const board = document.getElementById('globalBoard');
-    try {
-      const top10 = await window.fetchTopGlobalScores();
-      board.innerHTML = '<h3>Global Top 10</h3><ol style="padding-left:1em;text-align:left;">'
-        + top10.map(p=>`<li>${p.name} — ${p.score}</li>`).join('')
-        + '</ol>';
-    } catch(err) {
-      console.error(err);
-      board.textContent = 'Failed to load global leaderboard.';
-    }
-  })();
+
+    // ── 3) ON PAGE LOAD: FETCH & RENDER GLOBAL TOP-10 ───────────
+    ;(async()=>{
+      const board = document.getElementById('globalBoard');
+      try {
+        const top10 = await window.fetchTopGlobalScores();
+        board.innerHTML =
+          '<h3>Global Top 10</h3><ol style="padding-left:1em;text-align:left;">'
+           + top10.map(p=>`<li>${p.name} — ${p.score}</li>`).join('')
+           + '</ol>';
+      } catch(err) {
+        console.error("Leaderboard load error:", err);
+        board.textContent = 'Failed to load global leaderboard.';
+      }
+    })();
 
   })();
-  </script>
+</script>
 </body>
 </html>
