@@ -40,6 +40,25 @@
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
+  <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+
+<!-- Firebase Config -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
+    authDomain: "ultimate-birdie.firebaseapp.com",
+    projectId: "ultimate-birdie",
+    storageBucket: "ultimate-birdie.firebasestorage.app",
+    messagingSenderId: "1061733247954",
+    appId: "1:1061733247954:web:5ad19583381cc09a7c760b",
+    measurementId: "G-54KDN5XG60"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
   <script>
   (function(){
     // ── Responsive canvas setup ──
@@ -326,18 +345,25 @@ document.addEventListener('keydown',   initMusic);
     function showOverlay(){
       const ov=document.getElementById('overlay'), ct=document.getElementById('gameOverContent');
       ov.style.display='block';
-      let hs=JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
-      ct.innerHTML=`
-        <h2>Game Over!</h2>
-        <p>Your score: ${score}</p>
-        <label>Enter your name:</label><br/>
-        <input id="nameInput" type="text" maxlength="10"/><br/>
-        <button id="saveBtn">Save Score</button>`;
-      document.getElementById('saveBtn').onclick=()=>{
-        const name=document.getElementById('nameInput').value.trim()||'Anon';
-        hs.push({name,score}); hs.sort((a,b)=>b.score-a.score); hs.splice(10);
-        localStorage.setItem('birdyHighScores',JSON.stringify(hs));
-        showHighScores(hs);
+      ct.innerHTML = `
+  <h2>Game Over!</h2>
+  <p>Your score: ${score}</p>
+  <label>Enter your name:</label><br/>
+  <input id="nameInput" type="text" maxlength="10" /><br/>
+  <button id="saveBtn">Save Score</button>
+`;
+
+document.getElementById('saveBtn').onclick = () => {
+  const name = document.getElementById('nameInput').value.trim() || 'Anon';
+  db.collection("scores").add({
+    name: name,
+    score: score,
+    time: new Date().toISOString()
+  }).then(() => {
+    fetchAndShowHighScores();
+  });
+};
+
       };
     }
     function showHighScores(hs){
@@ -351,6 +377,16 @@ document.addEventListener('keydown',   initMusic);
         resetGame();
       };
     }
+function fetchAndShowHighScores() {
+  db.collection("scores")
+    .orderBy("score", "desc")
+    .limit(10)
+    .get()
+    .then(snapshot => {
+      const hs = snapshot.docs.map(doc => doc.data());
+      showHighScores(hs);
+    });
+}
 
     // ── Input & Main Loop ──
     // Kickoff on click, key, or touch
