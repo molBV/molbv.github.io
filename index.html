@@ -279,15 +279,15 @@ document.addEventListener('keydown',   initMusic);
     function spawnPipe(){
       pipeCount++;
       const decay = Math.pow(0.9,Math.floor(pipeCount/10)),
-            appP  = baseAppleProb * decay,
-            mushP = baseMushProb  * decay;
+            appP  = baseAppleProb /* * decay*/,
+            mushP = baseMushProb  /** decay*/;
       const topH = 50 + Math.random()*(H/2),
             gap  = Math.max(minGap, initialGap - Math.floor(pipeCount/10)*10),
             color=pipeColors[Math.floor(pipeCount/10)%pipeColors.length];
       pipes.push({ x:W, top:topH, gap, color, passed:false });
       if(Math.random()<appP) apples.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
       if(Math.random()<mushP) mushrooms.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
-      const coinP = baseCoinProb * decay;
+      const coinP = baseCoinProb * 2;
       if (Math.random() < coinP)
         coins.push({
           x: W + pipeW/2,
