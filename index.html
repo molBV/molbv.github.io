@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Birdy V7.2 – Super Bird (Responsive)</title>
+  <title>Ultimate Birdy V8 – The Stuff (Responsive)</title>
   <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#70d0ee">
@@ -37,10 +37,77 @@
   </style>
 </head>
 <body>
+    <!-- Global leaderboard panel -->
+  <div id="globalBoard"
+       style="position:absolute;top:80px;left:50%;transform:translateX(-50%);
+              color:#fff;font:1rem sans-serif;text-shadow:1px 1px 2px #000;z-index:10">
+    Loading global top 10…
+  </div>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
-  <script>
+    <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
+<script type="module">
+  // 1️⃣ Only use the CDN imports (remove the “firebase/app” & “firebase/analytics” imports)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+  import {
+    getFirestore,
+    collection, addDoc,
+    query, orderBy, limit, getDocs,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+  // 2️⃣ Paste your config (from Project Settings → SDK snippet) here:
+  const firebaseConfig = {
+    apiKey:             "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
+    authDomain:         "ultimate-birdie.firebaseapp.com",
+    projectId:          "ultimate-birdie",
+    storageBucket:      "ultimate-birdie.appspot.com",      // ← note .appspot.com
+    messagingSenderId:  "1061733247954",
+    appId:              "1:1061733247954:web:5ad19583381cc09a7c760b",
+    measurementId:      "G-54KDN5XG60"                     // optional
+  };
+
+  // 3️⃣ Initialize
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // 4️⃣ Exposed helper to write a score
+  export async function saveGlobalScore(name, score) {
+    try {
+      await addDoc(collection(db, "leaderboard"), {
+        name, score, ts: serverTimestamp()
+      });
+    } catch(e) {
+      console.warn("Firestore write failed, falling back to localStorage", e);
+      let hs = JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
+      hs.push({name,score});
+      localStorage.setItem('birdyHighScores', JSON.stringify(hs));
+    }
+  }
+
+  // 5️⃣ Exposed helper to fetch the top 10
+  export async function fetchTopGlobalScores() {
+    try {
+      const q    = query(
+        collection(db, "leaderboard"),
+        orderBy("score","desc"),
+        limit(10)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => d.data());
+    } catch(e) {
+      console.warn("Firestore read failed, falling back", e);
+      return JSON.parse(localStorage.getItem('birdyHighScores')||'[]')
+                   .sort((a,b)=>b.score - a.score)
+                   .slice(0,10);
+    }
+  }
+    // 6️⃣ expose to window so non-module scripts can call them
+  window.saveGlobalScore      = saveGlobalScore;
+  window.fetchTopGlobalScores = fetchTopGlobalScores;
+  </script>
+  <script defer>
   (function(){
         // ── Preload bird sprite ──
     const birdSprite = new Image();
@@ -422,19 +489,20 @@ if (Math.random() < coinP) {
     function showOverlay(){
       const ov=document.getElementById('overlay'), ct=document.getElementById('gameOverContent');
       ov.style.display='block';
-      let hs=JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
       ct.innerHTML=`
         <h2>Game Over!</h2>
         <p>Your score: ${score}</p>
         <label>Enter your name:</label><br/>
         <input id="nameInput" type="text" maxlength="10"/><br/>
         <button id="saveBtn">Save Score</button>`;
-      document.getElementById('saveBtn').onclick=()=>{
-        const name=document.getElementById('nameInput').value.trim()||'Anon';
-        hs.push({name,score}); hs.sort((a,b)=>b.score-a.score); hs.splice(10);
-        localStorage.setItem('birdyHighScores',JSON.stringify(hs));
-        showHighScores(hs);
-      };
+document.getElementById('saveBtn').onclick = async () => {
+  const name = document.getElementById('nameInput').value.trim()||'Anon';
+  // 1️⃣ write to global leaderboard
+  await window.saveGlobalScore(name, score);
+  // 2️⃣ then fall back to local & display top-10
+  const top = await window.fetchTopGlobalScores();
+  showHighScores(top);
+};
     }
     function showHighScores(hs){
       const ct=document.getElementById('gameOverContent');
@@ -495,6 +563,19 @@ document.addEventListener('keydown', e=>{
     }
     updateScore();
     loop();
+  // ── On page load, fetch & render the global top-10 ──
+  ;(async()=>{
+    const board = document.getElementById('globalBoard');
+    try {
+      const top10 = await window.fetchTopGlobalScores();
+      board.innerHTML = '<h3>Global Top 10</h3><ol style="padding-left:1em;text-align:left;">'
+        + top10.map(p=>`<li>${p.name} — ${p.score}</li>`).join('')
+        + '</ol>';
+    } catch(err) {
+      console.error(err);
+      board.textContent = 'Failed to load global leaderboard.';
+    }
+  })();
 
   })();
   </script>
