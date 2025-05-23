@@ -16,6 +16,7 @@
     }
     canvas {
       position:absolute;
+      z-index: 0;
     }
     #score {
       position:absolute; top:20px; left:50%;
@@ -40,7 +41,7 @@
     <!-- Global leaderboard panel -->
   <div id="globalBoard"
        style="position:absolute;top:80px;left:50%;transform:translateX(-50%);
-              color:#fff;font:1rem sans-serif;text-shadow:1px 1px 2px #000;z-index:10">
+              color:#fff;font:1rem sans-serif;text-shadow:1px 1px 2px #000;z-index:20">
     Loading global top 10…
   </div>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
