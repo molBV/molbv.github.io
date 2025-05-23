@@ -310,7 +310,7 @@ document.addEventListener('keydown',   initMusic);
             // — handle coin boosts & dynamic speed —
       coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
       const activeBoosts = coinBoostExpiries.length;
-      const targetSpeed = baseSpeed * Math.pow(1.1, activeBoosts) + pipeCount/200;
+      const targetSpeed = baseSpeed * Math.pow(1.5, activeBoosts) + pipeCount/200;
       currentSpeed += (targetSpeed - currentSpeed) * 0.05;
       if(frames%90===0) spawnPipe();
       pipes.forEach((p,i)=>{
