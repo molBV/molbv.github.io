@@ -172,12 +172,13 @@ document.addEventListener('keydown',   initMusic);
     const STATE = { Start:0, Play:1, Over:2 };
     let state=STATE.Start, frames=0, score=0,
         superTimer=0, shieldCount=0, pipeCount=0;
-    const baseAppleProb=0.03, baseMushProb=0.08;
+    const baseAppleProb=0.03, baseMushProb=0.08, baseCoinProb=0.12;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
-    const pipes=[], apples=[], mushrooms=[];
-    const appleR=10, mushroomR=12, initialGap=200, minGap=140, pipeW=60, baseSpeed=2;
+    const pipes=[], apples=[], mushrooms=[], coins=[];
+    const appleR=10, mushroomR=12, coinR=8, initialGap=200, minGap=140, pipeW=60, baseSpeed=2;
+    let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const clouds=[], trees=[];
     for(let i=0;i<7;i++){
@@ -231,6 +232,20 @@ document.addEventListener('keydown',   initMusic);
           }
           ctx.restore();
         }
+                // — coin halo around bird whenever you have coins —
+        if (coinCount > 0) {
+          ctx.save();
+          for (let i = 0; i < coinCount; i++) {
+            const angle = frames * 0.05 + (2 * Math.PI / 10) * i;
+            const cx = this.x + (this.rad + 12) * Math.cos(angle);
+            const cy = this.y + (this.rad + 12) * Math.sin(angle);
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = 'yellow';
+            ctx.fill();
+          }
+          ctx.restore();
+        }
         if(superTimer>0){
           ctx.save(); ctx.strokeStyle='yellow'; ctx.lineWidth=8; ctx.globalAlpha=0.6;
           ctx.beginPath(); ctx.arc(this.x,this.y,this.rad+8,0,2*Math.PI); ctx.stroke();
@@ -272,6 +287,13 @@ document.addEventListener('keydown',   initMusic);
       pipes.push({ x:W, top:topH, gap, color, passed:false });
       if(Math.random()<appP) apples.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
       if(Math.random()<mushP) mushrooms.push({ x:W+pipeW/2, y:topH+gap/2+(Math.random()*gap/2-gap/4), taken:false });
+      const coinP = baseCoinProb * decay;
+      if (Math.random() < coinP)
+        coins.push({
+          x: W + pipeW/2,
+          y: topH + gap*0.4 + Math.random()*gap*0.2,
+          taken: false
+        });
     }
     function drawPipes(){
       pipes.forEach(p=>{
@@ -285,10 +307,14 @@ document.addEventListener('keydown',   initMusic);
     }
     function updatePipes(){
       if(state!==STATE.Play) return;
-      const speed = baseSpeed + pipeCount/200;
+            // — handle coin boosts & dynamic speed —
+      coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
+      const activeBoosts = coinBoostExpiries.length;
+      const targetSpeed = baseSpeed * Math.pow(1.1, activeBoosts) + pipeCount/200;
+      currentSpeed += (targetSpeed - currentSpeed) * 0.05;
       if(frames%90===0) spawnPipe();
       pipes.forEach((p,i)=>{
-        p.x -= speed;
+        p.x -= currentSpeed;
         if(!p.passed && p.x+pipeW<bird.x){ p.passed=true; score++; updateScore(); playTone(600,0.08); }
         if(bird.x+bird.rad>p.x && bird.x-bird.rad<p.x+pipeW){
           if(bird.y-bird.rad<p.top || bird.y+bird.rad>p.top+p.gap){
@@ -300,7 +326,7 @@ document.addEventListener('keydown',   initMusic);
         if(p.x+pipeW<0) pipes.splice(i,1);
       });
       apples.forEach((a,i)=>{
-        a.x-=speed;
+        a.x -= currentSpeed;
         if(!a.taken){
           ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(a.x,a.y,appleR,0,2*Math.PI); ctx.fill();
           ctx.fillStyle='green'; ctx.beginPath(); ctx.ellipse(a.x+6,a.y-appleR/2,4,8,Math.PI/4,0,2*Math.PI); ctx.fill();
@@ -309,7 +335,7 @@ document.addEventListener('keydown',   initMusic);
         if(a.x+appleR<0||a.taken) apples.splice(i,1);
       });
       mushrooms.forEach((m,i)=>{
-        m.x-=speed;
+        m.x -= currentSpeed;
         if(!m.taken){
           ctx.fillStyle='#8B4513'; ctx.fillRect(m.x-4,m.y,8,12);
           ctx.fillStyle='#FF0000'; ctx.beginPath(); ctx.arc(m.x,m.y,mushroomR,Math.PI,0); ctx.fill();
@@ -317,10 +343,48 @@ document.addEventListener('keydown',   initMusic);
         }
         if(m.x+mushroomR<0||m.taken) mushrooms.splice(i,1);
       });
+            coins.forEach((c,i) => {
+        c.x -= currentSpeed;
+        if (!c.taken) {
+          // draw spinning coin
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          const angle = frames * 0.1;
+          for (let j = 0; j < 8; j++) {
+            const radOff = 6;
+            const xOff = Math.cos(j*(2*Math.PI)/8 + angle) * radOff;
+            const yOff = Math.sin(j*(2*Math.PI)/8 + angle) * radOff;
+            ctx.beginPath();
+            ctx.arc(xOff, yOff, 3, 0, 2*Math.PI);
+            ctx.fillStyle = 'gold';
+            ctx.fill();
+          }
+          ctx.restore();
+          // collect
+          if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.rad + coinR) {
+            c.taken = true;
+            coinCount++;
+            updateScore();
+            coinBoostExpiries.push(frames + 420);
+            playTone(1800, 0.2);
+            if (coinCount >= 10) {
+              pipes.length = 0;          // clear all pipes
+              playTone(2000, 0.4);
+              coinCount -= 10;          // use up 10 coins
+            }
+          }
+        }
+        if (c.x + coinR < 0 || c.taken) coins.splice(i, 1);
+      });
     }
 
     // ── Score, Game Over, High Scores ──
-    function updateScore(){ let txt=score; if(shieldCount>0) txt+=` 🍄×${shieldCount}`; scoreEl.textContent=txt; }
+    function updateScore(){
+  let txt = score;
+  if (shieldCount > 0) txt += ` 🍄×${shieldCount}`;
+  if (coinCount   > 0) txt += ` 💰×${coinCount}`;
+  scoreEl.textContent = txt;
+}
     function endGame(){ state=STATE.Over; playTone(100,0.3); showOverlay(); }
     function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); pipes.length=0; apples.length=0; mushrooms.length=0; pipeCount=0; frames=0; superTimer=0; bird.reset(); }
     function showOverlay(){
