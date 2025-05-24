@@ -38,7 +38,6 @@
   </style>
 </head>
 <body>
-    <!-- Global leaderboard panel -->
   <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
        loop
@@ -115,6 +114,8 @@
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
     // ── Audio: background music + SFX context ──
+    // dummy chord function (no-op)
+function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
 bgMusic.volume = 0.5;
 
