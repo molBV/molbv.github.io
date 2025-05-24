@@ -110,6 +110,7 @@
         // ── Preload bird sprite ──
     const birdSprite = new Image();
     birdSprite.src = 'assets/birdieV2.png';
+    mechaTriggered = false;
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -121,7 +122,7 @@ let mechaStage     = 0;      // 0..3, advance on each “bam”
 let inMecha        = false;  // final armored mode
 let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
-    let mechaSafeExpiry = 0;
+let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
 const rocketOutSprite = new Image();
 rocketOutSprite.src   = 'assets/rocket1.png';
 const rocketInSprite  = new Image();
@@ -319,14 +320,22 @@ function startMechaTransition() {
         else {
           this.vel += this.gravity; this.y += this.vel;
           if (this.y + this.rad > H) {
-  // immunity for mecha & first 2s after donning it
-  if (inMecha || frames < mechaSafeExpiry) {
-    this.y   = H/2;  // bounce back to mid‐screen
+  // while armored, always bounce
+  if (inMecha) {
+    this.y   = H/2;    // bounce mid-screen
     this.vel = 0;
-  } else if (state === STATE.Play) {
+    // after the 2s immunity window, bouncing also removes the suit
+    if (frames > mechaSafeExpiry) {
+      inMecha        = false;
+      birdSprite.src = 'assets/birdieV2.png';
+    }
+  }
+  // if not armored, die as normal
+  else if (state === STATE.Play) {
     endGame();
   }
 }
+
           if(this.y-this.rad<0){ this.y=this.rad; this.vel=0; }
         }
       },
@@ -544,25 +553,35 @@ if (coinCount >= 10 && !mechaTriggered) {
    playTone(100, 0.3);
    showOverlay();
  }
-    function resetGame(){ 
+  function resetGame(){ 
   // ── reset all game state ──
   state = STATE.Start;
   score = 0;
   shieldCount = 0;
-  updateScore();
 
-  coinCount = 0;
+  // clear out any leftover bullets/rockets:
+  rocketsOut.length = 0;
+  rocketsIn.length  = 0;
+
+  // reset coins _before_ updating the UI
+  coinCount         = 0;
   coinBoostExpiries = [];
-  coins.length = 0;
 
+  coins.length = 0;          // if you have a coins array too
+
+  // reset pipes & pickups
   pipes.length = 0;
   apples.length = 0;
   mushrooms.length = 0;
 
+  // speeds & counters
   currentSpeed = baseSpeed;
-  pipeCount = 0;
-  frames = 0;
-  superTimer = 0;
+  pipeCount    = 0;
+  frames       = 0;
+  superTimer   = 0;
+  speedFlashTimer = 0;
+
+  // reposition bird
   bird.reset();
 
   // ── reset mech state ──
@@ -570,16 +589,14 @@ if (coinCount >= 10 && !mechaTriggered) {
   inMecha          = false;
   mechaStage       = 0;
   transitionTimer  = 0;
+  // (optionally also reset mechaSafeExpiry:)
+  mechaSafeExpiry  = 0;
   birdSprite.src   = 'assets/birdieV2.png';
+  mechSpeed        = baseSpeed;
 
-  // ── restore music if we left it on mecha theme ──
-  mechaMusic.pause();
-  bgMusic.currentTime = 0;
-  bgMusic.play().catch(()=>{/* no-op */});
-        mechSpeed = baseSpeed;               // ◀ reset mechSpeed
-
+  // finally, update the on-screen score/coin display:
+  updateScore();
 }
-
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
 
@@ -734,13 +751,13 @@ if (state === STATE.MechaTransit) {
       triggerShake(15);
       mechaStage++;
     }
-    if (mechaStage === mechaStages.length) {
-      inMecha = true;
-        mechaSafeExpiry = frames + 120;  // ~2 seconds @60fps
-      console.log('🦾 FULL MECHA ENGAGED!');
-      showAchievement('🦾 Mecha Suit Assembled');
-      state = STATE.Play;
-    }
+if (mechaStage === mechaStages.length) {
+  inMecha = true;
+  mechaSafeExpiry = frames + 120;   // ≈2 seconds @ 60fps
+  console.log('🦾 FULL MECHA ENGAGED!');
+  showAchievement('🦾 Mecha Suit Assembled');
+  state = STATE.Play;
+}
   }
   applyShake();
   drawBackground();
