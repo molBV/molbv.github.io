@@ -127,6 +127,11 @@ rocketOutSprite.src   = 'assets/rocket1.png';
 const rocketInSprite  = new Image();
 rocketInSprite.src    = 'assets/rocket2.png';
 const mechaMusic      = new Audio('assets/mecha_theme.mp3');
+const explosionSfx  = new Audio('assets/explosion.mp3');
+explosionSfx.preload = 'auto';
+const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
+const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
+const flyingArmor   = [];
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
 
@@ -417,16 +422,23 @@ if (Math.random() < coinP) {
 rocketsIn.forEach((r,i) => {
   r.x += r.vx;
   ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
-    if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
-      inMecha = false;
-      mechaTriggered = false;            // ◀ re-allow pipes
-      mechSpeed = baseSpeed;             // ◀ reset mechSpeed
-      birdSprite.src = 'assets/birdieV2.png';
-      mechaMusic.pause();
-      bgMusic.currentTime = 0;
-      bgMusic.play().catch(()=>{/* no-op */});
-      rocketsIn.splice(i,1);
-    }
+if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+  inMecha = false;
+  mechaTriggered = false;
+  mechSpeed = baseSpeed;
+  birdSprite.src = 'assets/birdieV2.png';
+  mechaMusic.pause();
+  bgMusic.currentTime = 0;
+  bgMusic.play().catch(()=>{/* no-op */});
+
+  // play explosion and spawn two flying pieces
+  explosionSfx.currentTime = 0;
+  explosionSfx.play();
+  flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx: -2, vy: -3 });
+  flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx:  2, vy: -3 });
+
+  rocketsIn.splice(i,1);
+}
 
   if (r.x < -20) rocketsIn.splice(i,1);
 });
@@ -760,6 +772,17 @@ if (mechaStage === mechaStages.length) {
   }
   applyShake();
   drawBackground();
+  // ── draw & animate any flying armor pieces ──
+for (let j = flyingArmor.length - 1; j >= 0; j--) {
+  const a = flyingArmor[j];
+  a.vy += 0.2;       // gravity
+  a.x  += a.vx;
+  a.y  += a.vy;
+  ctx.drawImage(a.img, a.x - 16, a.y - 16, 32, 32);
+  if (a.x < -50 || a.x > W + 50 || a.y > H + 50) {
+    flyingArmor.splice(j, 1);
+  }
+}
   bird.draw();
   return requestAnimationFrame(loop);   // skip everything else until we finish
 }
@@ -768,7 +791,16 @@ if (mechaStage === mechaStages.length) {
 applyShake();
 
  drawBackground();
-
+for (let j = flyingArmor.length - 1; j >= 0; j--) {
+  const a = flyingArmor[j];
+  a.vy += 0.2;
+  a.x  += a.vx;
+  a.y  += a.vy;
+  ctx.drawImage(a.img, a.x - 16, a.y - 16, 32, 32);
+  if (a.x < -50 || a.x > W + 50 || a.y > H + 50) {
+    flyingArmor.splice(j, 1);
+  }
+}
 if (state === STATE.Play) {
   // — ramp up speed & auto‐score when armored —
   if (inMecha) {
