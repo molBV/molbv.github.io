@@ -110,6 +110,24 @@
         // ── Preload bird sprite ──
     const birdSprite = new Image();
     birdSprite.src = 'assets/birdieV2.png';
+    // → New “mecha” states
+const mechaStages = [
+  'assets/stage1.png',
+  'assets/stage2.png',
+  'assets/stage3.png',
+  'assets/mecha_suit.png'
+];
+let mechaStage     = 0;      // 0..3, advance on each “bam”
+let inMecha        = false;  // final armored mode
+let transitionTimer= 0;      // ticks for staging
+const rocketOutSprite = new Image();
+rocketOutSprite.src   = 'assets/rocket1.png';
+const rocketInSprite  = new Image();
+rocketInSprite.src    = 'assets/rocket2.png';
+const mechaMusic      = new Audio('assets/mecha_theme.mp3');
+mechaMusic.loop       = true;
+mechaMusic.preload    = 'auto';
+
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
@@ -179,6 +197,9 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const clouds=[], trees=[];
+    const rocketsOut = [];
+    const rocketsIn  = [];
+
         // — load personal best & coin achievement flag —
     let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
     let coinAchievementUnlocked =
@@ -206,6 +227,16 @@ let mushroomAchievementUnlocked  = localStorage.getItem('mushroomAchievementUnlo
     function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=>Math.round(x).toString(16).padStart(2,'0')).join(''); }
     function lerpColor(a,b,t){ const ca=hexToRgb(a), cb=hexToRgb(b); return rgbToHex(ca.r+(cb.r-ca.r)*t, ca.g+(cb.g-ca.g)*t, ca.b+(cb.b-ca.b)*t); }
     function shade(col,amt){ if(col[0]==='#') col=col.slice(1); const num=parseInt(col,16), r=(num>>16)+amt, g=((num>>8)&255)+amt, b=(num&255)+amt; const rr=Math.max(0,Math.min(255,r)), gg=Math.max(0,Math.min(255,g)), bb=Math.max(0,Math.min(255,b)); return '#'+((rr<<16)|(gg<<8)|bb).toString(16).padStart(6,'0'); }
+// ── Mecha-transition kick-off ───────────────────────────────
+function startMechaTransition() {
+  transitionTimer = 0;
+  mechaStage      = 0;
+  inMecha         = false;
+  // swap music
+  bgMusic.pause();
+  mechaMusic.currentTime = 0;
+  mechaMusic.play();
+}
 
     // ── Background drawing ──
     function drawCloud(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.fillStyle='rgba(255,255,255,0.8)'; [0,30,60].forEach(px=>{ ctx.beginPath(); ctx.arc(px,0,20,0,2*Math.PI); ctx.fill(); }); ctx.restore(); }
@@ -343,6 +374,34 @@ if (Math.random() < coinP) {
         ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
       });
     }
+    function updateRockets() {
+  // outgoing rockets
+  rocketsOut.forEach((r,i) => {
+    r.x += r.vx;
+    ctx.drawImage(rocketOutSprite, r.x, r.y-8, 16,16);
+    // pipe collisions
+    pipes.forEach((p,pi) => {
+      if (r.x > p.x && r.x < p.x+pipeW && r.y > p.top && r.y < p.top+p.gap) {
+        pipes.splice(pi,1); rocketsOut.splice(i,1);
+      }
+    });
+    if (r.x > W+20) rocketsOut.splice(i,1);
+  });
+  // incoming rockets
+  rocketsIn.forEach((r,i) => {
+    r.x += r.vx;
+    ctx.drawImage(rocketInSprite, r.x, r.y-8,16,16);
+    if (Math.hypot(bird.x-r.x,bird.y-r.y) < 24) {
+      // hit cancels mecha
+      inMecha = false;
+      birdSprite.src = 'assets/birdieV2.png';
+      mechaMusic.pause(); bgMusic.play();
+      rocketsIn.splice(i,1);
+    }
+    if (r.x < -20) rocketsIn.splice(i,1);
+  });
+}
+
     function updatePipes(){
       if(state!==STATE.Play) return;
             // — handle coin boosts & dynamic speed —
@@ -358,7 +417,17 @@ if (Math.random() < coinP) {
           if(bird.y-bird.rad<p.top || bird.y+bird.rad>p.top+p.gap){
             if(superTimer>0){ pipes.splice(i,1); score++; updateScore(); playTone(900,0.2); }
             else if(shieldCount>0){ shieldCount--; pipes.splice(i,1); updateScore(); playTone(1750,0.2); }
-            else endGame();
+            else {
+  if (!inMecha) {
+    endGame();
+  } else {
+    // cancel mecha but keep playing
+    inMecha = false;
+    birdSprite.src = 'assets/birdieV2.png';
+    mechaMusic.pause(); bgMusic.play();
+    // (leave pipes and score intact)
+  }
+}
           }
         }
         if(p.x+pipeW<0) pipes.splice(i,1);
@@ -384,7 +453,7 @@ if (Math.random() < coinP) {
                                                                    if (mushroomCollectedCount >= 10 && !mushroomAchievementUnlocked) {
                                                                      mushroomAchievementUnlocked = true;
                                                                      localStorage.setItem('mushroomAchievementUnlocked','true');
-                                                                     showAchievement('🏆 Achievement Unlocked: Mushroom Master!');
+                                                                     startMechaTransition();
                                                                    }
                                                                    updateScore(); playTone(1500,0.2); }
         }
@@ -416,6 +485,7 @@ if (Math.random() < coinP) {
       coinAchievementUnlocked = true;
       localStorage.setItem('coinAchievementUnlocked','true');
       showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
+      startMechaTransition();
     }
             speedFlashTimer = 60;
             playChord('V', audioCtx.currentTime);
@@ -539,6 +609,7 @@ function flapHandler(e){
     state = STATE.Play;
   } else if (state === STATE.Play) {
     bird.flap();
+    if (inMecha) rocketsOut.push({ x:bird.x+40, y:bird.y, vx:6 });
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
@@ -577,11 +648,59 @@ ctx.fillText(prompt, W/2, H/2 + 40);
         ctx.fillText(`Personal Best: ${personalBest}`, W/2, H - 40);
       }
     }
+    // screen-shake state
+let shakeTimer = 0, shakeMagnitude = 0;
+function triggerShake(mag) {
+  shakeTimer = 15;
+  shakeMagnitude = mag;
+}
+function applyShake() {
+  if (shakeTimer > 0) {
+    const dx = (Math.random() * 2 - 1) * shakeMagnitude;
+    const dy = (Math.random() * 2 - 1) * shakeMagnitude;
+    canvas.style.transform = `translate(${dx}px,${dy}px)`;
+    shakeTimer--;
+  } else {
+    canvas.style.transform = '';
+  }
+}
+
     function loop(){
       frames++;
+      // — handle mecha-bird staging —
+// — handle mecha‐bird staging —
+if (coinAchievementUnlocked && !inMecha) {
+  transitionTimer++;
+  const dur = 60; // frames per stage
+  
+  // at 60,120,180,240 → load stage[0], [1], [2], [3]
+  if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
+    birdSprite.src = mechaStages[mechaStage];
+    triggerShake(15);
+    mechaStage++;
+  }
+  
+  // once we’ve shown all stages, flip the “inMecha” flag
+  if (mechaStage === mechaStages.length) {
+    inMecha = true;
+    console.log('🦾 FULL MECHA ENGAGED!');
+  }
+}
+// then shake
+applyShake();
+
       drawBackground();
       if(state===STATE.Play){
-        bird.draw(); drawPipes(); updatePipes(); bird.update();
+        bird.draw(); drawPipes(); updatePipes(); 
+        if (inMecha && frames % 180 === 0) {
+  rocketsIn.push({
+    x: W + 20,
+    y: Math.random() * (H - 60) + 30,
+    vx: -4
+  });
+}
+        updateRockets();
+        bird.update();
       } else {
         bird.draw(); drawUI();
       }
