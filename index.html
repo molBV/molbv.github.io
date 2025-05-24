@@ -39,11 +39,6 @@
 </head>
 <body>
     <!-- Global leaderboard panel -->
-  <div id="globalBoard"
-       style="position:absolute;top:80px;left:50%;transform:translateX(-50%);
-              color:#fff;font:1rem sans-serif;text-shadow:1px 1px 2px #000;z-index:20">
-    Loading global top 10…
-  </div>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -486,42 +481,38 @@ if (Math.random() < coinP) {
                          pipes.length=0; apples.length=0; mushrooms.length=0; 
                          currentSpeed = baseSpeed;
                          pipeCount=0; frames=0; superTimer=0; bird.reset(); }
-    function showOverlay(){
-  const ov    = document.getElementById('overlay');
-  const ct    = document.getElementById('gameOverContent');
-  const board = document.getElementById('globalBoard');
+   function showOverlay(){
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+  ov.style.display = 'block';
 
-  // show overlay + global leaderboard
-  ov.style.display    = 'block';
-  board.style.display = 'block';
-
+  // build the game-over UI + inline leaderboard container
   ct.innerHTML = `
     <h2>Game Over!</h2>
     <p>Your score: ${score}</p>
     <label>Enter your name:</label><br/>
     <input id="nameInput" type="text" maxlength="10"/><br/>
     <button id="saveBtn">Save Score</button>
+    <h3>Global Top 10</h3>
+    <ol id="overlayBoard" style="text-align:left; display:inline-block;"></ol>
   `;
 
+  // populate the overlay leaderboard right away
+  window.fetchTopGlobalScores().then(top => {
+    const ol = document.getElementById('overlayBoard');
+    ol.innerHTML = top.map(p => `<li>${p.name} — ${p.score}</li>`).join('');
+  });
+
+  // handle the Save Score button
   document.getElementById('saveBtn').onclick = async () => {
     const name = document.getElementById('nameInput').value.trim() || 'Anon';
     await window.saveGlobalScore(name, score);
+    // refresh the list
     const top = await window.fetchTopGlobalScores();
-    showHighScores(top);
+    document.getElementById('overlayBoard').innerHTML =
+      top.map(p => `<li>${p.name} — ${p.score}</li>`).join('');
   };
 }
-    function showHighScores(hs){
-      const ct=document.getElementById('gameOverContent');
-      let html=`<h2>Top 10</h2><ol style="text-align:left;display:inline-block;">`;
-      hs.forEach(i=>html+=`<li>${i.name} – ${i.score}</li>`);
-      html+=`</ol><br/><button id="retryBtn">Play Again</button>`;
-      ct.innerHTML=html;
-      document.getElementById('retryBtn').onclick=()=>{
-        document.getElementById('overlay').style.display='none';
-        resetGame();
-      };
-    }
-
     // ── Input & Main Loop ──
     // Kickoff on click, key, or touch
 ['mousedown','touchstart','keydown'].forEach(evt=>{
@@ -532,8 +523,6 @@ if (Math.random() < coinP) {
 function flapHandler(e){
   if (state === STATE.Start) {
     state = STATE.Play;
-    // hide global leaderboard
-    document.getElementById('globalBoard').style.display = 'none';
   } else if (state === STATE.Play) {
     bird.flap();
   }
@@ -575,20 +564,6 @@ document.addEventListener('keydown', e=>{
     updateScore();
     loop();
 
-    // ── 3) ON PAGE LOAD: FETCH & RENDER GLOBAL TOP-10 ───────────
-    ;(async()=>{
-      const board = document.getElementById('globalBoard');
-      try {
-        const top10 = await window.fetchTopGlobalScores();
-        board.innerHTML =
-          '<h3>Global Top 10</h3><ol style="padding-left:1em;text-align:left;">'
-           + top10.map(p=>`<li>${p.name} — ${p.score}</li>`).join('')
-           + '</ol>';
-      } catch(err) {
-        console.error("Leaderboard load error:", err);
-        board.textContent = 'Failed to load global leaderboard.';
-      }
-    })();
 
   })();
 </script>
