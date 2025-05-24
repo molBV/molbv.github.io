@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Ultimate Birdy V8 - Bug Catcher</title>
+  <title>Birdy V9</title>
   <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#70d0ee">
@@ -39,6 +39,10 @@
 </head>
 <body>
     <!-- Global leaderboard panel -->
+  <audio id="bgMusic"
+       src="assets/basic-loop.mp3"
+       loop
+       preload="auto"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -110,6 +114,22 @@
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
+    // ── Audio: background music + SFX context ──
+const bgMusic = document.getElementById('bgMusic');
+bgMusic.volume = 0.5;
+
+// simple WebAudioContext for playTone()
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// play bgMusic once upon first user interaction
+function initMusic() {
+  bgMusic.play().catch(()=>{});
+  document.removeEventListener('mousedown', initMusic);
+  document.removeEventListener('keydown',   initMusic);
+}
+document.addEventListener('mousedown', initMusic, {passive:true});
+document.addEventListener('keydown',   initMusic, {passive:true});
+
     const ORIGINAL_WIDTH  = canvas.width,
           ORIGINAL_HEIGHT = canvas.height;
     function resizeCanvas(){
@@ -127,99 +147,7 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // ── Audio setup ──
-// ── Audio setup (Random Earworm Generator) ──
-const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-
-//–– Scale & Chords in C major ––
-const scale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // C D E F G A B
-const chords = {
-  I:  [0,2,4],   // C E G
-  V:  [4,6,1],   // G B D
-  vi: [5,0,2],   // A C E
-  IV: [3,5,0]    // F A C
-};
-const progSets = [
-  ['I','V','vi','IV'],
-  ['I','vi','IV','V'],
-  ['I','IV','V','IV']
-];
-
-//–– Pick a random progression each session ––
-const progression = progSets[Math.floor(Math.random()*progSets.length)];
-
-//–– Playback settings ––
-const chordDur = 2.5;    // seconds per chord
-const motifLen = 4;      // notes per motif
-let motifPattern = [];    // will fill with scale indices
-
-//–– Build a simple motif: random walk on the scale ––
-function genMotif(){
-  motifPattern = [];
-  let idx = 0;
-  for(let i=0;i<motifLen;i++){
-    idx = Math.max(0, Math.min(scale.length-1, idx + (Math.floor(Math.random()*3)-1)));
-    motifPattern.push(idx);
-  }
-}
-
-//–– Play one chord as arpeggio ––
-function playChord(chordType, startTime){
-  const tones = chords[chordType];
-  tones.forEach((deg,i)=>{
-    const freq = scale[deg];
-    const osc = audioCtx.createOscillator();
-    const g   = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, startTime + i*0.1);
-    g.gain.setValueAtTime(0, startTime + i*0.1);
-    g.gain.linearRampToValueAtTime(0.08, startTime + i*0.1 + 0.1);
-    g.gain.linearRampToValueAtTime(0, startTime + chordDur - 0.1);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(startTime + i*0.1);
-    osc.stop(startTime + chordDur);
-  });
-}
-
-//–– Play the motif over a chord ––
-function playMotif(startTime){
-  motifPattern.forEach((deg,i)=>{
-    const t = startTime + (i * chordDur / motifLen);
-    const osc = audioCtx.createOscillator();
-    const g   = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(scale[deg], t);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.12, t + 0.05);
-    g.gain.linearRampToValueAtTime(0, t + 0.3);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.5);
-  });
-}
-
-//–– Scheduler: loop progression + motif ––
-function startJingle(){
-  const now = audioCtx.currentTime + 0.2;
-  genMotif();
-  progression.forEach((chord,i)=>{
-    const chordTime = now + i*chordDur;
-    playChord(chord, chordTime);
-    playMotif(chordTime);
-  });
-  // after full cycle, regenerate motif & loop
-  setTimeout(startJingle, progression.length * chordDur * 1000);
-}
-
-//–– Unlock & kick off on first interaction ––
-function initMusic(){
-  audioCtx.resume().then(startJingle);
-  document.removeEventListener('mousedown', initMusic);
-  document.removeEventListener('keydown',   initMusic);
-}
-document.addEventListener('mousedown', initMusic);
-document.addEventListener('keydown',   initMusic);
-
+    
 
     // ── Simple SFX ──
     function playTone(freq, dur=0.1){
@@ -513,12 +441,7 @@ if (Math.random() < coinP) {
       top.map(p => `<li>${p.name} — ${p.score}</li>`).join('');
   };
 }
-    // ── Input & Main Loop ──
-    // Kickoff on click, key, or touch
-['mousedown','touchstart','keydown'].forEach(evt=>{
-  document.addEventListener(evt, initMusic, {passive:true});
-});
-
+    
 // Flap on click or touch
 function flapHandler(e){
   if (state === STATE.Start) {
