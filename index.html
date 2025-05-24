@@ -38,12 +38,10 @@
   </style>
 </head>
 <body>
-  <!--
   <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
        loop
-       preload="auto"></audio>
-  -->
+       preload="metadata"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -125,13 +123,16 @@ bgMusic.volume = 0.5;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // play bgMusic once upon first user interaction
-//function initMusic() {
-//  bgMusic.play().catch(()=>{});
-//  document.removeEventListener('mousedown', initMusic);
-//  document.removeEventListener('keydown',   initMusic);
-//}
-//document.addEventListener('mousedown', initMusic, {passive:true});
-//document.addEventListener('keydown',   initMusic, {passive:true});
+function initMusic() {
+    bgMusic.load();             // kick off buffering immediately
+  bgMusic.play()
+    .then(()=>console.log('Music started'))
+    .catch(e=>console.error('Play() failed:', e));
+  document.removeEventListener('mousedown', initMusic);
+  document.removeEventListener('keydown',   initMusic);
+}
+document.addEventListener('mousedown', initMusic, {passive:true});
+document.addEventListener('keydown',   initMusic, {passive:true});
 
     const ORIGINAL_WIDTH  = canvas.width,
           ORIGINAL_HEIGHT = canvas.height;
@@ -462,7 +463,7 @@ document.addEventListener('keydown', e=>{
       if(state===STATE.Start){
         ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,W,H);
         ctx.fillStyle='#fff'; ctx.textAlign='center';
-        ctx.font='32px sans-serif'; ctx.fillText('🐦 Ultimate Birdy V8 – The Stuff',W/2,H/2-20);
+        ctx.font='32px sans-serif'; ctx.fillText('🐦 Birdy V9',W/2,H/2-20);
         ctx.font='18px sans-serif'; ctx.fillText('Space/Click to Start',W/2,H/2+20);
       }
     }
