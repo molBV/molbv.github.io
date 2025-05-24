@@ -113,16 +113,7 @@
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
-            canvas.addEventListener('click', e => {
-  // only in the Start state
-  if (state === STATE.Start) {
-    showAchievement(
-      `Achievements:\n` +
-      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n` +
-      `${mushroomAchievementUnlocked ? '✅ Mushroom Master' : '❌ Mushroom Master'}`
-    );
-  }
-});
+            
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
 function playChord(/* chordType, startTime */) {}
@@ -195,6 +186,16 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // — mushroom achievement —
 let mushroomCollectedCount       = parseInt(localStorage.getItem('mushroomCount')) || 0;
 let mushroomAchievementUnlocked  = localStorage.getItem('mushroomAchievementUnlocked') === 'true';
+    canvas.addEventListener('click', e => {
+  // only in the Start state
+  if (state === STATE.Start) {
+    showAchievement(
+      `Achievements:\n` +
+      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n` +
+      `${mushroomAchievementUnlocked ? '✅ Mushroom Master' : '❌ Mushroom Master'}`
+    );
+  }
+});
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
       trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
@@ -347,7 +348,7 @@ if (Math.random() < coinP) {
             // — handle coin boosts & dynamic speed —
       coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
       const activeBoosts = coinBoostExpiries.length;
-      const targetSpeed = baseSpeed * Math.pow(1.5, activeBoosts) + pipeCount/200;
+      const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount/200;
       currentSpeed += (targetSpeed - currentSpeed) * 0.05;
       if(frames%90===0) spawnPipe();
       pipes.forEach((p,i)=>{
@@ -439,7 +440,16 @@ if (Math.random() < coinP) {
   if (coinCount   > 0) txt += ` 💰×${coinCount}`;
   scoreEl.textContent = txt;
 }
-    function endGame(){ state=STATE.Over; playTone(100,0.3); showOverlay(); }
+     function endGame(){
+   state = STATE.Over;
+   // — check for new personal best —
+   if (score > personalBest) {
+     personalBest = score;
+     localStorage.setItem('birdyBestScore', personalBest);
+   }
+   playTone(100, 0.3);
+   showOverlay();
+ }
     function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); 
                          coinCount = 0; coinBoostExpiries = []; coins.length = 0;
                          pipes.length=0; apples.length=0; mushrooms.length=0; 
@@ -451,10 +461,7 @@ if (Math.random() < coinP) {
 // showOverlay: ask for name only if you made top-10
 async function showOverlay(){
       // — update & persist personal best —
-    if(score > personalBest) {
-      personalBest = score;
-      localStorage.setItem('birdyBestScore', personalBest);
-    }
+  
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
@@ -495,19 +502,20 @@ function showHighScores(hs){
     resetGame();
   };
 }
-    function showAchievement(message) {
-      const ov = document.getElementById('overlay');
-      const ct = document.getElementById('gameOverContent');
-      ov.style.display = 'block';
-      ct.innerHTML = `
-        <h2>${message}</h2>
-        <button id="closeAch">OK</button>
-      `;
-      document.getElementById('closeAch').onclick = () => {
-        ov.style.display = 'none';
-        resetGame();
-      };
-    }
+function showAchievement(message) {
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+  ov.style.display = 'block';
+  ct.innerHTML = `
+    <h2>${message}</h2>
+    <button id="closeAch">OK</button>
+  `;
+  document.getElementById('closeAch').onclick = () => {
+    ov.style.display = 'none';
+    // no resetGame() here
+  };
+}
+
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
@@ -522,7 +530,9 @@ function flapHandler(e){
   const ov = document.getElementById('overlay');
   if (ov.style.display === 'block') {
     ov.style.display = 'none';
-    resetGame();                // ← reset everything back to Start
+    if (state === STATE.Over) { // only reset if we *were* on the game-over screen
+      resetGame();
+    }
     return;                     // ← bail out so we don't flap immediately
   }
   if (state === STATE.Start) {
