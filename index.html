@@ -113,6 +113,16 @@
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
+            canvas.addEventListener('click', e => {
+  // only in the Start state
+  if (state === STATE.Start) {
+    showAchievement(
+      `Achievements:\n` +
+      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n` +
+      `${mushroomAchievementUnlocked ? '✅ Mushroom Master' : '❌ Mushroom Master'}`
+    );
+  }
+});
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
 function playChord(/* chordType, startTime */) {}
@@ -178,6 +188,13 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const clouds=[], trees=[];
+        // — load personal best & coin achievement flag —
+    let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
+    let coinAchievementUnlocked =
+      localStorage.getItem('coinAchievementUnlocked') === 'true';
+    // — mushroom achievement —
+let mushroomCollectedCount       = parseInt(localStorage.getItem('mushroomCount')) || 0;
+let mushroomAchievementUnlocked  = localStorage.getItem('mushroomAchievementUnlocked') === 'true';
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
       trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
@@ -359,7 +376,16 @@ if (Math.random() < coinP) {
         if(!m.taken){
           ctx.fillStyle='#8B4513'; ctx.fillRect(m.x-4,m.y,8,12);
           ctx.fillStyle='#FF0000'; ctx.beginPath(); ctx.arc(m.x,m.y,mushroomR,Math.PI,0); ctx.fill();
-          if(Math.hypot(bird.x-m.x,bird.y-m.y)<bird.rad+mushroomR){ m.taken=true; shieldCount++; updateScore(); playTone(1500,0.2); }
+          if(Math.hypot(bird.x-m.x,bird.y-m.y)<bird.rad+mushroomR){ m.taken=true; shieldCount++; 
+                                                                   // — track mushrooms for achievement —
+                                                                   mushroomCollectedCount++;
+                                                                   localStorage.setItem('mushroomCount', mushroomCollectedCount);
+                                                                   if (mushroomCollectedCount >= 10 && !mushroomAchievementUnlocked) {
+                                                                     mushroomAchievementUnlocked = true;
+                                                                     localStorage.setItem('mushroomAchievementUnlocked','true');
+                                                                     showAchievement('🏆 Achievement Unlocked: Mushroom Master!');
+                                                                   }
+                                                                   updateScore(); playTone(1500,0.2); }
         }
         if(m.x+mushroomR<0||m.taken) mushrooms.splice(i,1);
       });
@@ -384,6 +410,12 @@ if (Math.random() < coinP) {
           if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.rad + coinR) {
             c.taken = true;
             coinCount++;
+                // — unlock achievement at 10 coins —
+    if(coinCount >= 10 && !coinAchievementUnlocked) {
+      coinAchievementUnlocked = true;
+      localStorage.setItem('coinAchievementUnlocked','true');
+      showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
+    }
             speedFlashTimer = 60;
             playChord('V', audioCtx.currentTime);
             updateScore();
@@ -415,8 +447,14 @@ if (Math.random() < coinP) {
                          pipeCount=0; frames=0; superTimer=0; bird.reset(); }
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
+
 // showOverlay: ask for name only if you made top-10
 async function showOverlay(){
+      // — update & persist personal best —
+    if(score > personalBest) {
+      personalBest = score;
+      localStorage.setItem('birdyBestScore', personalBest);
+    }
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
@@ -457,6 +495,19 @@ function showHighScores(hs){
     resetGame();
   };
 }
+    function showAchievement(message) {
+      const ov = document.getElementById('overlay');
+      const ct = document.getElementById('gameOverContent');
+      ov.style.display = 'block';
+      ct.innerHTML = `
+        <h2>${message}</h2>
+        <button id="closeAch">OK</button>
+      `;
+      document.getElementById('closeAch').onclick = () => {
+        ov.style.display = 'none';
+        resetGame();
+      };
+    }
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
@@ -485,12 +536,35 @@ canvas.addEventListener('touchstart',  flapHandler, {passive:true});
 document.addEventListener('keydown', e=>{
   if (e.code === 'Space' || e.code === 'ArrowUp') flapHandler();
 });
-    function drawUI(){
-      if(state===STATE.Start){
-        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle='#fff'; ctx.textAlign='center';
-        ctx.font='32px sans-serif'; ctx.fillText('🐦 Birdy V9',W/2,H/2-20);
-        ctx.font='18px sans-serif'; ctx.fillText('Space/Click to Start',W/2,H/2+20);
+        function drawUI(){
+      if(state === STATE.Start){
+        // dark overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0,0,W,H);
+
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+
+        ctx.font = '32px sans-serif';
+        ctx.fillText('🐦 Birdy V9', W/2, H/2 - 40);
+
+        ctx.font = '18px sans-serif';
+        ctx.fillText('Space/Click to Start', W/2, H/2);
+
+        // ← new line:
+        // dynamically choose the prompt
+        let prompt;
+        if (!coinAchievementUnlocked) {
+          prompt = 'Collect 10 coins to unlock an achievement!';
+        } else if (!mushroomAchievementUnlocked) {
+          prompt = 'Collect 10 mushrooms next!';
+        } else {
+          prompt = 'Stay tuned for more epic quests!';
+        }
+ctx.fillText(prompt, W/2, H/2 + 40);
+
+        // ← new line:
+        ctx.fillText(`Personal Best: ${personalBest}`, W/2, H - 40);
       }
     }
     function loop(){
