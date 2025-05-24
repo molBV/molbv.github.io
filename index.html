@@ -186,7 +186,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
-    const STATE = { Start:0, Play:1, Over:2 };
+    const STATE = { Start:0, Play:1, Over:2, MechaTransit:3 };
     let state=STATE.Start, frames=0, score=0,
         superTimer=0, shieldCount=0, pipeCount=0;
     const baseAppleProb=0.03, baseMushProb=0.08, baseCoinProb=0.12;
@@ -196,6 +196,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const pipes=[], apples=[], mushrooms=[], coins=[];
     const appleR=10, mushroomR=12, coinR=8, initialGap=300, minGap=140, pipeW=60, baseSpeed=2;
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
+    let mechSpeed = baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const clouds=[], trees=[];
     const rocketsOut = [];
@@ -398,16 +399,18 @@ if (Math.random() < coinP) {
 // ── incoming rockets ──
 rocketsIn.forEach((r,i) => {
   r.x += r.vx;
-  ctx.drawImage(rocketInSprite, r.x, r.y-16,16,16);
-  if (Math.hypot(bird.x-r.x,bird.y-r.y) < 24) {
-    // hit cancels mecha
-    inMecha = false;
-    birdSprite.src = 'assets/birdieV2.png';
-    mechaMusic.pause();
-    bgMusic.currentTime = 0;
-    bgMusic.play().catch(()=>{/* no-op */});
-    rocketsIn.splice(i,1);
-  }
+  ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
+    if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+      inMecha = false;
+      mechaTriggered = false;            // ◀ re-allow pipes
+      mechSpeed = baseSpeed;             // ◀ reset mechSpeed
+      birdSprite.src = 'assets/birdieV2.png';
+      mechaMusic.pause();
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(()=>{/* no-op */});
+      rocketsIn.splice(i,1);
+    }
+
   if (r.x < -20) rocketsIn.splice(i,1);
 });
 }
@@ -419,7 +422,8 @@ rocketsIn.forEach((r,i) => {
       const activeBoosts = coinBoostExpiries.length;
       const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount/200;
       currentSpeed += (targetSpeed - currentSpeed) * 0.05;
-      if(frames%90===0) spawnPipe();
+      // only spawn new pipes when NOT in Mecha mode
+if (frames % 90 === 0 && !inMecha) spawnPipe();
       pipes.forEach((p,i)=>{
         p.x -= currentSpeed;
         if(!p.passed && p.x+pipeW<bird.x){ p.passed=true; score++; updateScore(); playTone(600,0.08); }
@@ -491,12 +495,13 @@ rocketsIn.forEach((r,i) => {
             c.taken = true;
             coinCount++;
                 // — unlock achievement at 10 coins —
- if (coinCount >= 10 && !mechaTriggered) {
-   mechaTriggered = true;
-   coinCount     -= 10;
-   showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
-   startMechaTransition();
- }
+if (coinCount >= 10 && !mechaTriggered) {
+  mechaTriggered = true;
+  coinCount     -= 10;
+  showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
+  startMechaTransition();
+  state = STATE.MechaTransit;    // ← BLOCK input & gameplay
+}
             speedFlashTimer = 60;
             playChord('V', audioCtx.currentTime);
             updateScore();
@@ -562,6 +567,8 @@ rocketsIn.forEach((r,i) => {
   mechaMusic.pause();
   bgMusic.currentTime = 0;
   bgMusic.play().catch(()=>{/* no-op */});
+        mechSpeed = baseSpeed;               // ◀ reset mechSpeed
+
 }
 
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
@@ -644,6 +651,11 @@ function flapHandler(e){
     }
     return;                     // ← bail out so we don't flap immediately
   }
+  if (state === STATE.MechaTransit) {
+  state = STATE.Play;
+  return;  // now let them flap to start
+}
+
   if (state === STATE.Start) {
     state = STATE.Play;
   } else if (state === STATE.Play) {
@@ -706,6 +718,30 @@ function applyShake() {
 
     function loop(){
       frames++;
+
+// ── if we’re mid-transition, only run mech staging/draw, no game logic ──
+if (state === STATE.MechaTransit) {
+  // Existing mech-staging code (you already have)
+  if (mechaTriggered && !inMecha) {
+    transitionTimer++;
+    const dur = 60;
+    if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
+      birdSprite.src = mechaStages[mechaStage];
+      triggerShake(15);
+      mechaStage++;
+    }
+    if (mechaStage === mechaStages.length) {
+      inMecha = true;
+      console.log('🦾 FULL MECHA ENGAGED!');
+      showAchievement('🦾 Mecha Engaged! Click to continue!');
+    }
+  }
+  applyShake();
+  drawBackground();
+  bird.draw();
+  return requestAnimationFrame(loop);  // ← skip everything else
+}
+
       // — handle mecha-bird staging —
 // — handle mecha‐bird staging —
 // — handle mech‐bird staging once only after 10 coins —
@@ -726,20 +762,44 @@ if (mechaTriggered && !inMecha) {
 // then shake
 applyShake();
 
-      drawBackground();
-      if(state===STATE.Play){
-        bird.draw(); drawPipes(); updatePipes(); 
-        if (inMecha && frames % 180 === 0) {
-  rocketsIn.push({
-    x: W + 20,
-    y: Math.random() * (H - 60) + 30,
-    vx: -4
-  });
+ drawBackground();
+
+if (state === STATE.Play) {
+  // — ramp up speed & auto‐score when armored —
+  if (inMecha) {
+    mechSpeed += 0.02;
+    currentSpeed = mechSpeed;
+    if (frames % 60 === 0) {
+      score++;
+      updateScore();
+    }
+  }
+
+  // — normal draw/update —
+  bird.draw();
+  drawPipes();
+  updatePipes();
+
+  // — spawn bigger, evil rocket waves every second when in Mecha —
+  if (inMecha && frames % 60 === 0) {
+    for (let i = 0; i < 3; i++) {
+      rocketsIn.push({
+        x: W + 20 + i * 60,
+        y: Math.random() * (H - 100) + 50,
+        vx: -3
+      });
+    }
+  }
+
+  updateRockets();
+  bird.update();
+
+} else {
+  // Start or Over screen
+  bird.draw();
+  drawUI();
 }
-        updateRockets();
-        bird.update();
-      } else {
-        bird.draw(); drawUI();
+
       }
       // — draw SPEED UP flash if active —
       if (speedFlashTimer > 0) {
