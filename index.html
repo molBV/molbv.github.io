@@ -618,20 +618,16 @@ function showHighScores(hs){
     resetGame();
   };
 }
-function showAchievement(message) {
+function showAchievement(message, duration = 2000) {
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
-  ct.innerHTML = `
-    <h2>${message}</h2>
-    <button id="closeAch">OK</button>
-  `;
-  document.getElementById('closeAch').onclick = () => {
+  ct.innerHTML = `<h2>${message}</h2>`;
+  // auto-hide after `duration` ms
+  setTimeout(() => {
     ov.style.display = 'none';
-    // no resetGame() here
-  };
+  }, duration);
 }
-
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
@@ -643,6 +639,10 @@ document.getElementById('overlay').addEventListener('click', e => {
 
 // Flap on click or touch (also hide overlay & reset if visible)
 function flapHandler(e){
+  if (state === STATE.MechaTransit) {
+    e.preventDefault();
+    return;
+  }
   const ov = document.getElementById('overlay');
   if (ov.style.display === 'block') {
     ov.style.display = 'none';
@@ -651,10 +651,6 @@ function flapHandler(e){
     }
     return;                     // ← bail out so we don't flap immediately
   }
-  if (state === STATE.MechaTransit) {
-  state = STATE.Play;
-  return;  // now let them flap to start
-}
 
   if (state === STATE.Start) {
     state = STATE.Play;
@@ -721,7 +717,6 @@ function applyShake() {
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
-  // Existing mech-staging code (you already have)
   if (mechaTriggered && !inMecha) {
     transitionTimer++;
     const dur = 60;
@@ -733,32 +728,16 @@ if (state === STATE.MechaTransit) {
     if (mechaStage === mechaStages.length) {
       inMecha = true;
       console.log('🦾 FULL MECHA ENGAGED!');
-      showAchievement('🦾 Mecha Engaged! Click to continue!');
+      showAchievement('🦾 Mecha Suit Assembled');
+      state = STATE.Play;
     }
   }
   applyShake();
   drawBackground();
   bird.draw();
-  return requestAnimationFrame(loop);  // ← skip everything else
+  return requestAnimationFrame(loop);   // skip everything else until we finish
 }
 
-      // — handle mecha-bird staging —
-// — handle mecha‐bird staging —
-// — handle mech‐bird staging once only after 10 coins —
-if (mechaTriggered && !inMecha) {
-  transitionTimer++;
-  const dur = 60; // frames per stage
-
-  if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
-    birdSprite.src = mechaStages[mechaStage];
-    triggerShake(15);
-    mechaStage++;
-  }
-  if (mechaStage === mechaStages.length) {
-    inMecha = true;
-    console.log('🦾 FULL MECHA ENGAGED!');
-  }
-}
 // then shake
 applyShake();
 
