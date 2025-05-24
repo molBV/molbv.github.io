@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Birdy V9</title>
+  <title>Birdy - Coins</title>
   <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#70d0ee">
@@ -119,6 +119,7 @@ const mechaStages = [
 ];
 let mechaStage     = 0;      // 0..3, advance on each “bam”
 let inMecha        = false;  // final armored mode
+let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
 const rocketOutSprite = new Image();
 rocketOutSprite.src   = 'assets/rocket1.png';
@@ -234,9 +235,15 @@ function startMechaTransition() {
   inMecha         = false;
   // swap music
   bgMusic.pause();
-  mechaMusic.currentTime = 0;
-  mechaMusic.play();
+  mechaMusic.load();
+  mechaMusic.play().catch(()=>{
+    // if the browser blocks autoplay, retry on the next click
+    document.addEventListener('mousedown', ()=>{
+      mechaMusic.play();
+    }, { once:true });
+  });
 }
+
 
     // ── Background drawing ──
     function drawCloud(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.fillStyle='rgba(255,255,255,0.8)'; [0,30,60].forEach(px=>{ ctx.beginPath(); ctx.arc(px,0,20,0,2*Math.PI); ctx.fill(); }); ctx.restore(); }
@@ -378,7 +385,7 @@ if (Math.random() < coinP) {
   // outgoing rockets
   rocketsOut.forEach((r,i) => {
     r.x += r.vx;
-    ctx.drawImage(rocketOutSprite, r.x, r.y-8, 16,16);
+    ctx.drawImage(rocketOutSprite, r.x, r.y-10, 16,16);
     // pipe collisions
     pipes.forEach((p,pi) => {
       if (r.x > p.x && r.x < p.x+pipeW && r.y > p.top && r.y < p.top+p.gap) {
@@ -388,18 +395,21 @@ if (Math.random() < coinP) {
     if (r.x > W+20) rocketsOut.splice(i,1);
   });
   // incoming rockets
-  rocketsIn.forEach((r,i) => {
-    r.x += r.vx;
-    ctx.drawImage(rocketInSprite, r.x, r.y-8,16,16);
-    if (Math.hypot(bird.x-r.x,bird.y-r.y) < 24) {
-      // hit cancels mecha
-      inMecha = false;
-      birdSprite.src = 'assets/birdieV2.png';
-      mechaMusic.pause(); bgMusic.play();
-      rocketsIn.splice(i,1);
-    }
-    if (r.x < -20) rocketsIn.splice(i,1);
-  });
+// ── incoming rockets ──
+rocketsIn.forEach((r,i) => {
+  r.x += r.vx;
+  ctx.drawImage(rocketInSprite, r.x, r.y-16,16,16);
+  if (Math.hypot(bird.x-r.x,bird.y-r.y) < 24) {
+    // hit cancels mecha
+    inMecha = false;
+    birdSprite.src = 'assets/birdieV2.png';
+    mechaMusic.pause();
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(()=>{/* no-op */});
+    rocketsIn.splice(i,1);
+  }
+  if (r.x < -20) rocketsIn.splice(i,1);
+});
 }
 
     function updatePipes(){
@@ -481,12 +491,12 @@ if (Math.random() < coinP) {
             c.taken = true;
             coinCount++;
                 // — unlock achievement at 10 coins —
-    if(coinCount >= 10 && !coinAchievementUnlocked) {
-      coinAchievementUnlocked = true;
-      localStorage.setItem('coinAchievementUnlocked','true');
-      showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
-      startMechaTransition();
-    }
+ if (coinCount >= 10 && !mechaTriggered) {
+   mechaTriggered = true;
+   coinCount     -= 10;
+   showAchievement('🏆 Achievement Unlocked: Coin Hoarder!');
+   startMechaTransition();
+ }
             speedFlashTimer = 60;
             playChord('V', audioCtx.currentTime);
             updateScore();
@@ -520,11 +530,40 @@ if (Math.random() < coinP) {
    playTone(100, 0.3);
    showOverlay();
  }
-    function resetGame(){ state=STATE.Start; score=0; shieldCount=0; updateScore(); 
-                         coinCount = 0; coinBoostExpiries = []; coins.length = 0;
-                         pipes.length=0; apples.length=0; mushrooms.length=0; 
-                         currentSpeed = baseSpeed;
-                         pipeCount=0; frames=0; superTimer=0; bird.reset(); }
+    function resetGame(){ 
+  // ── reset all game state ──
+  state = STATE.Start;
+  score = 0;
+  shieldCount = 0;
+  updateScore();
+
+  coinCount = 0;
+  coinBoostExpiries = [];
+  coins.length = 0;
+
+  pipes.length = 0;
+  apples.length = 0;
+  mushrooms.length = 0;
+
+  currentSpeed = baseSpeed;
+  pipeCount = 0;
+  frames = 0;
+  superTimer = 0;
+  bird.reset();
+
+  // ── reset mech state ──
+  mechaTriggered   = false;
+  inMecha          = false;
+  mechaStage       = 0;
+  transitionTimer  = 0;
+  birdSprite.src   = 'assets/birdieV2.png';
+
+  // ── restore music if we left it on mecha theme ──
+  mechaMusic.pause();
+  bgMusic.currentTime = 0;
+  bgMusic.play().catch(()=>{/* no-op */});
+}
+
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
 
@@ -609,7 +648,7 @@ function flapHandler(e){
     state = STATE.Play;
   } else if (state === STATE.Play) {
     bird.flap();
-    if (inMecha) rocketsOut.push({ x:bird.x+40, y:bird.y, vx:6 });
+    if (inMecha) rocketsOut.push({ x:bird.x+40, y:bird.y, vx:4 });
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
@@ -627,7 +666,7 @@ document.addEventListener('keydown', e=>{
         ctx.textAlign = 'center';
 
         ctx.font = '32px sans-serif';
-        ctx.fillText('🐦 Birdy V9', W/2, H/2 - 40);
+        ctx.fillText('🐦 Birdy - Coins', W/2, H/2 - 40);
 
         ctx.font = '18px sans-serif';
         ctx.fillText('Space/Click to Start', W/2, H/2);
@@ -669,18 +708,16 @@ function applyShake() {
       frames++;
       // — handle mecha-bird staging —
 // — handle mecha‐bird staging —
-if (coinAchievementUnlocked && !inMecha) {
+// — handle mech‐bird staging once only after 10 coins —
+if (mechaTriggered && !inMecha) {
   transitionTimer++;
   const dur = 60; // frames per stage
-  
-  // at 60,120,180,240 → load stage[0], [1], [2], [3]
+
   if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
     birdSprite.src = mechaStages[mechaStage];
     triggerShake(15);
     mechaStage++;
   }
-  
-  // once we’ve shown all stages, flip the “inMecha” flag
   if (mechaStage === mechaStages.length) {
     inMecha = true;
     console.log('🦾 FULL MECHA ENGAGED!');
