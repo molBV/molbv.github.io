@@ -413,41 +413,67 @@ if (Math.random() < coinP) {
                          pipes.length=0; apples.length=0; mushrooms.length=0; 
                          currentSpeed = baseSpeed;
                          pipeCount=0; frames=0; superTimer=0; bird.reset(); }
-   function showOverlay(){
+   // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
+
+// showOverlay: ask for name only if you made top-10
+async function showOverlay(){
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
 
-  // build the game-over UI + inline leaderboard container
-  ct.innerHTML = `
-    <h2>Game Over!</h2>
-    <p>Your score: ${score}</p>
-    <label>Enter your name:</label><br/>
-    <input id="nameInput" type="text" maxlength="10"/><br/>
-    <button id="saveBtn">Save Score</button>
-    <h3>Global Top 10</h3>
-    <ol id="overlayBoard" style="text-align:left; display:inline-block;"></ol>
-  `;
+  // fetch existing top-10
+  const top = await fetchTopGlobalScores();
+  const qualifies = top.length < 10 || score > top[top.length - 1].score;
 
-  // populate the overlay leaderboard right away
-  window.fetchTopGlobalScores().then(top => {
-    const ol = document.getElementById('overlayBoard');
-    ol.innerHTML = top.map(p => `<li>${p.name} — ${p.score}</li>`).join('');
-  });
+  if (qualifies) {
+    ct.innerHTML = `
+      <h2>Game Over!</h2>
+      <p>Your score: ${score}</p>
+      <label>Enter your name:</label><br/>
+      <input id="nameInput" type="text" maxlength="10"/><br/>
+      <button id="saveBtn">Save Score</button>
+    `;
+    document.getElementById('saveBtn').onclick = async () => {
+      const name = document.getElementById('nameInput').value.trim() || 'Anon';
+      await saveGlobalScore(name, score);
+      const newTop = await fetchTopGlobalScores();
+      showHighScores(newTop);
+    };
+  } else {
+    // skip name entry
+    showHighScores(top);
+  }
+}
 
-  // handle the Save Score button
-  document.getElementById('saveBtn').onclick = async () => {
-    const name = document.getElementById('nameInput').value.trim() || 'Anon';
-    await window.saveGlobalScore(name, score);
-    // refresh the list
-    const top = await window.fetchTopGlobalScores();
-    document.getElementById('overlayBoard').innerHTML =
-      top.map(p => `<li>${p.name} — ${p.score}</li>`).join('');
+// showHighScores: display list + Play Again button
+function showHighScores(hs){
+  const ct = document.getElementById('gameOverContent');
+  let html = `<h2>Top 10</h2><ol style="text-align:left;display:inline-block;">`;
+  hs.forEach(i => html += `<li>${i.name} — ${i.score}</li>`);
+  html += `</ol><br/><button id="retryBtn">Play Again</button>`;
+  ct.innerHTML = html;
+  document.getElementById('retryBtn').onclick = () => {
+    document.getElementById('overlay').style.display = 'none';
+    resetGame();
   };
 }
-    
-// Flap on click or touch
+
+// click outside panel to restart
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) {
+    document.getElementById('overlay').style.display = 'none';
+    resetGame();
+  }
+});
+
+// Flap on click or touch (also hide overlay & reset if visible)
 function flapHandler(e){
+  const ov = document.getElementById('overlay');
+  if (ov.style.display === 'block') {
+    ov.style.display = 'none';
+    resetGame();                // ← reset everything back to Start
+    return;                     // ← bail out so we don't flap immediately
+  }
   if (state === STATE.Start) {
     state = STATE.Play;
   } else if (state === STATE.Play) {
