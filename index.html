@@ -121,6 +121,7 @@ let mechaStage     = 0;      // 0..3, advance on each “bam”
 let inMecha        = false;  // final armored mode
 let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
+    let mechaSafeExpiry = 0;
 const rocketOutSprite = new Image();
 rocketOutSprite.src   = 'assets/rocket1.png';
 const rocketInSprite  = new Image();
@@ -317,7 +318,15 @@ function startMechaTransition() {
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
           this.vel += this.gravity; this.y += this.vel;
-          if(this.y+this.rad>H){ this.y=H-this.rad; if(state===STATE.Play) endGame(); }
+          if (this.y + this.rad > H) {
+  // immunity for mecha & first 2s after donning it
+  if (inMecha || frames < mechaSafeExpiry) {
+    this.y   = H/2;  // bounce back to mid‐screen
+    this.vel = 0;
+  } else if (state === STATE.Play) {
+    endGame();
+  }
+}
           if(this.y-this.rad<0){ this.y=this.rad; this.vel=0; }
         }
       },
@@ -727,6 +736,7 @@ if (state === STATE.MechaTransit) {
     }
     if (mechaStage === mechaStages.length) {
       inMecha = true;
+        mechaSafeExpiry = frames + 120;  // ~2 seconds @60fps
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
       state = STATE.Play;
