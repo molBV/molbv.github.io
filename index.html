@@ -38,10 +38,12 @@
   </style>
 </head>
 <body>
+  <!--
   <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
        loop
        preload="auto"></audio>
+  -->
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -123,13 +125,13 @@ bgMusic.volume = 0.5;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // play bgMusic once upon first user interaction
-function initMusic() {
-  bgMusic.play().catch(()=>{});
-  document.removeEventListener('mousedown', initMusic);
-  document.removeEventListener('keydown',   initMusic);
+//function initMusic() {
+//  bgMusic.play().catch(()=>{});
+//  document.removeEventListener('mousedown', initMusic);
+//  document.removeEventListener('keydown',   initMusic);
 }
-document.addEventListener('mousedown', initMusic, {passive:true});
-document.addEventListener('keydown',   initMusic, {passive:true});
+//document.addEventListener('mousedown', initMusic, {passive:true});
+//document.addEventListener('keydown',   initMusic, {passive:true});
 
     const ORIGINAL_WIDTH  = canvas.width,
           ORIGINAL_HEIGHT = canvas.height;
