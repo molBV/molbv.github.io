@@ -683,7 +683,9 @@ function showAchievement(message, duration = 2000) {
 document.getElementById('overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) {
     document.getElementById('overlay').style.display = 'none';
-    resetGame();
+     if (state === STATE.Over) {
+      resetGame();
+    }
   }
 });
 
