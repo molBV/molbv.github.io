@@ -487,23 +487,29 @@ if (Math.random() < coinP) {
                          currentSpeed = baseSpeed;
                          pipeCount=0; frames=0; superTimer=0; bird.reset(); }
     function showOverlay(){
-      const ov=document.getElementById('overlay'), ct=document.getElementById('gameOverContent');
-      ov.style.display='block';
-      ct.innerHTML=`
-        <h2>Game Over!</h2>
-        <p>Your score: ${score}</p>
-        <label>Enter your name:</label><br/>
-        <input id="nameInput" type="text" maxlength="10"/><br/>
-        <button id="saveBtn">Save Score</button>`;
-document.getElementById('saveBtn').onclick = async () => {
-  const name = document.getElementById('nameInput').value.trim()||'Anon';
-  // 1️⃣ write to global leaderboard
-  await window.saveGlobalScore(name, score);
-  // 2️⃣ then fall back to local & display top-10
-  const top = await window.fetchTopGlobalScores();
-  showHighScores(top);
-};
-    }
+  const ov    = document.getElementById('overlay');
+  const ct    = document.getElementById('gameOverContent');
+  const board = document.getElementById('globalBoard');
+
+  // show overlay + global leaderboard
+  ov.style.display    = 'block';
+  board.style.display = 'block';
+
+  ct.innerHTML = `
+    <h2>Game Over!</h2>
+    <p>Your score: ${score}</p>
+    <label>Enter your name:</label><br/>
+    <input id="nameInput" type="text" maxlength="10"/><br/>
+    <button id="saveBtn">Save Score</button>
+  `;
+
+  document.getElementById('saveBtn').onclick = async () => {
+    const name = document.getElementById('nameInput').value.trim() || 'Anon';
+    await window.saveGlobalScore(name, score);
+    const top = await window.fetchTopGlobalScores();
+    showHighScores(top);
+  };
+}
     function showHighScores(hs){
       const ct=document.getElementById('gameOverContent');
       let html=`<h2>Top 10</h2><ol style="text-align:left;display:inline-block;">`;
@@ -524,8 +530,13 @@ document.getElementById('saveBtn').onclick = async () => {
 
 // Flap on click or touch
 function flapHandler(e){
-  if(state === STATE.Start) state = STATE.Play;
-  else if(state === STATE.Play) bird.flap();
+  if (state === STATE.Start) {
+    state = STATE.Play;
+    // hide global leaderboard
+    document.getElementById('globalBoard').style.display = 'none';
+  } else if (state === STATE.Play) {
+    bird.flap();
+  }
 }
 canvas.addEventListener('mousedown', flapHandler);
 canvas.addEventListener('touchstart',  flapHandler, {passive:true});
