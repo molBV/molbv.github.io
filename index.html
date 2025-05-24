@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Birdy - Coins</title>
+  <title>Birdy - Rockets</title>
   <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#70d0ee">
@@ -409,6 +409,19 @@ if (Math.random() < coinP) {
   rocketsOut.forEach((r,i) => {
     r.x += r.vx;
     ctx.drawImage(rocketOutSprite, r.x, r.y-10, 16,16);
+    // ── rocket-vs-rocket collision ──
+for (let k = rocketsIn.length - 1; k >= 0; k--) {
+  const rin = rocketsIn[k];
+  if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
+    // hit! remove both rockets
+    rocketsOut.splice(i, 1);
+    rocketsIn.splice(k, 1);
+    score++;
+    updateScore();
+    playTone(1000, 0.2);  // optional SFX
+    return;              // bail out of this iteration
+  }
+}
     // pipe collisions
     pipes.forEach((p,pi) => {
       if (r.x > p.x && r.x < p.x+pipeW && r.y > p.top && r.y < p.top+p.gap) {
@@ -534,7 +547,7 @@ if (coinCount >= 10 && !mechaTriggered) {
             speedFlashTimer = 60;
             playChord('V', audioCtx.currentTime);
             updateScore();
-            coinBoostExpiries.push(frames + 420);
+            coinBoostExpiries.push(frames + 600);
             playTone(1800, 0.2);
             if (coinCount >= 10) {
               pipes.length = 0;          // clear all pipes
@@ -711,7 +724,7 @@ document.addEventListener('keydown', e=>{
         ctx.textAlign = 'center';
 
         ctx.font = '32px sans-serif';
-        ctx.fillText('🐦 Birdy - Coins', W/2, H/2 - 40);
+        ctx.fillText('🐦 Birdy - Rockets', W/2, H/2 - 40);
 
         ctx.font = '18px sans-serif';
         ctx.fillText('Space/Click to Start', W/2, H/2);
