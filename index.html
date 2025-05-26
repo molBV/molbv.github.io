@@ -354,19 +354,17 @@ if (p.mode === 'track') {
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
             // ── STRONG ATTACK: three radial bomb tosses in a row ──
-      if (p.strongQueue > 0) {
-        for (let i = 0; i < p.strongQueue; i++) {
-          tossBombs.push({
-            x: W - 80 + Math.sin(p.y*0.04)*30,
-            y: p.y,
-            vy: -12,
-            r: 12,
-            exploded: false
-          });
-        }
-        // clear the queue so we don’t do it again
-        p.strongQueue = 0;
-      }
+if (p.strongQueue > 0) {
+  // spawn exactly p.strongQueue bombs
+  for (let i = 0; i < p.strongQueue; i++) {
+    tossBombs.push({
+      x: W - 80 + Math.sin(p.y*0.04)*30,
+      y: p.y,
+      vy: -12, r:12, exploded:false
+    });
+  }
+  p.strongQueue = 0;
+}
 
     }
   }
@@ -424,7 +422,11 @@ function triggerBossAttack(){
   p.isCharging   = true;
   p.chargeTimer  = 0;
   p.chargeDuration = 20 + (bossHealth/1000)*40;
-  p.shakeMag     = 5;
+  p.shakeMag     = 5
+      // schedule a 3-bomb volley every time HP ≤ 50%
+  if (bossHealth <= 500) {
+    p.strongQueue = 3;
+  }
 }
     function endBossFight(victory) {
   bossActive = false;
@@ -445,6 +447,14 @@ bgMusic.play();
 function drawBoss() {
     // ── draw tossBomb projectiles ──
   tossBombs.forEach(b => {
+      // glow
+  const glow = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*2);
+  glow.addColorStop(0, 'rgba(255,200,0,0.6)');
+  glow.addColorStop(1, 'rgba(255,200,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, b.r*2, 0,Math.PI*2);
+  ctx.fill();
     ctx.drawImage(
       bombSprite,
       b.x - b.r, b.y - b.r,
@@ -577,7 +587,7 @@ if (inMecha) {
     }
   }
   // if not armored, die as normal
-  else if (state === STATE.Play) {
+  else if (state === STATE.Play || state === STATE.Boss) {
     endGame();
   }
 }
@@ -715,10 +725,23 @@ ctx.save();
 // restore before your collision logic
 ctx.restore();
 
-if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
-    if (r.isBossTrigger) {
-    // ignore hit—boss rocket cannot be shot down
-    return;
+ if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+    if (!r.isBossTrigger) {
+      // whether it's a bossShot or not, knock you out of mecha:
+      inMecha = false;
+      mechaTriggered = false;
+      mechSpeed = baseSpeed;
+      birdSprite.src = 'assets/birdieV2.png';
+      mechaMusic.pause();
+      bgMusic.play().catch(()=>{});
+      // spawn armor pieces
+      explosionSfx.currentTime = 0;
+      explosionSfx.play();
+      flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx: -2, vy: -3 });
+      flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx:  2, vy: -3 });
+      rocketsIn.splice(i,1);
+    }
+    // if it's a forced bossTrigger rocket, you still don’t die immediately
   }
   inMecha = false;
   mechaTriggered = false;
