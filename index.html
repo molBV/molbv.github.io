@@ -160,7 +160,15 @@ function initMusic() {
     bgMusic.load();             // kick off buffering immediately
   bgMusic.play()
     .then(()=>console.log('Music started'))
-    .catch(e=>console.error('Play() failed:', e));
+    .catch(e=>console.error('Play() failed:', e))
+    .then(()=>{
+      // unlock the boss track while we’re at it
+      bossMusic.load();
+      bossMusic.play()
+        .then(()=>bossMusic.pause())
+        .catch(_=>{/* still locked, but we tried */}
+      );
+    });
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
@@ -880,7 +888,7 @@ function flapHandler(e){
 
   if (state === STATE.Start) {
     state = STATE.Play;
-  } else if (state === STATE.Play) {
+  } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     if (inMecha) rocketsOut.push({ x:bird.x+40, y:bird.y, vx:4 });
   }
@@ -942,11 +950,23 @@ function applyShake() {
       frames++;
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
+  // 1) clear the canvas
+  ctx.clearRect(0, 0, W, H);
+
+  // 2) redraw your world
+  drawBackground();
   updateBoss();
+
+  // 3) let the bird respond to gravity/flap
+  bird.update();
+  bird.draw();
+
+  // 4) draw the boss on top
   drawBoss();
-  requestAnimationFrame(loop);
-  return;
+
+  return requestAnimationFrame(loop);
 }
+
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
