@@ -161,6 +161,10 @@ function initMusic() {
   bgMusic.play()
     .then(()=>console.log('Music started'))
     .catch(e=>console.error('Play() failed:', e))
+   .then(()=>{
+     bossMusic.load();
+     bossMusic.play().then(()=>bossMusic.pause()).catch(()=>{});
+   });
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
@@ -212,7 +216,7 @@ let pipeCount  = 0;
 // boss fight state
 let bossActive      = false;
 let bossHealth      = 1000;
-let birdBossHP      = 5;    // how many hits bird can take
+let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
     const baseAppleProb=0.03, baseMushProb=0.08, baseCoinProb=0.12;
@@ -277,7 +281,7 @@ function startBossFight() {
   bossActive       = true;
   state            = STATE.Boss;
   bossHealth       = 1000;
-  birdBossHP       = 5;
+  birdBossHP       = 2;
   // freeze main environment:
   pipes.length     = apples.length = mushrooms.length = coins.length = 0;
    inMecha          = false;
@@ -333,7 +337,7 @@ if (p.mode === 'track') {
     if (p.chargeTimer>=p.chargeDuration){
       rocketsIn.push({ 
         x: W - 80 + Math.sin(p.y*0.04)*30 - p.r,
-        y: p.y, vx:-8, isBossShot:true
+        y: p.y, vx:-3, isBossShot:true
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
     }
@@ -345,7 +349,7 @@ if (p.mode === 'track') {
     if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
       rocketsIn.splice(i,1);
       birdBossHP--;
-      if (birdBossHP<=0) endBossFight(false);
+      if (birdBossHP <= 0) endGame(); 
     }
   });
 
@@ -577,6 +581,7 @@ if (Math.random() < coinP) {
     // ── rocket-vs-rocket collision ──
 for (let k = rocketsIn.length - 1; k >= 0; k--) {
   const rin = rocketsIn[k];
+  if (rin.isBossShot) continue;
   if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
     // hit! remove both rockets
     rocketsOut.splice(i, 1);
@@ -588,7 +593,7 @@ if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
   rocketsIn.push({
     x: W + 40,
     y: Math.random()*(H-100)+50,
-    vx: -2,
+    vx: -1,
     isBossTrigger: true
   });
 }
