@@ -615,7 +615,27 @@ if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
 // ── incoming rockets ──
 rocketsIn.forEach((r,i) => {
   r.x += r.vx;
+  // before drawing, save the context state
+ctx.save();
+
+// if this rocket is the special boss-trigger…
+if (r.isBossTrigger) {
+  // double its size:
+  const S = 48 * 2;       // 96px square
+  // move origin to the rocket’s center
+  ctx.translate(r.x, r.y);
+  // flip it horizontally
+  ctx.scale(-1, 1);
+  // draw it centered at (0,0)
+  ctx.drawImage(rocketInSprite, -S/2, -S/2, S, S);
+} else {
+  // normal incoming rocket
   ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
+}
+
+// restore before your collision logic
+ctx.restore();
+
 if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
   inMecha = false;
   mechaTriggered = false;
