@@ -577,6 +577,7 @@ if (Math.random() < coinP) {
       });
     }
     function updateRockets() {
+      if (!(inMecha || state === STATE.Boss)) return;
   // outgoing rockets
   rocketsOut.forEach((r,i) => {
     r.x += r.vx;
@@ -1070,7 +1071,9 @@ if (state === STATE.Play) {
     }
   }
 
-  updateRockets();
+  if (inMecha) {
+    updateRockets();
+  }
   bird.update();
 
 } else {
