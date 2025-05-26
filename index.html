@@ -118,7 +118,7 @@ const mechaStages = [
   'assets/mecha_suit.png'
 ];
 let mechaStage     = 0;      // 0..3, advance on each “bam”
-let inMecha        = false;  // final armored mode
+let inMecha = false;  // final armored mode
 let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
@@ -267,7 +267,7 @@ let mushroomAchievementUnlocked  = localStorage.getItem('mushroomAchievementUnlo
 function startMechaTransition() {
   transitionTimer = 0;
   mechaStage      = 0;
-  inMecha         = false;
+  inMecha         = false;  
   // swap music
   bgMusic.pause();
   mechaMusic.load();
@@ -285,7 +285,7 @@ function startBossFight() {
   birdBossHP       = 5;
   // freeze main environment:
   pipes.length     = apples.length = mushrooms.length = coins.length = 0;
-  inMecha          = false;
+   inMecha          = false;
   // position bird at left
   bird.x           = 80;
   bird.y           = H/2;
@@ -325,8 +325,13 @@ bossMusic.play();
   }
 
   // 3) Move boss Y
-  if (p.mode==='track')     p.vy += (bird.y - p.y)*0.008;
-  else                      p.vy += (Math.random()-0.5)*1.0;
+if (p.mode === 'track') {
+  // snappy, direct tracking
+  p.vy += (bird.y - p.y) * 0.008;
+} else {
+  // slow, deliberate drifting
+  p.vy += (Math.random() - 0.5) * 0.2;
+}
   p.y += p.vy; p.vy*=0.95;
   p.y = Math.max(p.r,Math.min(H-p.r,p.y));
 
@@ -492,12 +497,12 @@ function drawBoss() {
           this.vel += this.gravity; this.y += this.vel;
           if (this.y + this.rad > H) {
   // while armored, always bounce
-  if (inMecha) {
+if (inMecha) {
     this.y   = H/2;    // bounce mid-screen
     this.vel = 0;
     // after the 2s immunity window, bouncing also removes the suit
     if (frames > mechaSafeExpiry) {
-      inMecha        = false;
+             inMecha = false; 
       birdSprite.src = 'assets/birdieV2.png';
     }
   }
@@ -909,7 +914,8 @@ function flapHandler(e){
     state = STATE.Play;
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
-    if (inMecha) rocketsOut.push({ x:bird.x+40, y:bird.y, vx:4 });
+    // always allow shooting in Boss fight (regardless of inMecha)
+    rocketsOut.push({ x: bird.x+40, y: bird.y, vx: 4 });
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
@@ -975,6 +981,7 @@ if (state === STATE.Boss) {
   // 2) redraw your world
   drawBackground();
   updateBoss();
+  updateRockets(); 
 
   // 3) let the bird respond to gravity/flap
   bird.update();
