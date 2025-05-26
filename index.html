@@ -131,6 +131,10 @@ const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
+    // ── boss sprites & rockets ──
+const bossFrames   = ['frame0','frame1','frame2'].map(f=>Object.assign(new Image(),{src:`assets/boss_animation/${f}.png`}));
+const bossRockets  = ['boss_rocket1','boss_rocket2'].map(r=>Object.assign(new Image(),{src:`assets/boss_animation/${r}.png`}));
+const bombSprite   = Object.assign(new Image(),{src:'assets/boss_animation/bomb.png'});
 const flyingArmor   = [];
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
@@ -192,8 +196,14 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
-    const STATE = { Start:0, Play:1, Over:2, MechaTransit:3 };
+    const STATE = { Start:0, Play:1, Over:2, MechaTransit:3, Boss:4 };
     let state=STATE.Start, frames=0, score=0,
+      // — boss fight variables —
+let bossActive       = false;
+let bossHealth       = 500;
+let birdBossHP       = 5;    // how many hits bird can take
+let bossRocketCount  = 0;    // count rockets you’ve broken
+let bossObj;                // we’ll store frame, timers, etc.
         superTimer=0, shieldCount=0, pipeCount=0;
     const baseAppleProb=0.03, baseMushProb=0.08, baseCoinProb=0.12;
     const cycleLength=6000;
@@ -249,6 +259,138 @@ function startMechaTransition() {
       mechaMusic.play();
     }, { once:true });
   });
+}
+function startBossFight() {
+  bossActive       = true;
+  state            = STATE.Boss;
+  bossHealth       = 500;
+  birdBossHP       = 5;
+  // freeze main environment:
+  pipes.length     = apples.length = mushrooms.length = coins.length = 0;
+  inMecha          = false;
+  // position bird at left
+  bird.x           = 80;
+  bird.y           = H/2;
+  // init boss object
+  bossObj = {
+    y: H/2, vy:0,
+    mode:'random', modeTimer:0, modeDuration:300,
+    isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
+    justFired:false, smoke: []
+  };
+  showAchievement('🚀 Boss Incoming!');
+}
+    function updateBoss() {
+  // 1) Smoke puffs
+  const p = bossObj;
+  if (frames % 5 === 0) {
+    p.smoke.push({ x:W-80 + Math.sin(p.y*0.04)*30 + p.r, y:p.y, alpha:1, r:4 });
+  }
+  for (let i=p.smoke.length-1;i>=0;i--){
+    const s=p.smoke[i];
+    s.r+=0.3; s.alpha-=0.02;
+    if (s.alpha<=0) p.smoke.splice(i,1);
+  }
+
+  // 2) Switch mode & auto‐attack faster when damaged
+  p.modeTimer++;
+  if (p.modeTimer > p.modeDuration) {
+    p.mode = p.mode==='random'?'track':'random';
+    p.modeDuration = 60 + (bossHealth/500)*200;
+    p.modeTimer = 0;
+    if (p.mode==='track') triggerBossAttack();
+  }
+
+  // 3) Move boss Y
+  if (p.mode==='track')     p.vy += (bird.y - p.y)*0.008;
+  else                      p.vy += (Math.random()-0.5)*1.0;
+  p.y += p.vy; p.vy*=0.95;
+  p.y = Math.max(p.r,Math.min(H-p.r,p.y));
+
+  // 4) Charging & firing
+  if (p.isCharging) {
+    p.chargeTimer++;
+    if (p.chargeTimer>=p.chargeDuration){
+      rocketsIn.push({ 
+        x: W - 80 + Math.sin(p.y*0.04)*30 - p.r,
+        y: p.y, vx:-8, isBossShot:true
+      });
+      p.isCharging=false; p.shakeMag=0; p.justFired=true;
+    }
+  }
+
+  // 5) Handle bossShots hitting bird
+  rocketsIn.forEach((r,i)=>{
+    if (!r.isBossShot) return;
+    if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+      rocketsIn.splice(i,1);
+      birdBossHP--;
+      if (birdBossHP<=0) endBossFight(false);
+    }
+  });
+
+  // 6) Check bossHP←birdShots collisions
+  rocketsOut.forEach((b,i)=>{
+    if (Math.hypot(b.x - (W-80), b.y - p.y) < p.r + 8) {
+      rocketsOut.splice(i,1);
+      bossHealth -= 10;
+      if (bossHealth<=0) endBossFight(true);
+    }
+  });
+}
+
+function triggerBossAttack(){
+  const p=bossObj;
+  p.isCharging   = true;
+  p.chargeTimer  = 0;
+  p.chargeDuration = 20 + (bossHealth/500)*40;
+  p.shakeMag     = 5;
+}
+    function endBossFight(victory) {
+  bossActive = false;
+  state      = STATE.Play;
+  if (victory) {
+    score += 500;
+    showAchievement('🏆 Boss Defeated! +500 pts', 3000);
+  } else {
+    showAchievement('💥 You took too much damage!', 2000);
+  }
+  // reset your in-game counters & resume pipes etc.
+  bossRocketCount = 0;
+  // optionally refill pipes or just let spawnPipe() resume
+}
+
+function drawBoss() {
+  const p=bossObj;
+  // a) draw background smoke
+  p.smoke.forEach(s=>{
+    ctx.save();
+      ctx.globalAlpha=s.alpha;
+      ctx.fillStyle='grey';
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,2*Math.PI);
+      ctx.fill();
+    ctx.restore();
+  });
+  
+  // b) draw bird & main UI
+  bird.draw();  // reuse your bird.draw()
+
+  // c) draw boss frames flipped
+  let frame = p.justFired ? 2 : (p.isCharging ? 1 : 0);
+  ctx.save();
+    ctx.translate(W-80 + Math.sin(p.y*0.04)*30, p.y);
+    ctx.scale(-1,1);
+    ctx.drawImage(bossFrames[frame], -p.r, -p.r, p.r*2, p.r*2);
+  ctx.restore();
+  p.justFired = false;
+
+  // d) draw health bar
+  const bx = W-80 + Math.sin(p.y*0.04)*30, barW=80;
+  ctx.fillStyle='#444';
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
+  ctx.fillStyle='lime';
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/500),6);
 }
 
 
@@ -418,6 +560,21 @@ for (let k = rocketsIn.length - 1; k >= 0; k--) {
     rocketsIn.splice(k, 1);
     score++;
     updateScore();
+    bossRocketCount++;
+if (bossRocketCount === 10 && !bossActive) {
+  // spawn the single “boss rocket” out at random Y
+  rocketsIn.push({
+    x: W + 40,
+    y: Math.random()*(H-100)+50,
+    vx: -4,
+    isBossTrigger: true
+  });
+}
+
+  if (rin.isBossTrigger) {
+    startBossFight();
+    return;  // skip normal rocket‐vs‐rocket logic
+  }
     playTone(1000, 0.2);  // optional SFX
     return;              // bail out of this iteration
   }
@@ -766,6 +923,13 @@ function applyShake() {
 
     function loop(){
       frames++;
+  // ── Boss fight branch ──────────────────────────────────
+  if (state === STATE.Boss) {
+    updateBoss();
+    drawBoss();
+    requestAnimationFrame(loop);
+    return;     // skip the rest of loop
+  }
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
