@@ -161,10 +161,11 @@ function initMusic() {
   bgMusic.play()
     .then(()=>console.log('Music started'))
     .catch(e=>console.error('Play() failed:', e))
-   .then(()=>{
-     bossMusic.load();
-     bossMusic.play().then(()=>bossMusic.pause()).catch(()=>{});
-   });
+// **Immediately** unlock bossMusic here:
+  bossMusic.load();
+  bossMusic.play()
+    .then(() => bossMusic.pause())
+    .catch(() => {});  // swallow any errors
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
@@ -337,7 +338,7 @@ if (p.mode === 'track') {
     if (p.chargeTimer>=p.chargeDuration){
       rocketsIn.push({ 
         x: W - 80 + Math.sin(p.y*0.04)*30 - p.r,
-        y: p.y, vx:-3, isBossShot:true
+        y: p.y, vx:-4, isBossShot:true
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
     }
@@ -622,18 +623,20 @@ rocketsIn.forEach((r,i) => {
 ctx.save();
 
 // if this rocket is the special boss-trigger…
-if (r.isBossTrigger) {
-  // double its size:
-  const S = 48 * 2;       // 96px square
-  // move origin to the rocket’s center
-  ctx.translate(r.x, r.y);
-  // flip it horizontally
-  ctx.scale(-1, 1);
-  // draw it centered at (0,0)
-  ctx.drawImage(rocketInSprite, -S/2, -S/2, S, S);
-} else {
-  // normal incoming rocket
-  ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
+    // flip any rocket that came from the boss (trigger or normal shot)
+    if (r.isBossShot || r.isBossTrigger) {
+      const size = r.isBossTrigger ? 96 : 48;
+      ctx.translate(r.x, r.y);
+      ctx.scale(-1, 1);
+      // center-draw it
+      ctx.drawImage(
+        rocketInSprite,
+        -size/2, -size/2,
+        size, size
+      );
+    } else {
+      // player-fired rocket: draw normally
+      ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
 }
 
 // restore before your collision logic
