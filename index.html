@@ -161,14 +161,6 @@ function initMusic() {
   bgMusic.play()
     .then(()=>console.log('Music started'))
     .catch(e=>console.error('Play() failed:', e))
-    .then(()=>{
-      // unlock the boss track while we’re at it
-      bossMusic.load();
-      bossMusic.play()
-        .then(()=>bossMusic.pause())
-        .catch(_=>{/* still locked, but we tried */}
-      );
-    });
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
@@ -279,6 +271,9 @@ function startMechaTransition() {
   });
 }
 function startBossFight() {
+    bgMusic.pause();
+  bossMusic.currentTime = 0;
+  bossMusic.play().catch(_=>{ /* user gesture lock, we’ll retry later */ });
   bossActive       = true;
   state            = STATE.Boss;
   bossHealth       = 500;
@@ -298,9 +293,6 @@ function startBossFight() {
     justFired:false, smoke: []
   };
   showAchievement('🚀 Boss Incoming!');
-  bgMusic.pause();
-bossMusic.currentTime = 0;
-bossMusic.play();
 
 }
     function updateBoss() {
@@ -596,7 +588,7 @@ if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
   rocketsIn.push({
     x: W + 40,
     y: Math.random()*(H-100)+50,
-    vx: -4,
+    vx: -2,
     isBossTrigger: true
   });
 }
@@ -643,6 +635,10 @@ if (r.isBossTrigger) {
 ctx.restore();
 
 if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+    if (r.isBossTrigger) {
+    // ignore hit—boss rocket cannot be shot down
+    return;
+  }
   inMecha = false;
   mechaTriggered = false;
   mechSpeed = baseSpeed;
