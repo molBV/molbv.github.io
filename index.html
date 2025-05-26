@@ -128,6 +128,9 @@ const rocketInSprite  = new Image();
 rocketInSprite.src    = 'assets/rocket2.png';
 const mechaMusic      = new Audio('assets/mecha_theme.mp3');
 const explosionSfx  = new Audio('assets/explosion.mp3');
+    const bossMusic     = new Audio('assets/boss_fight.mp3');
+bossMusic.loop      = true;
+bossMusic.preload   = 'auto';
 explosionSfx.preload = 'auto';
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
@@ -196,15 +199,22 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
-    const STATE = { Start:0, Play:1, Over:2, MechaTransit:3, Boss:4 };
-    let state=STATE.Start, frames=0, score=0,
-      // — boss fight variables —
-let bossActive       = false;
-let bossHealth       = 500;
-let birdBossHP       = 5;    // how many hits bird can take
-let bossRocketCount  = 0;    // count rockets you’ve broken
-let bossObj;                // we’ll store frame, timers, etc.
-        superTimer=0, shieldCount=0, pipeCount=0;
+const STATE = { Start:0, Play:1, Over:2, MechaTransit:3, Boss:4 };
+
+// core game state
+let state      = STATE.Start;
+let frames     = 0;
+let score      = 0;
+let superTimer = 0;
+let shieldCount= 0;
+let pipeCount  = 0;
+
+// boss fight state
+let bossActive      = false;
+let bossHealth      = 500;
+let birdBossHP      = 5;    // how many hits bird can take
+let bossRocketCount = 0;    // count rockets you’ve broken
+let bossObj;                // boss-specific timers & mode
     const baseAppleProb=0.03, baseMushProb=0.08, baseCoinProb=0.12;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
@@ -274,11 +284,16 @@ function startBossFight() {
   // init boss object
   bossObj = {
     y: H/2, vy:0,
+    r: 32, 
     mode:'random', modeTimer:0, modeDuration:300,
     isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
     justFired:false, smoke: []
   };
   showAchievement('🚀 Boss Incoming!');
+  bgMusic.pause();
+bossMusic.currentTime = 0;
+bossMusic.play();
+
 }
     function updateBoss() {
   // 1) Smoke puffs
@@ -357,6 +372,8 @@ function triggerBossAttack(){
   }
   // reset your in-game counters & resume pipes etc.
   bossRocketCount = 0;
+      bossMusic.pause();
+bgMusic.play();
   // optionally refill pipes or just let spawnPipe() resume
 }
 
@@ -924,12 +941,12 @@ function applyShake() {
     function loop(){
       frames++;
   // ── Boss fight branch ──────────────────────────────────
-  if (state === STATE.Boss) {
-    updateBoss();
-    drawBoss();
-    requestAnimationFrame(loop);
-    return;     // skip the rest of loop
-  }
+if (state === STATE.Boss) {
+  updateBoss();
+  drawBoss();
+  requestAnimationFrame(loop);
+  return;
+}
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
