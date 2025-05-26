@@ -338,7 +338,7 @@ if (p.mode === 'track') {
     if (p.chargeTimer>=p.chargeDuration){
       rocketsIn.push({ 
         x: W - 80 + Math.sin(p.y*0.04)*30 - p.r,
-        y: p.y, vx:-4, isBossShot:true
+        y: p.y, vx:-6, isBossShot:true
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
     }
@@ -978,6 +978,13 @@ function applyShake() {
 
     function loop(){
       frames++;
+        // force‐play boss music as soon as we enter the fight
+  if (state === STATE.Boss && bossMusic.paused) {
+    bossMusic.play().catch(() => {
+      // if still blocked, schedule a retry on the next click
+      document.addEventListener('mousedown', () => bossMusic.play(), { once:true });
+    });
+  }
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
   // 1) clear the canvas
