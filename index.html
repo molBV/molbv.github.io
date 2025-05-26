@@ -326,11 +326,6 @@ function startBossFight() {
     p.modeTimer = 0;
     if (p.mode==='track') triggerBossAttack();
   }
-  // ── trigger strong attack when health drops below half ──
-  if (bossHealth <= 500 && !p.secondAttackTriggered) {
-    p.secondAttackTriggered = true;
-    p.strongQueue = 3;       // schedule three bomb tosses
-  }
 
 
   // 3) Move boss Y
@@ -700,67 +695,51 @@ if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
   });
   // incoming rockets
 // ── incoming rockets ──
-rocketsIn.forEach((r,i) => {
+rocketsIn.forEach((r, i) => {
+  // 1) advance
   r.x += r.vx;
-  // before drawing, save the context state
-ctx.save();
 
-// if this rocket is the special boss-trigger…
-    // flip any rocket that came from the boss (trigger or normal shot)
-    if (r.isBossShot || r.isBossTrigger) {
-      const size = r.isBossTrigger ? 96 : 48;
-      ctx.translate(r.x, r.y);
-      ctx.scale(-1, 1);
-      // center-draw it
-      ctx.drawImage(
-        rocketInSprite,
-        -size/2, -size/2,
-        size, size
-      );
-    } else {
-      // player-fired rocket: draw normally
-      ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
-}
+  // 2) draw (flipped for boss shots/triggers)
+  ctx.save();
+  if (r.isBossShot || r.isBossTrigger) {
+    const size = r.isBossTrigger ? 96 : 48;
+    ctx.translate(r.x, r.y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(rocketInSprite, -size/2, -size/2, size, size);
+  } else {
+    ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
+  }
+  ctx.restore();
 
-// restore before your collision logic
-ctx.restore();
-
- if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
+  // 3) collision with bird?
+  if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
+    // ignore the forced‐trigger rocket
     if (!r.isBossTrigger) {
-      // whether it's a bossShot or not, knock you out of mecha:
+      // knock off armor
       inMecha = false;
       mechaTriggered = false;
       mechSpeed = baseSpeed;
       birdSprite.src = 'assets/birdieV2.png';
       mechaMusic.pause();
+      bgMusic.currentTime = 0;
       bgMusic.play().catch(()=>{});
-      // spawn armor pieces
+
+      // explosion + flying parts
       explosionSfx.currentTime = 0;
       explosionSfx.play();
       flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx: -2, vy: -3 });
       flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx:  2, vy: -3 });
-      rocketsIn.splice(i,1);
     }
-    // if it's a forced bossTrigger rocket, you still don’t die immediately
+    // remove this rocket and bail out
+    rocketsIn.splice(i, 1);
+    return;  
   }
-  inMecha = false;
-  mechaTriggered = false;
-  mechSpeed = baseSpeed;
-  birdSprite.src = 'assets/birdieV2.png';
-  mechaMusic.pause();
-  bgMusic.currentTime = 0;
-  bgMusic.play().catch(()=>{/* no-op */});
 
-  // play explosion and spawn two flying pieces
-  explosionSfx.currentTime = 0;
-  explosionSfx.play();
-  flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx: -2, vy: -3 });
-  flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx:  2, vy: -3 });
+  // 4) off‐screen cleanup
+  if (r.x < -20) {
+    rocketsIn.splice(i, 1);
+  }
 
-  rocketsIn.splice(i,1);
-}
-
-  if (r.x < -20) rocketsIn.splice(i,1);
 });
 }
 
