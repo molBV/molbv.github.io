@@ -586,8 +586,7 @@ for (let k = rocketsIn.length - 1; k >= 0; k--) {
     score++;
     updateScore();
     bossRocketCount++;
-if (bossRocketCount === 10 && !bossActive) {
-  // spawn the single “boss rocket” out at random Y
+if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
   rocketsIn.push({
     x: W + 40,
     y: Math.random()*(H-100)+50,
