@@ -141,6 +141,10 @@ const bombSprite   = Object.assign(new Image(),{src:'assets/boss_animation/bomb.
 const flyingArmor   = [];
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
+    // ── Strong‐attack bomb queues ─────────────────────────────
+const tossBombs   = [];   // upward‐toss bombs
+const radialBombs = [];   // 8‐way fragments
+
 
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
@@ -295,7 +299,9 @@ function startBossFight() {
     r: 32, 
     mode:'random', modeTimer:0, modeDuration:300,
     isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
-    justFired:false, smoke: []
+    justFired:false, smoke: [],
+    secondAttackTriggered: false,   // flag for one‐time trigger
+    strongQueue: 0 
   };
   showAchievement('🚀 Boss Incoming!');
 
@@ -320,7 +326,23 @@ function startBossFight() {
     p.modeTimer = 0;
     if (p.mode==='track') triggerBossAttack();
   }
+  // ── trigger strong attack when health drops below half ──
+  if (bossHealth <= 500 && !p.secondAttackTriggered) {
+    p.secondAttackTriggered = true;
+    p.strongQueue = 3;       // schedule three bomb tosses
+  }
 
+  // ── process queued strong attacks every 60 frames ──
+  if (p.strongQueue > 0 && !p.isCharging && frames % 60 === 0) {
+    tossBombs.push({
+      x: W - 80 + Math.sin(p.y*0.04)*30,
+      y: p.y,
+      vy: -12,
+      r: 12,
+      exploded: false
+    });
+    p.strongQueue--;
+  }
   // 3) Move boss Y
 if (p.mode === 'track') {
   // snappy, direct tracking
@@ -362,6 +384,34 @@ if (p.mode === 'track') {
       if (bossHealth<=0) endBossFight(true);
     }
   });
+      // ── update tossBombs: toss upward then explode into fragments ──
+  for (let i = tossBombs.length - 1; i >= 0; i--) {
+    const b = tossBombs[i];
+    b.vy += 0.4; b.y += b.vy;
+    if (!b.exploded && b.vy > 0) {
+      b.exploded = true;
+      // spawn 8‐way fragments
+      for (let k = 0; k < 8; k++) {
+        const ang = (Math.PI*2/8)*k;
+        radialBombs.push({
+          x: b.x, y: b.y, r: 8,
+          vx: Math.cos(ang)*5,
+          vy: Math.sin(ang)*5
+        });
+      }
+      tossBombs.splice(i,1);
+    }
+  }
+
+  // ── update radialBombs: simple straight‐line shards ──
+  for (let i = radialBombs.length - 1; i >= 0; i--) {
+    const b = radialBombs[i];
+    b.x += b.vx; b.y += b.vy;
+    if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) {
+      radialBombs.splice(i,1);
+    }
+  }
+
 }
 
 function triggerBossAttack(){
@@ -388,6 +438,24 @@ bgMusic.play();
 }
 
 function drawBoss() {
+    // ── draw tossBomb projectiles ──
+  tossBombs.forEach(b => {
+    ctx.drawImage(
+      bombSprite,
+      b.x - b.r, b.y - b.r,
+      b.r*2, b.r*2
+    );
+  });
+
+  // ── draw radialBomb fragments ──
+  radialBombs.forEach(b => {
+    ctx.drawImage(
+      bombSprite,
+      b.x - b.r/2, b.y - b.r/2,
+      b.r, b.r
+    );
+  });
+
   const p=bossObj;
   // a) draw background smoke
   p.smoke.forEach(s=>{
