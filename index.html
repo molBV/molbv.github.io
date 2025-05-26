@@ -211,7 +211,7 @@ let pipeCount  = 0;
 
 // boss fight state
 let bossActive      = false;
-let bossHealth      = 500;
+let bossHealth      = 1000;
 let birdBossHP      = 5;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
@@ -276,7 +276,7 @@ function startBossFight() {
   bossMusic.play().catch(_=>{ /* user gesture lock, we’ll retry later */ });
   bossActive       = true;
   state            = STATE.Boss;
-  bossHealth       = 500;
+  bossHealth       = 1000;
   birdBossHP       = 5;
   // freeze main environment:
   pipes.length     = apples.length = mushrooms.length = coins.length = 0;
@@ -311,7 +311,7 @@ function startBossFight() {
   p.modeTimer++;
   if (p.modeTimer > p.modeDuration) {
     p.mode = p.mode==='random'?'track':'random';
-    p.modeDuration = 60 + (bossHealth/500)*200;
+    p.modeDuration = 60 + (bossHealth/1000)*200;
     p.modeTimer = 0;
     if (p.mode==='track') triggerBossAttack();
   }
@@ -363,15 +363,15 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  p.chargeDuration = 20 + (bossHealth/500)*40;
+  p.chargeDuration = 20 + (bossHealth/1000)*40;
   p.shakeMag     = 5;
 }
     function endBossFight(victory) {
   bossActive = false;
   state      = STATE.Play;
   if (victory) {
-    score += 500;
-    showAchievement('🏆 Boss Defeated! +500 pts', 3000);
+    score += 50;
+    showAchievement('🏆 Boss Defeated! +50 pts', 3000);
   } else {
     showAchievement('💥 You took too much damage!', 2000);
   }
@@ -412,7 +412,7 @@ function drawBoss() {
   ctx.fillStyle='#444';
   ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
   ctx.fillStyle='lime';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/500),6);
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/1000),6);
 }
 
 
