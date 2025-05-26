@@ -332,17 +332,7 @@ function startBossFight() {
     p.strongQueue = 3;       // schedule three bomb tosses
   }
 
-  // ── process queued strong attacks every 60 frames ──
-  if (p.strongQueue > 0 && !p.isCharging && frames % 60 === 0) {
-    tossBombs.push({
-      x: W - 80 + Math.sin(p.y*0.04)*30,
-      y: p.y,
-      vy: -12,
-      r: 12,
-      exploded: false
-    });
-    p.strongQueue--;
-  }
+
   // 3) Move boss Y
 if (p.mode === 'track') {
   // snappy, direct tracking
@@ -363,6 +353,21 @@ if (p.mode === 'track') {
         y: p.y, vx:-6, isBossShot:true
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
+            // ── STRONG ATTACK: three radial bomb tosses in a row ──
+      if (p.strongQueue > 0) {
+        for (let i = 0; i < p.strongQueue; i++) {
+          tossBombs.push({
+            x: W - 80 + Math.sin(p.y*0.04)*30,
+            y: p.y,
+            vy: -12,
+            r: 12,
+            exploded: false
+          });
+        }
+        // clear the queue so we don’t do it again
+        p.strongQueue = 0;
+      }
+
     }
   }
 
