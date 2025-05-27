@@ -911,35 +911,32 @@ if (coinCount >= 10 && !mechaTriggered) {
 
 
 // showOverlay: ask for name only if you made top-10
-async function showOverlay(){
-      // — update & persist personal best —
-  
+// ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
+
+// showOverlay: ALWAYS ask for a name, regardless of global standing
+async function showOverlay() {
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
 
-  // fetch existing top-10
+  // still fetch top-10 so we can show it after saving
   const top = await fetchTopGlobalScores();
-  const qualifies = top.length < 10 || score > top[top.length - 1].score;
 
-  if (qualifies) {
-    ct.innerHTML = `
-      <h2>Game Over!</h2>
-      <p>Your score: ${score}</p>
-      <label>Enter your name:</label><br/>
-      <input id="nameInput" type="text" maxlength="10"/><br/>
-      <button id="saveBtn">Save Score</button>
-    `;
-    document.getElementById('saveBtn').onclick = async () => {
-      const name = document.getElementById('nameInput').value.trim() || 'Anon';
-      await saveGlobalScore(name, score);
-      const newTop = await fetchTopGlobalScores();
-      showHighScores(newTop);
-    };
-  } else {
-    // skip name entry
-    showHighScores(top);
-  }
+  // ALWAYS prompt for name entry
+  ct.innerHTML = `
+    <h2>Game Over!</h2>
+    <p>Your score: ${score}</p>
+    <label>Enter your name:</label><br/>
+    <input id="nameInput" type="text" maxlength="10" /><br/>
+    <button id="saveBtn">Save Score</button>
+  `;
+
+  document.getElementById('saveBtn').onclick = async () => {
+    const name = document.getElementById('nameInput').value.trim() || 'Anon';
+    await saveGlobalScore(name, score);
+    const newTop = await fetchTopGlobalScores();
+    showHighScores(newTop);
+  };
 }
 
 // showHighScores: display list + Play Again button
