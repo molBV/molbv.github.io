@@ -67,6 +67,14 @@
   };
 
   const app = initializeApp(firebaseConfig);
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js"; // ←─ HERE ─────────────────
+const analytics = getAnalytics(app); // ←─ HERE ─────────────────
+
+// helper so you don’t have to import everywhere
+function trackEvent(eventName, params = {}) {
+  logEvent(analytics, eventName, params);
+} // ←─ HERE ─────────────────
+
   const db  = getFirestore(app);
 
   // write a score
@@ -201,7 +209,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
             g = audioCtx.createGain();
       o.connect(g); g.connect(audioCtx.destination);
       o.type = 'square'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.07, audioCtx.currentTime);
       o.start(); o.stop(audioCtx.currentTime + dur);
     }
 
@@ -280,6 +288,7 @@ function startMechaTransition() {
   });
 }
 function startBossFight() {
+trackEvent('boss_fight_start'); 
     bgMusic.pause();
   bossMusic.currentTime = 0;
   bossMusic.play().catch(_=>{ /* user gesture lock, we’ll retry later */ });
@@ -427,6 +436,7 @@ function triggerBossAttack(){
   bossActive = false;
   state      = STATE.Play;
   if (victory) {
+  trackEvent('boss_defeated', { score });
     score += 50;
     showAchievement('🏆 Boss Defeated! +50 pts', 3000);
   } else {
@@ -854,6 +864,7 @@ if (coinCount >= 10 && !mechaTriggered) {
   scoreEl.textContent = txt;
 }
      function endGame(){
+     trackEvent('game_over', { score }); // ←─ HERE
    state = STATE.Over;
    // — check for new personal best —
    if (score > personalBest) {
@@ -934,6 +945,7 @@ async function showOverlay() {
   document.getElementById('saveBtn').onclick = async () => {
     const name = document.getElementById('nameInput').value.trim() || 'Anon';
     await saveGlobalScore(name, score);
+        trackEvent('submit_score', { score }); // ←─ HERE ─────────────────
     const newTop = await fetchTopGlobalScores();
     showHighScores(newTop);
   };
@@ -952,6 +964,7 @@ function showHighScores(hs){
   };
 }
 function showAchievement(message, duration = 2000) {
+trackEvent('achievement_unlocked', { achievement: message }); 
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   ov.style.display = 'block';
@@ -989,6 +1002,7 @@ function flapHandler(e){
 
   if (state === STATE.Start) {
     state = STATE.Play;
+    trackEvent('game_start');
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
