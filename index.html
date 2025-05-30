@@ -552,27 +552,69 @@ function drawBoss() {
     // ── Background drawing ──
     function drawCloud(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.fillStyle='rgba(255,255,255,0.8)'; [0,30,60].forEach(px=>{ ctx.beginPath(); ctx.arc(px,0,20,0,2*Math.PI); ctx.fill(); }); ctx.restore(); }
     function drawTree(x,base,h){ ctx.fillStyle='#8D6E63'; ctx.fillRect(x,base-h,10,h); ctx.fillStyle='#388E3C'; ctx.beginPath(); ctx.moveTo(x-15,base-h+20); ctx.lineTo(x+5,base-h-20); ctx.lineTo(x+25,base-h+20); ctx.closePath(); ctx.fill(); }
-    function drawBackground(){
-      const tC=(frames%cycleLength)/cycleLength, wN=Math.sin(tC*Math.PI),
-            topC=lerpColor(dayColor1,nightColor1,wN),
-            botC=lerpColor(dayColor2,nightColor2,wN),
-            grad=ctx.createLinearGradient(0,0,0,H);
-      grad.addColorStop(0,topC); grad.addColorStop(1,botC);
-      ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-      const phase = tC<0.5 ? tC*2 : (tC-0.5)*2,
-            arcX = W*phase,
-            arcY = 150 - 100*Math.sin(Math.PI*phase);
-      if(tC<0.5){ ctx.fillStyle='yellow'; ctx.beginPath(); ctx.arc(arcX,arcY,30,0,2*Math.PI); ctx.fill(); }
-      else {
-        ctx.fillStyle='#eee'; ctx.beginPath(); ctx.arc(arcX,arcY,25,0,2*Math.PI); ctx.fill();
-        ctx.fillStyle='#fff'; ctx.globalAlpha=wN*0.8;
-        stars.forEach(s=>ctx.fillRect(s.x,s.y,2,2));
-        ctx.globalAlpha=1;
-      }
-      clouds.forEach(c=>{ c.x-=0.3; if(c.x<-80) c.x=W+80; drawCloud(c.x,c.y,c.s); });
-      trees.forEach(t=>{ t.x-=1; if(t.x< -20) t.x=W+20; drawTree(t.x,H,t.h); });
-    }
+function drawBackground(){
+  // normalized time: 0→1 over cycleLength frames
+  const tC = (frames % cycleLength) / cycleLength;
+  // ease between day (0) and night (1) for sky colors
+  const wN = Math.sin(Math.PI * tC);
 
+  // 1) draw sky gradient
+  const topC = lerpColor(dayColor1, nightColor1, wN);
+  const botC = lerpColor(dayColor2, nightColor2, wN);
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, topC);
+  grad.addColorStop(1, botC);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // 2) sun / moon path
+  const sunR  = 30, moonR = 25;
+  if (tC <= 0.5) {
+    // sun: tC [0→0.5] → phaseSun [0→1]
+    const phaseSun = tC / 0.5;
+    // travel from x = -sunR → x = W+sunR
+    const arcX = phaseSun * (W + 2*sunR) - sunR;
+    const arcY = 150 - 100 * Math.sin(Math.PI * phaseSun);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle   = 'yellow';
+    ctx.beginPath();
+    ctx.arc(arcX, arcY, sunR, 0, 2*Math.PI);
+    ctx.fill();
+  } else {
+    // moon: tC [0.5→1] → phaseMoon [0→1]
+    const phaseMoon = (tC - 0.5) / 0.5;
+    const arcX = phaseMoon * (W + 2*moonR) - moonR;
+    const arcY = 150 - 100 * Math.sin(Math.PI * phaseMoon);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle   = '#eee';
+    ctx.beginPath();
+    ctx.arc(arcX, arcY, moonR, 0, 2*Math.PI);
+    ctx.fill();
+  }
+
+  // 3) stars fade in/out by wN
+  //    wN = 0 at tC=0 & 1 (day), peaks at tC=0.5 (midnight)
+  const starAlpha = Math.max(0, wN) * 0.8;
+  if (starAlpha > 0) {
+    ctx.globalAlpha = starAlpha;
+    ctx.fillStyle   = '#fff';
+    stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+  }
+  // restore
+  ctx.globalAlpha = 1;
+
+  // 4) clouds & trees (unchanged)
+  clouds.forEach(c=>{
+    c.x -= 0.3;
+    if (c.x < -80) c.x = W + 80;
+    drawCloud(c.x, c.y, c.s);
+  });
+  trees.forEach(t=>{
+    t.x -= 1;
+    if (t.x < -20) t.x = W + 20;
+    drawTree(t.x, H, t.h);
+  });
+}
     // ── Bird object ──
     const bird = {
       x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
