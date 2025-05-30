@@ -117,6 +117,9 @@ function trackEvent(eventName, params = {}) {
   (function(){
      // ── prevent any pending auto-hide from killing the name-entry prompt
   let achievementHideTimer;
+      // ── keep track of our “retry bossMusic.play()” listener so we can remove it
+  let bossRetryHandler = null;
+
         // ── Preload bird sprite ──
     const birdSprite = new Image();
     birdSprite.src = 'assets/birdieV2.png';
@@ -299,9 +302,9 @@ function startMechaTransition() {
   mechaMusic.load();
   mechaMusic.play().catch(()=>{
     // if the browser blocks autoplay, retry on the next click
-    document.addEventListener('mousedown', ()=>{
-      mechaMusic.play();
-    }, { once:true });
+      // if autoplay is blocked, schedule one retry on next click
+      bossRetryHandler = () => bossMusic.play().catch(()=>{});
+      document.addEventListener('mousedown', bossRetryHandler, { once:true });
   });
 }
 function startBossFight() {
@@ -457,6 +460,11 @@ function triggerBossAttack(){
   }
 }
    function endBossFight(victory) {
+         // cancel any pending “retry bossMusic.play()” handler
+    if (bossRetryHandler) {
+      document.removeEventListener('mousedown', bossRetryHandler);
+      bossRetryHandler = null;
+    }
   bossActive = false;
   state      = STATE.Play;
   if (victory) {
