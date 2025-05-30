@@ -117,7 +117,6 @@ function trackEvent(eventName, params = {}) {
   (function(){
      // ── prevent any pending auto-hide from killing the name-entry prompt
   let achievementHideTimer;
-      // ── keep track of our “retry bossMusic.play()” listener so we can remove it
   let bossRetryHandler = null;
 
         // ── Preload bird sprite ──
@@ -142,9 +141,6 @@ const rocketInSprite  = new Image();
 rocketInSprite.src    = 'assets/rocket2.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
-    const bossMusic     = new Audio('assets/boss_fight.mp3');
-bossMusic.loop      = true;
-bossMusic.preload   = 'auto';
 explosionSfx.preload = 'auto';
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
@@ -199,11 +195,6 @@ function initMusic() {
   bgMusic.play()
     .then(()=>console.log('Music started'))
     .catch(e=>console.error('Play() failed:', e))
-// **Immediately** unlock bossMusic here:
-  bossMusic.load();
-  bossMusic.play()
-    .then(() => bossMusic.pause())
-    .catch(() => {});  // swallow any errors
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
@@ -302,17 +293,15 @@ function startMechaTransition() {
   bgMusic.pause();
   mechaMusic.load();
   mechaMusic.play().catch(()=>{
-    // if the browser blocks autoplay, retry on the next click
-      // if autoplay is blocked, schedule one retry on next click
-      bossRetryHandler = () => bossMusic.play().catch(()=>{});
-      document.addEventListener('mousedown', bossRetryHandler, { once:true });
+    // if autoplay is blocked, retry on the next click
+    // schedule one retry on next click of the single mecha track:
+    bossRetryHandler = () => mechaMusic.play().catch(()=>{});
+    document.addEventListener('mousedown', bossRetryHandler, { once:true });
   });
 }
 function startBossFight() {
 trackEvent('boss_fight_start'); 
     bgMusic.pause();
-  bossMusic.currentTime = 0;
-  bossMusic.play().catch(_=>{ /* user gesture lock, we’ll retry later */ });
   bossActive       = true;
   state            = STATE.Boss;
   bossHealth       = 500;
@@ -461,7 +450,6 @@ function triggerBossAttack(){
   }
 }
    function endBossFight(victory) {
-         // cancel any pending “retry bossMusic.play()” handler
     if (bossRetryHandler) {
       document.removeEventListener('mousedown', bossRetryHandler);
       bossRetryHandler = null;
@@ -477,7 +465,7 @@ function triggerBossAttack(){
   bossRocketCount = 0;
 
   // switch back to normal music
-  bossMusic.pause();
+  mechaMusic.pause();
   bgMusic.play();
 
   // — after boss fight, you lose all coins & suit —
@@ -1168,13 +1156,6 @@ function applyShake() {
 
     function loop(){
       frames++;
-        // force‐play boss music as soon as we enter the fight
-  if (state === STATE.Boss && bossMusic.paused) {
-    bossMusic.play().catch(() => {
-      // if still blocked, schedule a retry on the next click
-      document.addEventListener('mousedown', () => bossMusic.play(), { once:true });
-    });
-  }
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
   // 1) clear the canvas
