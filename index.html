@@ -132,6 +132,7 @@ const mechaStages = [
 ];
 let mechaStage     = 0;      // 0..3, advance on each “bam”
 let inMecha = false;  // final armored mode
+let mechaStartScore = 0;
 let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
@@ -903,6 +904,14 @@ rocketsIn.forEach((r, i) => {
   if (coinCount   > 0) txt += ` 💰×${coinCount}`;
   scoreEl.textContent = txt;
 }
+      // ── boss after +100 in Mecha ─────────────────────────
+  if ( inMecha 
+      && !bossActive 
+      && state === STATE.Play 
+      && score - mechaStartScore >= 100
+  ) {
+    startBossFight();
+  }
        function endGame(){
     trackEvent('game_over', { score });
     state = STATE.Over;
@@ -1161,6 +1170,8 @@ if (mechaStage === mechaStages.length) {
   console.log('🦾 FULL MECHA ENGAGED!');
   showAchievement('🦾 Mecha Suit Assembled');
   state = STATE.Play;
+
+  mechaStartScore = score;  
 }
   }
   applyShake();
