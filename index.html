@@ -135,6 +135,25 @@ let mechaStartScore = 0;
 let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
+let bossEncounterCount = 0; // tracks boss encounters
+
+  // boss frames: phase 1 vs. phase 2
+  const bossFramesS1 = ['frame0','frame1','frame2']
+    .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
+  const bossFramesS2 = ['boss_S2_0','boss_S2_1','boss_S2_2', 'boss_S2_3']
+    .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
+
+  // charging‐rocket “attach” sprite for phase 2
+  const bossRocketAttachS2 = new Image();
+  bossRocketAttachS2.src = 'assets/boss_animation/boss_s2_charge.png';
+  
+  // only used in boss fight #2+
+const activeHomingImg = new Image();
+activeHomingImg.src   = 'assets/boss_animation/active_homing.png';
+
+//Start off pointing at phase-1:
+let bossFrames = bossFramesS1;
+
 const rocketOutSprite = new Image();
 rocketOutSprite.src   = 'assets/rocket1.png';
 const rocketInSprite  = new Image();
@@ -145,10 +164,12 @@ explosionSfx.preload = 'auto';
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
     // ── boss sprites & rockets ──
-const bossFrames   = ['frame0','frame1','frame2'].map(f=>Object.assign(new Image(),{src:`assets/boss_animation/${f}.png`}));
+//const bossFrames = (bossEncounterCount > 1 ? bossFramesS2 : bossFramesS1);
 const bossRockets  = ['boss_rocket1','boss_rocket2'].map(r=>Object.assign(new Image(),{src:`assets/boss_animation/${r}.png`}));
 const bombSprite   = Object.assign(new Image(),{src:'assets/boss_animation/bomb.png'});
 const flyingArmor   = [];
+const stage2Bombs = [];  // boss-2 special slow bombs
+
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
     // ── Strong‐attack bomb queues ─────────────────────────────
@@ -249,7 +270,7 @@ let bossHealth      = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
-    const baseAppleProb=0.03,baseCoinProb=0.2;
+    const baseAppleProb=0.03,baseCoinProb=0.3;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
@@ -300,6 +321,11 @@ function startMechaTransition() {
   });
 }
 function startBossFight() {
+bossEncounterCount++; 
+  // …and pick the right art for this fight:
+  bossFrames = bossEncounterCount > 1
+    ? bossFramesS2
+    : bossFramesS1;
 trackEvent('boss_fight_start'); 
     bgMusic.pause();
   bossActive       = true;
@@ -311,11 +337,16 @@ trackEvent('boss_fight_start');
 pipes.length     = apples.length = coins.length = 0;
    inMecha          = false;
   // position bird at left
-  bird.x           = 80;
-  bird.y           = H/2;
+  //bird.x           = 80;
+  //bird.y           = H/2;
   // init boss object
   bossObj = {
-    y: H/2, vy:0,
+    //y: H/2, vy:0,
+       // start off screen at right
+   x: W + 32,    // assuming p.r is 32
+   y: H/2,
+   vx: -6,       // your “fly-in” speed
+   vy: 0,
     r: 32, 
     mode:'random', modeTimer:0, modeDuration:300,
     isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
@@ -329,6 +360,12 @@ pipes.length     = apples.length = coins.length = 0;
     function updateBoss() {
   // 1) Smoke puffs
   const p = bossObj;
+    // 0) fly in until you're at your fighting X position:
+  const targetX = W - 80;
+  if (p.x > targetX) {
+    p.x += p.vx;           // moves left by 6px/frame
+    return;                // skip the rest until you arrive
+  }
   if (frames % 5 === 0) {
     p.smoke.push({ x:W-80 + Math.sin(p.y*0.04)*30 + p.r, y:p.y, alpha:1, r:4 });
   }
@@ -348,16 +385,38 @@ pipes.length     = apples.length = coins.length = 0;
   }
 
 
-  // 3) Move boss Y
-if (p.mode === 'track') {
-  // snappy, direct tracking
-  p.vy += (bird.y - p.y) * 0.008;
-} else {
-  // slow, deliberate drifting
-  p.vy += (Math.random() - 0.5) * 0.2;
-}
-  p.y += p.vy; p.vy*=0.95;
-  p.y = Math.max(p.r,Math.min(H-p.r,p.y));
+  // 3) Move boss Y — punish bird in top 10% by drifting down then tossing an upward radial bomb
+  if (bird.y < H * 0.1) {
+    // 3a) drift the boss down a bit for “looking cool”
+    p.vy += 0.2;                // gravity‐like pull down
+    p.y  += p.vy;
+    p.vy *= 0.95;
+    // clamp so the boss never drifts below its normal floor
+    p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+
+    // 3b) once per second, toss a bomb straight upward
+    if (frames % 60 === 0) {
+      tossBombs.push({
+        x:   W - 80 + Math.sin(p.y * 0.04) * 30,
+        y:   p.y,
+        vy:  -12,
+        r:    12,
+        exploded: false
+      });
+    }
+  }
+  else {
+    // normal tracking / random drift
+    if (p.mode === 'track') {
+      p.vy += (bird.y - p.y) * 0.008;
+    } else {
+      p.vy += (Math.random() - 0.5) * 0.2;
+    }
+    p.y  += p.vy;
+    p.vy *= 0.95;
+    p.y   = Math.max(p.r, Math.min(H - p.r, p.y));
+  }
+
 
   // 4) Charging & firing
   if (p.isCharging) {
@@ -412,15 +471,21 @@ if (p.strongQueue > 0) {
   for (let i = tossBombs.length - 1; i >= 0; i--) {
     const b = tossBombs[i];
     b.vy += 0.4; b.y += b.vy;
-    if (!b.exploded && b.vy > 0) {
+    // explode either at apex (vy>0) or the instant it would go above the top edge:
+    if (!b.exploded && (b.vy > 0 || b.y - b.r < 0)) {
       b.exploded = true;
+      // clamp to the very top so fragments spawn on‐screen:
+      b.y = Math.max(b.r, b.y);
+
       // spawn 8‐way fragments
       for (let k = 0; k < 8; k++) {
-        const ang = (Math.PI*2/8)*k;
+        const ang = (Math.PI * 2 / 8) * k;
         radialBombs.push({
-          x: b.x, y: b.y, r: 8,
-          vx: Math.cos(ang)*5,
-          vy: Math.sin(ang)*5
+          x:  b.x,
+          y:  b.y,
+          r:  8,
+          vx: Math.cos(ang) * 5,
+          vy: Math.sin(ang) * 5
         });
       }
       tossBombs.splice(i,1);
@@ -428,15 +493,37 @@ if (p.strongQueue > 0) {
   }
 
   // ── update radialBombs: simple straight‐line shards ──
-  for (let i = radialBombs.length - 1; i >= 0; i--) {
-    const b = radialBombs[i];
-    b.x += b.vx; b.y += b.vy;
-    if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) {
-      radialBombs.splice(i,1);
+// ── update radialBombs: simple straight‐line shards + damage ──
+for (let i = radialBombs.length - 1; i >= 0; i--) {
+  const b = radialBombs[i];
+  b.x += b.vx;
+  b.y += b.vy;
+
+  // 1) collision with bird?
+  if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
+    if (coinCount > 0) {
+      coinCount--;
+      updateScore();
+      playTone(1000, 0.2);
+    } else {
+      endGame();
     }
+    radialBombs.splice(i, 1);
+    continue;
   }
 
+  // 2) off-screen cleanup
+  if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) {
+    radialBombs.splice(i, 1);
+  }
 }
+
+
+}
+
+
+
+
 
 function triggerBossAttack(){
   const p=bossObj;
@@ -444,11 +531,23 @@ function triggerBossAttack(){
   p.chargeTimer  = 0;
   p.chargeDuration = 20 + (bossHealth/500)*40;
   p.shakeMag     = 5
-      // schedule a 3-bomb volley every time HP ≤ 50%
-  if (bossHealth <= 400) {
-    p.strongQueue = 3;
+  
+    // only in second encounter, randomly choose:
+  if (bossEncounterCount > 1 && Math.random() < 0.5) {
+    // spawn a slow bomb at the boss’s mouth
+    stage2Bombs.push({
+      x: W - 80 + Math.sin(p.y*0.04)*30 - 8,
+      y: p.y,
+      vx: -0.5,     // slow float
+      hits: 0       // count of times the player hit it
+    });
+  } else {
+    // the old p.strongQueue logic, or normal rocket
+    if (bossHealth <= 400) p.strongQueue = 3;
   }
 }
+  
+
    function endBossFight(victory) {
     if (bossRetryHandler) {
       document.removeEventListener('mousedown', bossRetryHandler);
@@ -519,13 +618,49 @@ function drawBoss() {
   // b) draw bird & main UI
   bird.draw();  // reuse your bird.draw()
 
-  // c) draw boss frames flipped
-  let frame = p.justFired ? 2 : (p.isCharging ? 1 : 0);
+    // c) draw boss frames flipped (with 1.5× scale on encounter #2)
+    let frame;
+  if (bossEncounterCount > 1) {
+    if      (p.isHomingAttack) frame = 3;            // new homing‐bomb pose
+    else if (p.justFired)      frame = 2;            // rocket‐fire pose
+    else if (p.isCharging)     frame = 1;            // rocket‐charge pose
+    else                        frame = 0;            // idle pose
+  } else {
+    // first encounter still only has 3 frames
+    frame = p.justFired ? 2 : (p.isCharging ? 1 : 0);
+  }
+
+  // determine bossScale: 1.0 for fight #1, 1.5 for fight #2+
+  const bossScale = bossEncounterCount > 1 ? 1.5 : 1;
+  // compute drawing size
+  const size = p.r * 2 * bossScale;
+
   ctx.save();
-    ctx.translate(W-80 + Math.sin(p.y*0.04)*30, p.y);
-    ctx.scale(-1,1);
-    ctx.drawImage(bossFrames[frame], -p.r, -p.r, p.r*2, p.r*2);
+    ctx.translate(
+      W - 80 + Math.sin(p.y * 0.04) * 30,
+      p.y
+    );
+    ctx.scale(-1, 1);
+    // draw centered at the new size
+    ctx.drawImage(
+      bossFrames[frame],
+      -size/2, -size/2,
+       size,    size
+    );
   ctx.restore();
+
+  // draw attach-rocket (also scaled) if charging
+// only draw a charge‐sprite on the second boss fight
+if (p.isCharging && bossEncounterCount > 1) {
+  const w = bossRocketAttachS2.width  * bossScale;
+  const h = bossRocketAttachS2.height * bossScale;
+  const x = (W - 80 + Math.sin(p.y*0.04)*30) - w/2;
+  const y = p.y - h/2;
+  ctx.drawImage(bossRocketAttachS2, x, y, w, h);
+}
+
+
+  
   p.justFired = false;
 
   // d) draw health bar
@@ -719,100 +854,203 @@ if (inMecha) {
       });
     }
     function updateRockets() {
-      if (!(inMecha || state === STATE.Boss)) return;
-  // outgoing rockets
-  rocketsOut.forEach((r,i) => {
-    r.x += r.vx;
-    ctx.drawImage(rocketOutSprite, r.x, r.y-10, 16,16);
-    // ── rocket-vs-rocket collision ──
-for (let k = rocketsIn.length - 1; k >= 0; k--) {
-  const rin = rocketsIn[k];
-  if (rin.isBossShot) continue;
-  if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
-    // hit! remove both rockets
-    rocketsOut.splice(i, 1);
-    rocketsIn.splice(k, 1);
-    score++;
-    updateScore();
-    bossRocketCount++;
-if (bossRocketCount > 0 && bossRocketCount % 10 === 0 && !bossActive) {
-  rocketsIn.push({
-    x: W + 40,
-    y: Math.random()*(H-100)+50,
-    vx: -1,
-    isBossTrigger: true
-  });
-}
+  // only run rockets logic during Mecha or Boss fight
+  if (!(inMecha || state === STATE.Boss)) return;
 
-  if (rin.isBossTrigger) {
-    startBossFight();
-    return;  // skip normal rocket‐vs‐rocket logic
-  }
-    playTone(1000, 0.2);  // optional SFX
-    return;              // bail out of this iteration
-  }
-}
-    // pipe collisions
-    pipes.forEach((p,pi) => {
-      if (r.x > p.x && r.x < p.x+pipeW && r.y > p.top && r.y < p.top+p.gap) {
-        pipes.splice(pi,1); rocketsOut.splice(i,1);
+  // ── OUTGOING ROCKETS ────────────────────────────────
+  rocketsOut.forEach((r, i) => {
+    // advance & draw the outgoing rocket
+    r.x += r.vx;
+    ctx.drawImage(rocketOutSprite, r.x, r.y - 10, 16, 16);
+
+    // 1) check hits on stage-2 bombs
+    for (let j = stage2Bombs.length - 1; j >= 0; j--) {
+      const b = stage2Bombs[j];
+      if (Math.hypot(r.x - b.x, r.y - b.y) < 12) {
+        // consume the rocket
+        rocketsOut.splice(i, 1);
+
+        // bump bomb’s hit count
+        b.hits = (b.hits || 0) + 1;
+        if (b.hits === 1) {
+          // first hit: glow
+          b.homingActive = true;
+        } else {
+          // second hit: spawn homing rocket + remove bomb
+          rocketsIn.push({ x: b.x, y: b.y, vx: 0, vy: 0, isHoming: true });
+          stage2Bombs.splice(j, 1);
+        }
+        return;  // done with this rocket
+      }
+    }
+
+    // 2) existing rocket-vs-rocket collisions
+    for (let k = rocketsIn.length - 1; k >= 0; k--) {
+      const rin = rocketsIn[k];
+      if (rin.isBossShot) continue;
+      if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
+        rocketsOut.splice(i, 1);
+        rocketsIn.splice(k, 1);
+        score++; updateScore();
+        bossRocketCount++;
+        if (bossRocketCount % 20 === 0 && !bossActive) { //triggering boss rocket
+          rocketsIn.push({
+            x: W + 40,
+            y: Math.random()*(H-100)+50,
+            vx: -1,
+            isBossTrigger: true
+          });
+        }
+        if (rin.isBossTrigger) {
+          startBossFight();
+          return;
+        }
+        playTone(1000, 0.2);
+        return;
+      }
+    }
+
+    // 3) pipe collisions & off-screen
+    pipes.forEach((p, pi) => {
+      if (r.x > p.x && r.x < p.x+pipeW
+          && r.y > p.top && r.y < p.top+p.gap) {
+        pipes.splice(pi,1);
+        rocketsOut.splice(i,1);
       }
     });
     if (r.x > W+20) rocketsOut.splice(i,1);
   });
-  // incoming rockets
-// ── incoming rockets ──
-rocketsIn.forEach((r, i) => {
-  // 1) advance
-  r.x += r.vx;
 
-  // 2) draw (flipped for boss shots/triggers)
-  ctx.save();
-  if (r.isBossShot || r.isBossTrigger) {
-    const size = r.isBossTrigger ? 96 : 48;
-    ctx.translate(r.x, r.y);
-    ctx.scale(-1, 1);
-    ctx.drawImage(rocketInSprite, -size/2, -size/2, size, size);
-  } else {
-    ctx.drawImage(rocketInSprite, r.x, r.y - 24, 48, 48);
-  }
-  ctx.restore();
 
-  // 3) collision with bird?
-  if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
-  if (!r.isBossTrigger) {
+// ── STAGE-2 SLOW BOMBS ───────────────────────────────
+for (let i = stage2Bombs.length - 1; i >= 0; i--) {
+  const b = stage2Bombs[i];
+
+  // advance
+  b.x += b.vx;
+
+  // pick the right sprite
+  const img = b.homingActive ? activeHomingImg : bombSprite;
+
+  // **use the game's logical sprite size (16×16), not img.width**
+  const baseSize = 16;      // the size you were drawing before
+  const scale    = 3;       // how much bigger you want it
+  const drawSize = baseSize * scale;
+
+  // draw it centered on b.x,b.y
+  ctx.drawImage(
+    img,
+    b.x - drawSize / 2,
+    b.y - drawSize / 2,
+    drawSize,
+    drawSize
+  );
+  
+    // 3) **collision with bird?**
+  const dist = Math.hypot(bird.x - b.x, bird.y - b.y);
+  const bombRadius = drawSize/2;
+  if (dist < bird.rad + bombRadius) {
+    // hurt the player exactly like a rocket hit
     if (coinCount > 0) {
       coinCount--;
       updateScore();
       playTone(1000, 0.2);
     } else {
-      // only now lose your Mecha suit
-      inMecha = false;
-      mechaTriggered = false;
-      mechSpeed = baseSpeed;
-      birdSprite.src = 'assets/birdieV2.png';
-      mechaMusic.pause();
-      bgMusic.currentTime = 0;
-      bgMusic.play().catch(()=>{});
-
-      explosionSfx.currentTime = 0;
-      explosionSfx.play();
-      flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx: -2, vy: -3 });
-      flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx:  2, vy: -3 });
+      endGame();
     }
+    // remove that bomb
+    stage2Bombs.splice(i, 1);
+    continue;
   }
-  rocketsIn.splice(i, 1);
-  return;
+
+  // remove if off-screen
+  if (b.x + drawSize/2 < 0) {
+    stage2Bombs.splice(i, 1);
+  }
 }
 
 
-  // 4) off‐screen cleanup
-  if (r.x < -20) {
-    rocketsIn.splice(i, 1);
-  }
 
-});
+
+  // ── INCOMING ROCKETS ─────────────────────────────────
+  rocketsIn.forEach((r, i) => {
+    // 1) homing-steer if flagged
+    if (r.isHoming) {
+      const dx = bird.x - r.x;
+      const dy = bird.y - r.y;
+      r.vx += dx * 0.001;
+      r.vy += dy * 0.001;
+      r.vx *= 0.98;
+      r.vy *= 0.98;
+    }
+
+    // 2) advance
+    r.x += r.vx;
+    r.y += (r.vy || 0);
+
+   // 3) draw incoming rocket, rotated when homing
+   const rocketSize = r.isBossTrigger ? 96 : 48;
+   ctx.save();
+   if (r.isHoming) {
+     // point sprite along its velocity vector
+     ctx.translate(r.x, r.y);
+     const angle = Math.atan2(r.vy, r.vx);
+     ctx.rotate(angle);
+      ctx.scale(r.vx < 0 ? 1 : -1, 1);
+    ctx.drawImage(
+      rocketInSprite,
+      -rocketSize/2,
+      -rocketSize/2,
+      rocketSize, rocketSize
+    );
+  } else if (r.isBossShot || r.isBossTrigger) {
+     // unchanged boss shot / trigger
+     ctx.translate(r.x, r.y);
+     ctx.scale(-1, 1);
+     ctx.drawImage(
+       rocketInSprite,
+       -rocketSize/2, -rocketSize/2,
+       rocketSize, rocketSize
+     );
+   } else {
+     // normal, non‐homing incoming
+     ctx.drawImage(
+       rocketInSprite,
+       r.x - rocketSize/2,
+       r.y - rocketSize/2,
+       rocketSize, rocketSize
+     );
+   }
+   ctx.restore();
+
+    // 4) collision with bird
+    if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
+      if (!r.isBossTrigger) {
+        if (coinCount > 0) {
+          coinCount--; updateScore(); playTone(1000, 0.2);
+        } else {
+          inMecha = false;
+          mechaTriggered = false;
+          mechSpeed = baseSpeed;
+          birdSprite.src = 'assets/birdieV2.png';
+          mechaMusic.pause();
+          bgMusic.currentTime = 0;
+          bgMusic.play().catch(()=>{});
+          explosionSfx.currentTime = 0;
+          explosionSfx.play();
+          flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
+          flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
+        }
+      }
+      rocketsIn.splice(i, 1);
+      return;
+    }
+
+    // 5) off-screen cleanup
+    if (r.x < -20) rocketsIn.splice(i, 1);
+  });
 }
+
 
    function updatePipes(){
   // only run during normal play
@@ -1253,7 +1491,20 @@ if (state === STATE.Play) {
         vx: -3
       });
     }
+    
+      // homing bomb (only after 1 boss, and only 25% of those seconds)
+  if (bossEncounterCount > 0 && Math.random() < 0.25) {
+    stage2Bombs.push({
+      x:  W + 40,
+      y:  Math.random() * (H - 100) + 50,
+      vx: -0.5,
+      hits: 0,
+      homingActive: false
+    });
   }
+  }
+  
+
 
   if (inMecha) {
     updateRockets();
