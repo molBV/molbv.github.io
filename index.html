@@ -470,9 +470,8 @@ function triggerBossAttack(){
   if (victory) {
     trackEvent('boss_defeated', { score });
     score += 50;
-    showAchievement('🏆 Boss Defeated! +50 pts', 3000);
-  } else {
-    showAchievement('💥 You took too much damage!', 2000);
+  mechaMusic.pause();
+  mechaMusic.currentTime = 0;
   }
   bossRocketCount = 0;
 
