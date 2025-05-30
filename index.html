@@ -157,6 +157,26 @@ const radialBombs = [];   // 8‐way fragments
     // ── Responsive canvas setup ──
     const canvas = document.getElementById('gameCanvas'),
           ctx    = canvas.getContext('2d');
+            // ── score-save & overlay-lock flags ─────────────────────────
+  const overlay = document.getElementById('overlay');
+  let hasSubmittedScore = false;
+  let overlayTop10Lock  = false;
+
+  // click-outside: auto-save once, then only close if NOT top-10
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      if (!hasSubmittedScore) {
+        saveGlobalScore('Anon', score);
+        trackEvent('submit_score', { score });
+        hasSubmittedScore = true;
+      }
+      if (!overlayTop10Lock) {
+        overlay.style.display = 'none';
+        if (state === STATE.Over) resetGame();
+      }
+    }
+  });
+
             
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
@@ -228,7 +248,7 @@ let pipeCount  = 0;
 
 // boss fight state
 let bossActive      = false;
-let bossHealth      = 1000;
+let bossHealth      = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
@@ -237,7 +257,7 @@ let bossObj;                // boss-specific timers & mode
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
     const pipes=[], apples=[], coins=[];
-    const appleR=10, mushroomR=12, coinR=8, initialGap=300, minGap=140, pipeW=60, baseSpeed=2;
+    const appleR=10, coinR=8, initialGap=300, minGap=140, pipeW=60, baseSpeed=2;
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     let mechSpeed = baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
@@ -249,17 +269,12 @@ let bossObj;                // boss-specific timers & mode
     let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
     let coinAchievementUnlocked =
       localStorage.getItem('coinAchievementUnlocked') === 'true';
-    // — mushroom achievement —
-let mushroomCollectedCount       = parseInt(localStorage.getItem('mushroomCount')) || 0;
-let mushroomAchievementUnlocked  = localStorage.getItem('mushroomAchievementUnlocked') === 'true';
     canvas.addEventListener('click', e => {
   // only in the Start state
   if (state === STATE.Start) {
     showAchievement(
       `Achievements:\n` +
-      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n` +
-      `${mushroomAchievementUnlocked ? '✅ Mushroom Master' : '❌ Mushroom Master'}`
-    );
+      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n`    );
   }
 });
     for(let i=0;i<7;i++){
@@ -294,7 +309,7 @@ trackEvent('boss_fight_start');
   bossMusic.play().catch(_=>{ /* user gesture lock, we’ll retry later */ });
   bossActive       = true;
   state            = STATE.Boss;
-  bossHealth       = 1000;
+  bossHealth       = 500;
   //birdBossHP       = 2;
   // freeze main environment:
 // freeze main environment:
@@ -432,10 +447,10 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  p.chargeDuration = 20 + (bossHealth/1000)*40;
+  p.chargeDuration = 20 + (bossHealth/500)*40;
   p.shakeMag     = 5
       // schedule a 3-bomb volley every time HP ≤ 50%
-  if (bossHealth <= 500) {
+  if (bossHealth <= 400) {
     p.strongQueue = 3;
   }
 }
@@ -520,7 +535,7 @@ function drawBoss() {
   ctx.fillStyle='#444';
   ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
   ctx.fillStyle='lime';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/1000),6);
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/500),6);
 }
 
 
@@ -879,17 +894,23 @@ rocketsIn.forEach((r, i) => {
   if (coinCount   > 0) txt += ` 💰×${coinCount}`;
   scoreEl.textContent = txt;
 }
-     function endGame(){
-     trackEvent('game_over', { score }); // ←─ HERE
-   state = STATE.Over;
-   // — check for new personal best —
-   if (score > personalBest) {
-     personalBest = score;
-     localStorage.setItem('birdyBestScore', personalBest);
-   }
-   playTone(100, 0.3);
-   showOverlay();
- }
+       function endGame(){
+    trackEvent('game_over', { score });
+    state = STATE.Over;
+    // reset our save/lock flags for the next round
+    hasSubmittedScore  = false;
+    overlayTop10Lock   = false;
+
+    // check personal best…
+    if (score > personalBest) {
+      personalBest = score;
+      localStorage.setItem('birdyBestScore', personalBest);
+    }
+
+    playTone(100, 0.3);
+    showOverlay();
+  }
+
   function resetGame(){ 
   // ── reset all game state ──
   state = STATE.Start;
@@ -940,31 +961,37 @@ rocketsIn.forEach((r, i) => {
 // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
 // showOverlay: ALWAYS ask for a name, regardless of global standing
-async function showOverlay() {
-  const ov = document.getElementById('overlay');
-  const ct = document.getElementById('gameOverContent');
-  ov.style.display = 'block';
+  async function showOverlay() {
+    // compute whether this score belongs in top-10
+    const top = await fetchTopGlobalScores();
+    const lowestTopScore = top.length < 10
+      ? -Infinity
+      : top[top.length - 1].score;
+    overlayTop10Lock = score >= lowestTopScore;
 
-  // still fetch top-10 so we can show it after saving
-  const top = await fetchTopGlobalScores();
+    const ov = document.getElementById('overlay');
+    const ct = document.getElementById('gameOverContent');
+    ov.style.display = 'block';
+    ct.innerHTML = `
+      <h2>Game Over!</h2>
+      <p>Your score: ${score}</p>
+      <label>Enter your name:</label><br/>
+      <input id="nameInput" type="text" maxlength="10" /><br/>
+      <button id="saveBtn">Save Score</button>
+    `;
 
-  // ALWAYS prompt for name entry
-  ct.innerHTML = `
-    <h2>Game Over!</h2>
-    <p>Your score: ${score}</p>
-    <label>Enter your name:</label><br/>
-    <input id="nameInput" type="text" maxlength="10" /><br/>
-    <button id="saveBtn">Save Score</button>
-  `;
+    document.getElementById('saveBtn').onclick = async () => {
+      const name = document.getElementById('nameInput').value.trim() || 'Anon';
+      await saveGlobalScore(name, score);
+      trackEvent('submit_score', { score });
+      hasSubmittedScore = true;
 
-  document.getElementById('saveBtn').onclick = async () => {
-    const name = document.getElementById('nameInput').value.trim() || 'Anon';
-    await saveGlobalScore(name, score);
-        trackEvent('submit_score', { score }); // ←─ HERE ─────────────────
-    const newTop = await fetchTopGlobalScores();
-    showHighScores(newTop);
-  };
-}
+      // refresh the board
+      const newTop = await fetchTopGlobalScores();
+      showHighScores(newTop);
+    };
+  }
+
 
 // showHighScores: display list + Play Again button
 function showHighScores(hs){
@@ -1049,8 +1076,6 @@ document.addEventListener('keydown', e=>{
         let prompt;
         if (!coinAchievementUnlocked) {
           prompt = 'Collect 10 coins to unlock an achievement!';
-        } else if (!mushroomAchievementUnlocked) {
-          prompt = 'Collect 10 mushrooms next!';
         } else {
           prompt = 'Stay tuned for more epic quests!';
         }
@@ -1210,7 +1235,13 @@ if (state === STATE.Play) {
     }
     updateScore();
     loop();
-
+    fetchTopGlobalScores().then(hs => {
+      // pop open the overlay…
+      const ov = document.getElementById('overlay');
+      ov.style.display = 'block';
+      // …and fill it with the board
+      showHighScores(hs);
+    });
 
   })();
 </script>
