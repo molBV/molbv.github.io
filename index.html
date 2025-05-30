@@ -115,6 +115,8 @@ function trackEvent(eventName, params = {}) {
 
   // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
+     // ── prevent any pending auto-hide from killing the name-entry prompt
+  let achievementHideTimer;
         // ── Preload bird sprite ──
     const birdSprite = new Image();
     birdSprite.src = 'assets/birdieV2.png';
@@ -962,6 +964,8 @@ rocketsIn.forEach((r, i) => {
 
 // showOverlay: ALWAYS ask for a name, regardless of global standing
   async function showOverlay() {
+    // cancel any leftover auto-hide from a boss-defeat popup
+    clearTimeout(achievementHideTimer);
     // compute whether this score belongs in top-10
     const top = await fetchTopGlobalScores();
     const lowestTopScore = top.length < 10
@@ -1006,15 +1010,17 @@ function showHighScores(hs){
   };
 }
 function showAchievement(message, duration = 2000) {
-trackEvent('achievement_unlocked', { achievement: message }); 
-  const ov = document.getElementById('overlay');
-  const ct = document.getElementById('gameOverContent');
-  ov.style.display = 'block';
-  ct.innerHTML = `<h2>${message}</h2>`;
-  // auto-hide after `duration` ms
-  setTimeout(() => {
-    ov.style.display = 'none';
-  }, duration);
+    // clear any previous hide-timer
+    clearTimeout(achievementHideTimer);
+    trackEvent('achievement_unlocked', { achievement: message }); 
+    const ov = document.getElementById('overlay');
+    const ct = document.getElementById('gameOverContent');
+    ov.style.display = 'block';
+    ct.innerHTML = `<h2>${message}</h2>`;
+    // schedule this one
+    achievementHideTimer = setTimeout(() => {
+      ov.style.display = 'none';
+    }, duration);
 }
 
 // click outside panel to restart
