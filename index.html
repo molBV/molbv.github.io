@@ -144,8 +144,8 @@ let bossEncounterCount = 0; // tracks boss encounters
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
 
   // charging‐rocket “attach” sprite for phase 2
-  const bossRocketAttachS2 = new Image();
-  bossRocketAttachS2.src = 'assets/boss_animation/boss_s2_charge.png';
+  //const bossRocketAttachS2 = new Image();
+  //bossRocketAttachS2.src = 'assets/boss_animation/boss_s2_charge.png';
   
   // only used in boss fight #2+
 const activeHomingImg = new Image();
@@ -270,7 +270,7 @@ let bossHealth      = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
-    const baseAppleProb=0.03,baseCoinProb=0.3;
+    const baseAppleProb=0.03,baseCoinProb=0.25;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
@@ -503,6 +503,7 @@ for (let i = radialBombs.length - 1; i >= 0; i--) {
   if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
     if (coinCount > 0) {
       coinCount--;
+
       updateScore();
       playTone(1000, 0.2);
     } else {
@@ -621,7 +622,7 @@ function drawBoss() {
     // c) draw boss frames flipped (with 1.5× scale on encounter #2)
     let frame;
   if (bossEncounterCount > 1) {
-    if      (p.isHomingAttack) frame = 1;            // new homing‐bomb pose
+    if      (p.isHomingAttack) frame = 3;            // new homing‐bomb pose
     else if (p.justFired)      frame = 2;            // rocket‐fire pose
     else if (p.isCharging)     frame = 1;            // rocket‐charge pose
     else                        frame = 0;            // idle pose
@@ -651,13 +652,13 @@ function drawBoss() {
 
   // draw attach-rocket (also scaled) if charging
 // only draw a charge‐sprite on the second boss fight
-if (p.isCharging && bossEncounterCount > 1) {
-  const w = bossRocketAttachS2.width  * bossScale;
-  const h = bossRocketAttachS2.height * bossScale;
-  const x = (W - 80 + Math.sin(p.y*0.04)*30) - w/2;
-  const y = p.y - h/2;
-  ctx.drawImage(bossRocketAttachS2, x, y, w, h);
-}
+//if (p.isCharging && bossEncounterCount > 1) {
+  //const w = bossRocketAttachS2.width  * bossScale;
+  //const h = bossRocketAttachS2.height * bossScale;
+  //const x = (W - 80 + Math.sin(p.y*0.04)*30) - w/2;
+  //const y = p.y - h/2;
+ // ctx.drawImage(bossRocketAttachS2, x, y, w, h);
+//}
 
 
   
