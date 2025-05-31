@@ -621,7 +621,7 @@ function drawBoss() {
     // c) draw boss frames flipped (with 1.5× scale on encounter #2)
     let frame;
   if (bossEncounterCount > 1) {
-    if      (p.isHomingAttack) frame = 3;            // new homing‐bomb pose
+    if      (p.isHomingAttack) frame = 1;            // new homing‐bomb pose
     else if (p.justFired)      frame = 2;            // rocket‐fire pose
     else if (p.isCharging)     frame = 1;            // rocket‐charge pose
     else                        frame = 0;            // idle pose
