@@ -631,13 +631,25 @@ glow.addColorStop(1, 'rgba(255,200,0,0)');
   // ── draw radialBomb fragments ──
 // ── draw radialBomb fragments with glow ──
 radialBombs.forEach(b => {
+  // 1) Draw a radial‐gradient “glow” behind the fragment:
+  const glowRadius = b.r * 3; // make the glow extend farther than the sprite
+  const glow = ctx.createRadialGradient(
+    b.x, b.y, 0,
+    b.x, b.y, glowRadius
+  );
+  glow.addColorStop(0,   'rgba(255,200,0,1)');   // fully bright at center
+  glow.addColorStop(0.5, 'rgba(255,200,0,0.8)'); // still bright halfway out
+  glow.addColorStop(1,   'rgba(255,200,0,0)');   // fade to transparent at edge
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2) Optionally, you can still keep a small shadow for extra pop:
   ctx.save();
-
-  // ↓ configure a yellow‐orange glow ↓
-  ctx.shadowBlur   = 30;                      // how “soft”/wide the glow is
-  ctx.shadowColor  = 'rgba(255,200,0,0.9)';   // glow color (adjust alpha as needed)
-
-  // draw the fragment sprite (drawImage will now cast a glow)
+  ctx.shadowBlur  = 20; 
+  ctx.shadowColor = 'rgba(255,200,0,0.6)';
   ctx.drawImage(
     bombSprite,
     b.x - b.r/2,
@@ -647,6 +659,7 @@ radialBombs.forEach(b => {
   );
   ctx.restore();
 });
+
 
 
   const p=bossObj;
