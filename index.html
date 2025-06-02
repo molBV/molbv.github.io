@@ -1014,14 +1014,20 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
        rocketSize, rocketSize
      );
    } else {
-     // normal, non‐homing incoming
-     ctx.drawImage(
-       rocketInSprite,
-       r.x - rocketSize/2,
-       r.y - rocketSize/2,
-       rocketSize, rocketSize
-     );
-   }
+  // ― Rotate so that the rocket sprite points along (vx,vy) ―
+  const angle = Math.atan2(r.vy || 0, r.vx);
+  ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(angle);
+    ctx.drawImage(
+      rocketInSprite,
+      -rocketSize/2,
+      -rocketSize/2,
+      rocketSize,
+      rocketSize
+    );
+  ctx.restore();
+}
    ctx.restore();
 
     // 4) collision with bird
