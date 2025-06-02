@@ -609,8 +609,14 @@ function drawBoss() {
   tossBombs.forEach(b => {
       // glow
   const glow = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*2);
-  glow.addColorStop(0, 'rgba(255,200,0,0.6)');
-  glow.addColorStop(1, 'rgba(255,200,0,0)');
+  // Inner circle: fully opaque yellow
+glow.addColorStop(0, 'rgba(255,200,0,1)');       // was 0.6 → 1.0
+
+// Mid‐point: still bright but starting to fade
+glow.addColorStop(0.5, 'rgba(255,200,0,0.8)');   // new “halfway” stop
+
+// Outer edge: fade out completely
+glow.addColorStop(1, 'rgba(255,200,0,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(b.x, b.y, b.r*2, 0,Math.PI*2);
