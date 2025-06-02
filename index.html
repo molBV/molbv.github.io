@@ -4,8 +4,8 @@
   <meta charset="UTF-8"/>
   <title>Birdy - Rockets</title>
   <link rel="icon" href="favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#70d0ee">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#70d0ee">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -16,10 +16,11 @@
     }
     canvas {
       position:absolute;
+      top: 60px;
       z-index: 0;
     }
     #score {
-      position:absolute; top:20px; left:50%;
+      position:absolute; top: 80px; left: 50%;
       transform:translateX(-50%);
       color:#fff; font:2rem sans-serif;
       text-shadow:2px 2px 4px #000;
@@ -36,8 +37,33 @@
     #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
     #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
   </style>
+
+  <!-- ==================== AdSense library loader ==================== -->
+  <script async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366"
+          crossorigin="anonymous"></script>
+  <!-- ================================================================= -->
 </head>
+
 <body>
+  <!-- ── AdSense strip at top of page ── -->
+  <ins class="adsbygoogle"
+       style="display:block; width:100%; height:60px"
+       data-ad-client="ca-pub-9879261118412366"
+       data-ad-slot="6412265994"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+  <!-- ────────────────────────────────── -->
+
+  <audio id="bgMusic"
+         src="assets/dream.guitar.mp3"
+         loop
+         preload="metadata"></audio>
+  <!-- …the rest of your code… -->
+
   <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
        loop
@@ -45,75 +71,76 @@
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
-    <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
-<script type="module">
-  // ── 1) FIREBASE SETUP ───────────────────────────────────────
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-  import {
-    getFirestore,
-    collection, addDoc,
-    query, orderBy, limit, getDocs,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey:             "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
-    authDomain:         "ultimate-birdie.firebaseapp.com",
-    projectId:          "ultimate-birdie",
-    storageBucket:      "ultimate-birdie.appspot.com",
-    messagingSenderId:  "1061733247954",
-    appId:              "1:1061733247954:web:5ad19583381cc09a7c760b",
-    measurementId:      "G-54KDN5XG60"
-  };
+  <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
+  <script type="module">
+    // ── 1) FIREBASE SETUP ───────────────────────────────────────
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection, addDoc,
+      query, orderBy, limit, getDocs,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
-  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js"; // ←─ HERE ─────────────────
-const analytics = getAnalytics(app); // ←─ HERE ─────────────────
+    const firebaseConfig = {
+      apiKey:             "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
+      authDomain:         "ultimate-birdie.firebaseapp.com",
+      projectId:          "ultimate-birdie",
+      storageBucket:      "ultimate-birdie.appspot.com",
+      messagingSenderId:  "1061733247954",
+      appId:              "1:1061733247954:web:5ad19583381cc09a7c760b",
+      measurementId:      "G-54KDN5XG60"
+    };
 
-// helper so you don’t have to import everywhere
-function trackEvent(eventName, params = {}) {
-  logEvent(analytics, eventName, params);
-} // ←─ HERE ─────────────────
+    const app = initializeApp(firebaseConfig);
+    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js"; // ←─ HERE ─────────────────
+    const analytics = getAnalytics(app); // ←─ HERE ─────────────────
 
-  const db  = getFirestore(app);
+    // helper so you don’t have to import everywhere
+    function trackEvent(eventName, params = {}) {
+      logEvent(analytics, eventName, params);
+    } // ←─ HERE ─────────────────
 
-  // write a score
-  async function saveGlobalScore(name, score) {
-    try {
-      await addDoc(collection(db, "leaderboard"), {
-        name, score, ts: serverTimestamp()
-      });
-    } catch(e) {
-      console.warn("Firestore write failed…", e);
-      let hs = JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
-      hs.push({name,score});
-      localStorage.setItem('birdyHighScores', JSON.stringify(hs));
+    const db  = getFirestore(app);
+
+    // write a score
+    async function saveGlobalScore(name, score) {
+      try {
+        await addDoc(collection(db, "leaderboard"), {
+          name, score, ts: serverTimestamp()
+        });
+      } catch(e) {
+        console.warn("Firestore write failed…", e);
+        let hs = JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
+        hs.push({name,score});
+        localStorage.setItem('birdyHighScores', JSON.stringify(hs));
+      }
     }
-  }
 
-  // fetch top-10
-  async function fetchTopGlobalScores() {
-    try {
-      const q    = query(
-        collection(db, "leaderboard"),
-        orderBy("score","desc"),
-        limit(10)
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map(d => d.data());
-    } catch(e) {
-      console.warn("Firestore read failed…", e);
-      return JSON.parse(localStorage.getItem('birdyHighScores')||'[]')
-                   .sort((a,b)=>b.score - a.score)
-                   .slice(0,10);
+    // fetch top-10
+    async function fetchTopGlobalScores() {
+      try {
+        const q    = query(
+          collection(db, "leaderboard"),
+          orderBy("score","desc"),
+          limit(10)
+        );
+        const snap = await getDocs(q);
+        return snap.docs.map(d => d.data());
+      } catch(e) {
+        console.warn("Firestore read failed…", e);
+        return JSON.parse(localStorage.getItem('birdyHighScores')||'[]')
+                     .sort((a,b)=>b.score - a.score)
+                     .slice(0,10);
+      }
     }
-  }
 
-  window.saveGlobalScore      = saveGlobalScore;
-  window.fetchTopGlobalScores = fetchTopGlobalScores;
+    window.saveGlobalScore      = saveGlobalScore;
+    window.fetchTopGlobalScores = fetchTopGlobalScores;
 
 
-  // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
+    // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
      // ── prevent any pending auto-hide from killing the name-entry prompt
   let achievementHideTimer;
