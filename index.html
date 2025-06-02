@@ -619,7 +619,7 @@ glow.addColorStop(0.5, 'rgba(255,200,0,0.8)');   // new “halfway” stop
 glow.addColorStop(1, 'rgba(255,200,0,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(b.x, b.y, b.r*2, 0,Math.PI*2);
+  ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2); 
   ctx.fill();
     ctx.drawImage(
       bombSprite,
@@ -634,8 +634,8 @@ radialBombs.forEach(b => {
   ctx.save();
 
   // ↓ configure a yellow‐orange glow ↓
-  ctx.shadowBlur   = 40;                      // how “soft”/wide the glow is
-  ctx.shadowColor  = 'rgba(255,200,0,0.7)';   // glow color (adjust alpha as needed)
+  ctx.shadowBlur   = 30;                      // how “soft”/wide the glow is
+  ctx.shadowColor  = 'rgba(255,200,0,0.9)';   // glow color (adjust alpha as needed)
 
   // draw the fragment sprite (drawImage will now cast a glow)
   ctx.drawImage(
