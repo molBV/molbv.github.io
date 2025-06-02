@@ -596,13 +596,25 @@ function drawBoss() {
   });
 
   // ── draw radialBomb fragments ──
-  radialBombs.forEach(b => {
-    ctx.drawImage(
-      bombSprite,
-      b.x - b.r/2, b.y - b.r/2,
-      b.r, b.r
-    );
-  });
+// ── draw radialBomb fragments with glow ──
+radialBombs.forEach(b => {
+  ctx.save();
+
+  // ↓ configure a yellow‐orange glow ↓
+  ctx.shadowBlur   = 20;                      // how “soft”/wide the glow is
+  ctx.shadowColor  = 'rgba(255,200,0,0.7)';   // glow color (adjust alpha as needed)
+
+  // draw the fragment sprite (drawImage will now cast a glow)
+  ctx.drawImage(
+    bombSprite,
+    b.x - b.r/2,
+    b.y - b.r/2,
+    b.r,
+    b.r
+  );
+  ctx.restore();
+});
+
 
   const p=bossObj;
   // a) draw background smoke
