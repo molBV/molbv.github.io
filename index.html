@@ -1517,7 +1517,11 @@ if (state === STATE.Play) {
   bird.draw();
   drawUI();
 }
-
+        // ── FORCE SECOND BOSS AT 30 POINTS ────────────────────
+        // as soon as score reaches 30, kick off a boss fight—no rocket count needed
+        if (score >= 30 && state === STATE.Play && !bossActive) {
+          startBossFight();
+        }
       
       // — draw SPEED UP flash if active —
       if (speedFlashTimer > 0) {
