@@ -1544,8 +1544,8 @@ function showHighScores(hs, autoScroll = false){
   const ct = document.getElementById('gameOverContent');
   let html = `<h2>Top 50</h2>` +
              `<div id="hsBox" style="height:200px;overflow:hidden;display:inline-block;">` +
-             `<ol id="hsList" style="text-align:left;margin:0;padding-left:20px;">`;
-  hs.forEach(i => html += `<li>${i.name} — ${i.score}</li>`);
+             `<ol id="hsList" style="text-align:left;margin:0;padding-left:20px;list-style:none;">`;
+  hs.forEach((i, idx) => html += `<li>${idx + 1}. ${i.name} — ${i.score}</li>`);
   html += `</ol></div><br/><button id="retryBtn">Play Again</button>`;
   ct.innerHTML = html;
   document.getElementById('retryBtn').onclick = () => {
