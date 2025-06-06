@@ -298,6 +298,7 @@ let pipeCount  = 0;
 // boss fight state
 let bossActive      = false;
 let bossHealth      = 500;
+let bossMaxHealth   = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
@@ -313,6 +314,13 @@ let bossObj;                // boss-specific timers & mode
     const clouds=[], trees=[];
     const rocketsOut = [];
     const rocketsIn  = [];
+    const rocketPowerups = [];
+
+    let tripleShot = false;
+    let rocketsSpawned = 0;       // count rockets during Mecha
+
+    const baseTripleProb = 0.02;
+    const rocketPowerR   = 12;
 
         // — load personal best & coin achievement flag —
     let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
@@ -361,7 +369,8 @@ trackEvent('boss_fight_start');
     bgMusic.pause();
   bossActive       = true;
   state            = STATE.Boss;
-  bossHealth       = 500;
+  bossMaxHealth    = bossEncounterCount > 1 ? 750 : 500;
+  bossHealth       = bossMaxHealth;
   //birdBossHP       = 2;
   // freeze main environment:
 // freeze main environment:
@@ -410,7 +419,7 @@ pipes.length     = apples.length = coins.length = 0;
   p.modeTimer++;
   if (p.modeTimer > p.modeDuration) {
     p.mode = p.mode==='random'?'track':'random';
-    p.modeDuration = 60 + (bossHealth/1000)*200;
+    p.modeDuration = 60 + (bossHealth/bossMaxHealth)*200;
     p.modeTimer = 0;
     if (p.mode==='track') triggerBossAttack();
   }
@@ -479,6 +488,7 @@ if (p.strongQueue > 0) {
   if (!r.isBossShot) return;
   if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
     rocketsIn.splice(i,1);
+    tripleShot = false;
     if (coinCount > 0) {
       coinCount--;
       updateScore();
@@ -494,7 +504,7 @@ if (p.strongQueue > 0) {
   rocketsOut.forEach((b,i)=>{
     if (Math.hypot(b.x - (W-80), b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
-      bossHealth -= 10;
+      bossHealth -= (b.damage || 10);
       if (bossHealth<=0) endBossFight(true);
     }
   });
@@ -532,14 +542,7 @@ for (let i = radialBombs.length - 1; i >= 0; i--) {
 
   // 1) collision with bird?
   if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
-    if (coinCount > 0) {
-      coinCount--;
-
-      updateScore();
-      playTone(1000, 0.2);
-    } else {
-      endGame();
-    }
+    handleHit();
     radialBombs.splice(i, 1);
     continue;
   }
@@ -561,7 +564,7 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  p.chargeDuration = 20 + (bossHealth/500)*40;
+  p.chargeDuration = 20 + (bossHealth/bossMaxHealth)*40;
   p.shakeMag     = 5
   
     // only in second encounter, randomly choose:
@@ -575,7 +578,7 @@ function triggerBossAttack(){
     });
   } else {
     // the old p.strongQueue logic, or normal rocket
-    if (bossHealth <= 400) p.strongQueue = 3;
+    if (bossHealth <= bossMaxHealth * 0.8) p.strongQueue = 3;
   }
 }
   
@@ -603,6 +606,7 @@ function triggerBossAttack(){
   coinCount       = 0;
   inMecha         = false;
   mechaTriggered  = false;
+  tripleShot      = false;
   birdSprite.src  = 'assets/birdieV2.png';
   updateScore();
 }
@@ -731,7 +735,7 @@ radialBombs.forEach(b => {
   ctx.fillStyle='#444';
   ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
   ctx.fillStyle='lime';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/500),6);
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/bossMaxHealth),6);
 }
 
 
@@ -855,7 +859,8 @@ if (inMecha) {
     this.vel = 0;
     // after the 2s immunity window, bouncing also removes the suit
     if (frames > mechaSafeExpiry) {
-             inMecha = false; 
+      inMecha = false;
+      tripleShot = false;
       birdSprite.src = 'assets/birdieV2.png';
     }
   }
@@ -876,7 +881,8 @@ function spawnPipe(){
   pipeCount++;
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
-        coinP = baseCoinProb  /* * decay*/;
+        coinP = baseCoinProb  /* * decay*/,
+        rocketP = baseTripleProb;
 
   // pick a random gap in the top half
   const topH = 50 + Math.random()*(H/2),
@@ -903,6 +909,13 @@ function spawnPipe(){
     if (!collidesApple && !collidesCoin) {
       coins.push({ x: cx, y: cy, taken: false });
     }
+  }
+
+  // — triple rocket powerup —
+  if (Math.random() < rocketP) {
+    const rx = W + pipeW/2;
+    const ry = topH + gap*0.5 + (Math.random()*gap*0.4 - gap*0.2);
+    rocketPowerups.push({ x: rx, y: ry, taken: false });
   }
 }
 
@@ -959,6 +972,16 @@ function updateRockets() {
           stage2Bombs.splice(j, 1);
         }
         return;  // done with this rocket
+      }
+    }
+
+    // 1b) kill jellies
+    for (let jj = jellies.length - 1; jj >= 0; jj--) {
+      const j = jellies[jj];
+      if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
+        rocketsOut.splice(i, 1);
+        jellies.splice(jj, 1);
+        return;
       }
     }
 
@@ -1028,15 +1051,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
   const dist = Math.hypot(bird.x - b.x, bird.y - b.y);
   const bombRadius = drawSize/2;
   if (dist < bird.rad + bombRadius) {
-    // hurt the player exactly like a rocket hit
-    if (coinCount > 0) {
-      coinCount--;
-      updateScore();
-      playTone(1000, 0.2);
-    } else {
-      endGame();
-    }
-    // remove that bomb
+    handleHit();
     stage2Bombs.splice(i, 1);
     continue;
   }
@@ -1110,6 +1125,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     // 4) collision with bird
     if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
       if (!r.isBossTrigger) {
+        tripleShot = false;
         if (coinCount > 0) {
           coinCount--; updateScore(); playTone(1000, 0.2);
         } else {
@@ -1168,11 +1184,7 @@ function updateJellies() {
 
     const rad = j.isShocking ? 40 : 24;
     if (Math.hypot(bird.x - j.x, bird.y - j.y) < bird.rad + rad) {
-      if (coinCount > 0) {
-        coinCount--; updateScore(); playTone(1000,0.2);
-      } else {
-        endGame();
-      }
+      handleHit();
       jellies.splice(i,1);
       continue;
     }
@@ -1221,14 +1233,7 @@ function updateJellies() {
         updateScore();
         playTone(900, 0.2);
       } else {
-        // normal hit: spend a coin if you have one, otherwise die
-        if (coinCount > 0) {
-          coinCount--;
-          updateScore();
-          playTone(900, 0.2);
-        } else {
-          endGame();
-        }
+        handleHit();
         // remove the pipe so you don’t get stuck
         pipes.splice(i, 1);
       }
@@ -1293,14 +1298,42 @@ function updateJellies() {
   if (c.x + coinR < 0 || c.taken) coins.splice(i, 1);
 });
 
+  // ── triple rocket powerup pickup ──
+  rocketPowerups.forEach((p,i)=>{
+    p.x -= currentSpeed;
+    if(!p.taken){
+      ctx.save();
+      ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
+      for(let j=0;j<3;j++){
+        ctx.drawImage(rocketOutSprite, -8, -12 + j*8, 16, 16);
+      }
+      ctx.restore();
+      if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
+        p.taken = true;
+        tripleShot = true;
+      }
+    }
+    if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
+  });
 }
 
 
     // ── Score, Game Over, High Scores ──
-    function updateScore(){
+function updateScore(){
   let txt = score;
   if (coinCount   > 0) txt += ` 🟡×${coinCount}`;
   scoreEl.textContent = txt;
+}
+
+function handleHit(){
+  tripleShot = false;
+  if (coinCount > 0) {
+    coinCount--;
+    updateScore();
+    playTone(1000,0.2);
+  } else {
+    endGame();
+  }
 }
       // ── boss after +100 in Mecha ─────────────────────────
   if ( inMecha 
@@ -1337,7 +1370,8 @@ function updateJellies() {
   rocketsOut.length = 0;
   rocketsIn.length  = 0;
   jellies.length    = 0;
-
+  rocketPowerups.length = 0;
+  
   // reset coins _before_ updating the UI
   coinCount         = 0;
   coinBoostExpiries = [];
@@ -1368,6 +1402,7 @@ function updateJellies() {
   transitionTimer  = 0;
   // (optionally also reset mechaSafeExpiry:)
   mechaSafeExpiry  = 0;
+  tripleShot       = false;
   birdSprite.src   = 'assets/birdieV2.png';
   mechSpeed        = baseSpeed;
 
@@ -1472,7 +1507,15 @@ function flapHandler(e){
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
-    rocketsOut.push({ x: bird.x+40, y: bird.y, vx: 4 });
+    const shots = tripleShot ? 3 : 1;
+    for(let s=0;s<shots;s++){
+      rocketsOut.push({
+        x: bird.x + 40,
+        y: bird.y + (s - (shots-1)/2) * 8,
+        vx: 4,
+        damage: tripleShot ? 20 : 10
+      });
+    }
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
@@ -1566,7 +1609,9 @@ if (mechaStage === mechaStages.length) {
   showAchievement('🦾 Mecha Suit Assembled');
   state = STATE.Play;
 
-  mechaStartScore = score;  
+  rocketsSpawned = 0;
+  
+  mechaStartScore = score;
 }
   }
   applyShake();
@@ -1624,9 +1669,10 @@ if (state === STATE.Play) {
         y: Math.random() * (H - 100) + 50,
         vx: -3
       });
+      rocketsSpawned++;
     }
 
-    if (frames % 120 === 0) spawnJelly();
+    if (rocketsSpawned >= 30 && frames % 120 === 0) spawnJelly();
     
       // homing bomb (only after 1 boss, and only 25% of those seconds)
   if (bossEncounterCount > 0 && Math.random() < 0.25) {
