@@ -275,6 +275,12 @@ rocketInSprite.src    = 'assets/rocket2.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
+explosionSfx.volume  = 0.4;
+const explosionImgs = [
+  Object.assign(new Image(), { src: 'assets/explosion1.png' }),
+  Object.assign(new Image(), { src: 'assets/explosion2.png' })
+];
+const explosions = [];
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
     // ── boss sprites & rockets ──
@@ -1052,6 +1058,23 @@ function spawnJelly(){
   });
 }
 
+function spawnExplosion(x, y) {
+  explosions.push({ x, y, frame: 0 });
+  explosionSfx.currentTime = 0;
+  explosionSfx.play().catch(() => {});
+}
+
+function updateExplosions() {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const e = explosions[i];
+    const img = e.frame < 5 ? explosionImgs[0] : explosionImgs[1];
+    const size = e.frame < 5 ? 32 : 48;
+    ctx.drawImage(img, e.x - size / 2, e.y - size / 2, size, size);
+    e.frame++;
+    if (e.frame > 10) explosions.splice(i, 1);
+  }
+}
+
     function drawPipes(){
       pipes.forEach(p=>{
         ctx.fillStyle=p.color;
@@ -1082,6 +1105,7 @@ function updateRockets() {
       if (Math.hypot(r.x - b.x, r.y - b.y) < 12) {
         // consume the rocket
         rocketsOut.splice(i, 1);
+        spawnExplosion(b.x, b.y);
 
         // bump bomb’s hit count
         b.hits = (b.hits || 0) + 1;
@@ -1102,6 +1126,7 @@ function updateRockets() {
       const j = jellies[jj];
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
         rocketsOut.splice(i, 1);
+        spawnExplosion(j.x, j.y);
         j.hp = (j.hp || 1) - 1;
         if (j.hp <= 0) {
           jellies.splice(jj, 1);
@@ -1119,6 +1144,7 @@ function updateRockets() {
       if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
         rocketsOut.splice(i, 1);
         rocketsIn.splice(k, 1);
+        spawnExplosion(r.x, r.y);
         score++; updateScore();
         bossRocketCount++;
         if (bossRocketCount % 60 === 0 && !bossActive && !marathonMode) { //triggering boss rocket
@@ -1290,6 +1316,8 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     ctx.restore();
     if (s.alpha <= 0) rocketSmoke.splice(si, 1);
   });
+
+  updateExplosions();
 }
 
 function updateJellies() {
