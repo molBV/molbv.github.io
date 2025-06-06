@@ -47,7 +47,7 @@
 
 <body>
   <!-- ── AdSense strip at top of page ── -->
-  <ins class="adsbygoogle"
+  <ins id="adStrip" class="adsbygoogle"
        style="display:block; width:100%; height:60px"
        data-ad-client="ca-pub-9879261118412366"
        data-ad-slot="6412265994"
@@ -254,18 +254,24 @@ document.addEventListener('mousedown', initMusic, {passive:true});
 document.addEventListener('keydown',   initMusic, {passive:true});
 
     const ORIGINAL_WIDTH  = canvas.width,
-          ORIGINAL_HEIGHT = canvas.height;
+          ORIGINAL_HEIGHT = canvas.height,
+          adStrip         = document.getElementById('adStrip');
     function resizeCanvas(){
+      const headerH = adStrip ? adStrip.offsetHeight : 0;
+      const availH  = window.innerHeight - headerH;
       const scale = Math.min(
         window.innerWidth  / ORIGINAL_WIDTH,
-        window.innerHeight / ORIGINAL_HEIGHT
+        availH             / ORIGINAL_HEIGHT
       );
       const dispW = ORIGINAL_WIDTH * scale,
             dispH = ORIGINAL_HEIGHT * scale;
       canvas.style.width  = dispW + 'px';
       canvas.style.height = dispH + 'px';
       canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
-      canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
+      canvas.style.top    = headerH + (availH - dispH) / 2 + 'px';
+      // reposition score and overlay padding relative to header
+      scoreEl.style.top    = (headerH + 20) + 'px';
+      overlay.style.paddingTop = (headerH + 20) + 'px';
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
