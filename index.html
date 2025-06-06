@@ -142,25 +142,32 @@
 
     const db  = getFirestore(app);
 
+    const ADV_COLLECTION = "leaderboard";
+    const MAR_COLLECTION = "leaderboard_marathon";
+
     // write a score
-    async function saveGlobalScore(name, score) {
+    async function saveGlobalScore(name, score, marathon = false) {
+      const col = marathon ? MAR_COLLECTION : ADV_COLLECTION;
+      const ls  = marathon ? 'birdyHighScoresMarathon' : 'birdyHighScores';
       try {
-        await addDoc(collection(db, "leaderboard"), {
+        await addDoc(collection(db, col), {
           name, score, ts: serverTimestamp()
         });
       } catch(e) {
         console.warn("Firestore write failed…", e);
-        let hs = JSON.parse(localStorage.getItem('birdyHighScores')||'[]');
+        let hs = JSON.parse(localStorage.getItem(ls)||'[]');
         hs.push({name,score});
-        localStorage.setItem('birdyHighScores', JSON.stringify(hs));
+        localStorage.setItem(ls, JSON.stringify(hs));
       }
     }
 
     // fetch top-50
-    async function fetchTopGlobalScores() {
+    async function fetchTopGlobalScores(marathon = false) {
+      const col = marathon ? MAR_COLLECTION : ADV_COLLECTION;
+      const ls  = marathon ? 'birdyHighScoresMarathon' : 'birdyHighScores';
       try {
         const q    = query(
-          collection(db, "leaderboard"),
+          collection(db, col),
           orderBy("score","desc"),
           limit(50)
         );
@@ -168,7 +175,7 @@
         return snap.docs.map(d => d.data());
       } catch(e) {
         console.warn("Firestore read failed…", e);
-        return JSON.parse(localStorage.getItem('birdyHighScores')||'[]')
+        return JSON.parse(localStorage.getItem(ls)||'[]')
                      .sort((a,b)=>b.score - a.score)
                      .slice(0,50);
       }
@@ -1624,7 +1631,7 @@ function handleHit(){
     // cancel any leftover auto-hide from a boss-defeat popup
     clearTimeout(achievementHideTimer);
     // compute whether this score belongs in top-50
-    const top = await fetchTopGlobalScores();
+    const top = await fetchTopGlobalScores(marathonMode);
     const lowestTopScore = top.length < 50
       ? -Infinity
       : top[top.length - 1].score;
@@ -1643,25 +1650,51 @@ function handleHit(){
 
     document.getElementById('saveBtn').onclick = async () => {
       const name = document.getElementById('nameInput').value.trim() || 'Anon';
-      await saveGlobalScore(name, score);
+      await saveGlobalScore(name, score, marathonMode);
       trackEvent('submit_score', { score });
       hasSubmittedScore = true;
 
       // refresh the board
-      const newTop = await fetchTopGlobalScores();
-      showHighScores(newTop);
+      const newAdv = await fetchTopGlobalScores(false);
+      const newMar = await fetchTopGlobalScores(true);
+      showHighScores(newAdv, newMar);
     };
   }
 
 
 // showHighScores: display list + Play Again button
-function showHighScores(hs, autoScroll = false){
-  const ct = document.getElementById('gameOverContent');
-  let html = `<h2>Top 50</h2>` +
-             `<div id="hsBox" style="height:200px;overflow:hidden;display:inline-block;">` +
-             `<ol id="hsList" style="text-align:left;margin:0;padding-left:20px;list-style:none;">`;
+function renderBoard(hs, prefix){
+  let html = `<div id="${prefix}Box" style="height:200px;overflow:hidden;display:inline-block;">`+
+             `<ol id="${prefix}List" style="text-align:left;margin:0;padding-left:20px;list-style:none;">`;
   hs.forEach((i, idx) => html += `<li>${idx + 1}. ${i.name} — ${i.score}</li>`);
-  html += `</ol></div><br/><button id="retryBtn">Play Again</button>`;
+  html += `</ol></div>`;
+  return html;
+}
+
+function startAutoScroll(boxId){
+  const box  = document.getElementById(boxId);
+  const max  = box.scrollHeight - box.clientHeight;
+  let dir    = 1;
+  let pos    = 0;
+  setTimeout(()=>{
+    function step(){
+      pos += dir * 0.3;
+      if(pos >= max){ pos = max; dir = -1; }
+      if(pos <= 0){ pos = 0; dir = 1; }
+      box.scrollTop = pos;
+      if(document.getElementById(boxId)) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }, 2000);
+}
+
+function showHighScores(hsAdv, hsMar, autoScroll = false){
+  const ct = document.getElementById('gameOverContent');
+  let html = `<h2>Top 50 Adventure</h2>` +
+             renderBoard(hsAdv, 'hs') +
+             `<h2 style="margin-top:16px;">Top 50 Marathon</h2>` +
+             renderBoard(hsMar, 'ms') +
+             `<br/><button id="retryBtn">Play Again</button>`;
   ct.innerHTML = html;
   document.getElementById('retryBtn').onclick = () => {
     document.getElementById('overlay').style.display = 'none';
@@ -1669,20 +1702,8 @@ function showHighScores(hs, autoScroll = false){
   };
 
   if(autoScroll){
-    const box  = document.getElementById('hsBox');
-    const max  = box.scrollHeight - box.clientHeight;
-    let dir    = 1;
-    let pos    = 0;
-    setTimeout(()=>{
-      function step(){
-        pos += dir * 0.3;
-        if(pos >= max){ pos = max; dir = -1; }
-        if(pos <= 0){ pos = 0; dir = 1; }
-        box.scrollTop = pos;
-        if(document.getElementById('hsBox')) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }, 2000);
+    startAutoScroll('hsBox');
+    startAutoScroll('msBox');
   }
 }
 function showAchievement(message, duration = 2000) {
@@ -1789,19 +1810,18 @@ document.addEventListener('keydown', e=>{
         ctx.textAlign = 'center';
 
         ctx.font = '32px sans-serif';
-        ctx.fillText('🐦 Birdy - Rockets', W/2, H/2 - 40);
-
-        ctx.font = '18px sans-serif';
-        ctx.fillText('Choose a mode below', W/2, H/2);
+        ctx.fillText('🐦 Birdy - Rockets', W/2, 160);
 
         const quest = nextAchievementDesc();
         if (quest) {
           ctx.save();
+          ctx.font = '18px sans-serif';
           ctx.globalAlpha = 0.5 + 0.5*Math.sin(frames/20);
-          ctx.fillText(`Next Quest: ${quest}`, W/2, H/2 + 40);
+          ctx.fillText(`Next Quest: ${quest}`, W/2, 380);
           ctx.restore();
         }
 
+        ctx.font = '18px sans-serif';
         ctx.fillText(`🪙 Coins Earned: ${totalCoins}`, W/2, H - 70);
         ctx.fillText(`Personal Best: ${personalBest}`, W/2, H - 40);
       }
@@ -1990,12 +2010,13 @@ if (state === STATE.Play) {
     }
     updateScore();
     loop();
-    fetchTopGlobalScores().then(hs => {
-      // pop open the overlay…
+    Promise.all([
+      fetchTopGlobalScores(false),
+      fetchTopGlobalScores(true)
+    ]).then(([adv, mar]) => {
       const ov = document.getElementById('overlay');
       ov.style.display = 'block';
-      // …and fill it with the board
-      showHighScores(hs, true);
+      showHighScores(adv, mar, true);
     });
 
   })();
