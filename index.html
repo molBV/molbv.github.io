@@ -1300,7 +1300,7 @@ function updateJellies() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = baseSpeed * (inMecha ? 0.33 : 1);
+  const coinSpeed = baseSpeed * (inMecha ? 0.66 : 1);
   c.x -= coinSpeed;
 
   if (!c.taken) {
@@ -1341,7 +1341,7 @@ function updateJellies() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.33 : 1);
+    const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
     p.x -= powerSpeed;
     if(!p.taken){
       ctx.save();
@@ -1782,7 +1782,7 @@ if (state === STATE.Play) {
       rocketsSpawned++;
     }
 
-    if (Math.random() < baseTripleProb) {
+    if (Math.random() < baseTripleProb / 4) {
       const ry = Math.random() * (H - 80) + 40;
       rocketPowerups.push({
         x: W + 40,
@@ -1792,7 +1792,7 @@ if (state === STATE.Play) {
     }
 
     // occasional bonus coins during Mecha
-    if (Math.random() < 0.5) {
+    if (Math.random() < 0.5 / 4) {
       const cy = Math.random() * (H - 80) + 40;
       coins.push({ x: W + 40, y: cy, taken: false });
     }
