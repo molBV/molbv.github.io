@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,6 +96,11 @@
          loop
          preload="metadata"></audio>
   <!-- …the rest of your code… -->
+
+  <audio id="bgMusic"
+       src="assets/dream.guitar.mp3"
+       loop
+       preload="metadata"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -102,7 +108,6 @@
     <button id="btnAdventure" class="menu-btn">Adventure</button>
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
-    <button id="btnShop" class="menu-btn">Shop</button>
   </div>
   <div id="achievementPopup"></div>
 
@@ -189,22 +194,7 @@
 
         // ── Preload bird sprite ──
     const birdSprite = new Image();
-
-    const skins = {
-      original: { base: 'assets/birdieV2.png',   mech: 'assets/mecha_suit.png' },
-      fire:     { base: 'assets/FireSkinBase.png', mech: 'assets/FireSkinMech.png' },
-      aqua:     { base: 'assets/AquaSkinBase.png', mech: 'assets/AquaSkinMech.png' }
-    };
-
-    let ownedSkins = JSON.parse(localStorage.getItem('birdySkinsOwned')||'{}');
-    let skin       = localStorage.getItem('birdySkin') || 'original';
-
-    function applySkin(){
-      const s = skins[skin] || skins.original;
-      birdSprite.src = inMecha ? s.mech : s.base;
-    }
-
-    applySkin();
+    birdSprite.src = 'assets/birdieV2.png';
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -264,10 +254,6 @@ let marathonMoving = false;
   document.getElementById('btnAchievements').onclick = () => {
     menuEl.style.display = 'none';
     showAchievementsList();
-  };
-  document.getElementById('btnShop').onclick = () => {
-    menuEl.style.display = 'none';
-    showShop();
   };
 
   // boss frames: phase 1 vs. phase 2
@@ -414,8 +400,6 @@ let bossMaxHealth   = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
-let bossExploding    = false;
-let bossExplosionTimer = 0;
     const baseAppleProb=0.03,baseCoinProb=0.28;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
@@ -433,8 +417,6 @@ let bossExplosionTimer = 0;
     const rocketsIn  = [];
     const rocketPowerups = [];
     const rocketParticles = [];
-    const thrusterParticles = [];
-    const transformParticles = [];
     const rocketSmoke = [];
 
     let tripleShot = false;
@@ -516,16 +498,7 @@ pipes.length     = apples.length = coins.length = 0;
   showAchievement('🚀 Boss Incoming!');
 
 }
-function updateBoss() {
-  if(bossExploding){
-    bossExplosionTimer--;
-    triggerShake(5);
-    if(bossExplosionTimer<=0){
-      bossExploding=false;
-      endBossFight(true);
-    }
-    return;
-  }
+    function updateBoss() {
   // 1) Smoke puffs
   const p = bossObj;
     // 0) fly in until you're at your fighting X position:
@@ -608,18 +581,6 @@ if (p.strongQueue > 0) {
   p.strongQueue = 0;
 }
 
-
-function startBossExplosion(){
-  bossExploding = true;
-  bossExplosionTimer = 120;
-  for(let i=0;i<5;i++){
-    const off = (i-2)*bossObj.r;
-    spawnExplosion(bossObj.x+off,bossObj.y);
-  }
-  explosionSfx.currentTime = 0;
-  explosionSfx.play().catch(()=>{});
-}
-
     }
   }
 
@@ -645,7 +606,7 @@ function startBossExplosion(){
     if (Math.hypot(b.x - (W-80), b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
       bossHealth -= (b.damage || 10);
-      if (bossHealth<=0 && !bossExploding) startBossExplosion();
+      if (bossHealth<=0) endBossFight(true);
     }
   });
       // ── update tossBombs: toss upward then explode into fragments ──
@@ -753,7 +714,7 @@ function triggerBossAttack(){
   inMecha         = false;
   mechaTriggered  = false;
   tripleShot      = false;
-  applySkin();
+  birdSprite.src  = 'assets/birdieV2.png';
   updateScore();
 
   // clear lingering projectiles
@@ -998,23 +959,7 @@ function drawBackground(){
         ctx.drawImage(birdSprite, -32, -32, 64, 64);
         ctx.restore();
       },
-      flap(){
-        this.vel=-this.lift;
-        playTone(300,0.08);
-        if(inMecha){
-          if(skin==='fire'){
-            for(let i=0;i<5;i++){
-              thrusterParticles.push({x:this.x-30,y:this.y,
-                vx:-2-Math.random(),vy:(Math.random()-0.5)*1,life:20,type:'fire'});
-            }
-          } else if(skin==='aqua'){
-            for(let i=0;i<3;i++){
-              thrusterParticles.push({x:this.x-30,y:this.y,
-                vx:-1+Math.random()*0.5,vy:-Math.random(),life:30,type:'bubble'});
-            }
-          }
-        }
-      },
+      flap(){ this.vel=-this.lift; playTone(300,0.08); },
       update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
@@ -1028,7 +973,7 @@ if (inMecha) {
     if (frames > mechaSafeExpiry) {
       inMecha = false;
       tripleShot = false;
-      applySkin();
+      birdSprite.src = 'assets/birdieV2.png';
     }
   }
   // if not armored, die as normal
@@ -1346,7 +1291,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
           inMecha = false;
           mechaTriggered = false;
           mechSpeed = baseSpeed;
-          applySkin();
+          birdSprite.src = 'assets/birdieV2.png';
           mechaMusic.pause();
           bgMusic.currentTime = 0;
           bgMusic.play().catch(()=>{});
@@ -1607,30 +1552,6 @@ function updateJellies() {
     ctx.restore();
     if(pa.life<=0) rocketParticles.splice(idx,1);
   });
-
-  // update thruster particles for mech skins
-  thrusterParticles.forEach((tp, ti) => {
-    tp.x += tp.vx;
-    tp.y += tp.vy;
-    tp.life--;
-    ctx.save();
-    if(tp.type==='fire'){
-      const g = ctx.createRadialGradient(tp.x,tp.y,0,tp.x,tp.y,6);
-      g.addColorStop(0,'rgba(255,150,0,0.8)');
-      g.addColorStop(1,'rgba(255,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(tp.x,tp.y,6,0,Math.PI*2);
-      ctx.fill();
-    } else {
-      ctx.strokeStyle='rgba(0,200,255,0.7)';
-      ctx.beginPath();
-      ctx.arc(tp.x,tp.y,4,0,Math.PI*2);
-      ctx.stroke();
-    }
-    ctx.restore();
-    if(tp.life<=0) thrusterParticles.splice(ti,1);
-  });
 }
 
 
@@ -1723,9 +1644,6 @@ function handleHit(){
   bossEncounterCount = 0;
   bossesDefeated   = 0;
 
-  bossExploding = false;
-  bossExplosionTimer = 0;
-
   // ── reset mech state ──
   mechaTriggered   = false;
   inMecha          = false;
@@ -1734,7 +1652,7 @@ function handleHit(){
   // (optionally also reset mechaSafeExpiry:)
   mechaSafeExpiry  = 0;
   tripleShot       = false;
-  applySkin();
+  birdSprite.src   = 'assets/birdieV2.png';
   mechSpeed        = baseSpeed;
 
   // finally, update the on-screen score/coin display:
@@ -1870,48 +1788,6 @@ function showAchievementsList() {
   };
 }
 
-function showShop(){
-  const ov = document.getElementById('overlay');
-  const ct = document.getElementById('gameOverContent');
-  const fireOwned = ownedSkins.fire;
-  const aquaOwned = ownedSkins.aqua;
-  let html = `<h2>Shop - Coins: ${totalCoins}</h2>`;
-  html += `<p><button class="shopSel" data-skin="original">${skin==='original'?'Selected':'Use Original'}</button></p>`;
-  html += `<p>Fire Skin - 100 coins `;
-  html += fireOwned ? `<button class="shopSel" data-skin="fire">${skin==='fire'?'Selected':'Use Fire'}</button>` : `<button class="shopBuy" data-skin="fire">Buy</button>`;
-  html += `</p>`;
-  html += `<p>Aqua Skin - 100 coins `;
-  html += aquaOwned ? `<button class="shopSel" data-skin="aqua">${skin==='aqua'?'Selected':'Use Aqua'}</button>` : `<button class="shopBuy" data-skin="aqua">Buy</button>`;
-  html += `</p><button id="shopClose">Close</button>`;
-  ct.innerHTML = html;
-  ov.style.display = 'block';
-  ct.querySelectorAll('.shopBuy').forEach(btn=>{
-    btn.onclick=()=>{
-      const s=btn.getAttribute('data-skin');
-      if(totalCoins>=100){
-        totalCoins-=100;
-        localStorage.setItem('birdyCoinsEarned',totalCoins);
-        ownedSkins[s]=true;
-        localStorage.setItem('birdySkinsOwned',JSON.stringify(ownedSkins));
-        showShop();
-      }
-    };
-  });
-  ct.querySelectorAll('.shopSel').forEach(btn=>{
-    btn.onclick=()=>{
-      skin=btn.getAttribute('data-skin');
-      localStorage.setItem('birdySkin',skin);
-      applySkin();
-      ov.style.display='none';
-      if(state===STATE.Start) menuEl.style.display='block';
-    };
-  });
-  document.getElementById('shopClose').onclick=()=>{
-    ov.style.display='none';
-    if(state===STATE.Start) menuEl.style.display='block';
-  };
-}
-
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) {
@@ -1979,7 +1855,7 @@ document.addEventListener('keydown', e=>{
           ctx.save();
           ctx.font = '18px sans-serif';
           ctx.globalAlpha = 0.5 + 0.5*Math.sin(frames/20);
-          ctx.fillText(`Next Quest: ${quest}`, W/2, 420);
+          ctx.fillText(`Next Quest: ${quest}`, W/2, 380);
           ctx.restore();
         }
 
@@ -2033,74 +1909,26 @@ if (state === STATE.Boss) {
 if (state === STATE.MechaTransit) {
   if (mechaTriggered && !inMecha) {
     transitionTimer++;
-    if (skin === 'original') {
-      const dur = 60;
-      if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
-        birdSprite.src = mechaStages[mechaStage];
-        triggerShake(15);
-        mechaStage++;
-      }
-      if (mechaStage === mechaStages.length) {
-        inMecha = true;
-        mechaSafeExpiry = frames + 120;
-        console.log('🦾 FULL MECHA ENGAGED!');
-        showAchievement('🦾 Mecha Suit Assembled');
-        state = STATE.Play;
-        rocketsSpawned = 0;
-        mechaStartScore = score;
-        applySkin();
-      }
-    } else {
-      if (transitionTimer < 60) {
-        for (let i=0;i<5;i++) {
-          transformParticles.push({
-            x: bird.x,
-            y: bird.y,
-            vx: (Math.random()-0.5)*4,
-            vy: (Math.random()-0.5)*4,
-            life:30
-          });
-        }
-        triggerShake(4);
-      } else {
-        inMecha = true;
-        mechaSafeExpiry = frames + 120;
-        showAchievement('🦾 Mecha Suit Assembled');
-        state = STATE.Play;
-        rocketsSpawned = 0;
-        mechaStartScore = score;
-        applySkin();
-        transformParticles.length = 0;
-      }
+    const dur = 60;
+    if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
+      birdSprite.src = mechaStages[mechaStage];
+      triggerShake(15);
+      mechaStage++;
     }
+if (mechaStage === mechaStages.length) {
+  inMecha = true;
+  mechaSafeExpiry = frames + 120;   // ≈2 seconds @ 60fps
+  console.log('🦾 FULL MECHA ENGAGED!');
+  showAchievement('🦾 Mecha Suit Assembled');
+  state = STATE.Play;
+
+  rocketsSpawned = 0;
+  
+  mechaStartScore = score;
+}
   }
   applyShake();
   drawBackground();
-  // draw transformation particles
-  for (let i = transformParticles.length - 1; i >= 0; i--) {
-    const p = transformParticles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life--;
-    ctx.save();
-    if (skin === 'fire') {
-      const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,8);
-      g.addColorStop(0,'rgba(255,200,0,0.8)');
-      g.addColorStop(1,'rgba(255,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,8,0,Math.PI*2);
-      ctx.fill();
-    } else {
-      ctx.strokeStyle = 'rgba(0,200,255,0.7)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,6,0,Math.PI*2);
-      ctx.stroke();
-    }
-    ctx.restore();
-    if (p.life<=0) transformParticles.splice(i,1);
-  }
   // ── draw & animate any flying armor pieces ──
 for (let j = flyingArmor.length - 1; j >= 0; j--) {
   const a = flyingArmor[j];
