@@ -297,7 +297,8 @@ let pipeCount  = 0;
 
 // boss fight state
 let bossActive      = false;
-let bossHealth      = 500;
+let bossMaxHealth   = 500;
+let bossHealth      = bossMaxHealth;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
@@ -313,6 +314,8 @@ let bossObj;                // boss-specific timers & mode
     const clouds=[], trees=[];
     const rocketsOut = [];
     const rocketsIn  = [];
+    const rocketUps = [];
+    let rocketPower = 1, rocketPowerTimer = 0;
 
         // — load personal best & coin achievement flag —
     let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
@@ -357,11 +360,12 @@ bossEncounterCount++;
   bossFrames = bossEncounterCount > 1
     ? bossFramesS2
     : bossFramesS1;
-trackEvent('boss_fight_start'); 
-    bgMusic.pause();
-  bossActive       = true;
-  state            = STATE.Boss;
-  bossHealth       = 500;
+  trackEvent('boss_fight_start');
+      bgMusic.pause();
+    bossActive       = true;
+    state            = STATE.Boss;
+    bossMaxHealth    = bossEncounterCount > 1 ? 750 : 500;
+    bossHealth       = bossMaxHealth;
   //birdBossHP       = 2;
   // freeze main environment:
 // freeze main environment:
@@ -494,7 +498,8 @@ if (p.strongQueue > 0) {
   rocketsOut.forEach((b,i)=>{
     if (Math.hypot(b.x - (W-80), b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
-      bossHealth -= 10;
+      const dmg = b.power > 1 ? 20 : 10;
+      bossHealth -= dmg;
       if (bossHealth<=0) endBossFight(true);
     }
   });
@@ -561,7 +566,7 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  p.chargeDuration = 20 + (bossHealth/500)*40;
+  p.chargeDuration = 20 + (bossHealth/bossMaxHealth)*40;
   p.shakeMag     = 5
   
     // only in second encounter, randomly choose:
@@ -575,7 +580,7 @@ function triggerBossAttack(){
     });
   } else {
     // the old p.strongQueue logic, or normal rocket
-    if (bossHealth <= 400) p.strongQueue = 3;
+    if (bossHealth <= bossMaxHealth * 0.8) p.strongQueue = 3;
   }
 }
   
@@ -731,7 +736,7 @@ radialBombs.forEach(b => {
   ctx.fillStyle='#444';
   ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
   ctx.fillStyle='lime';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/500),6);
+  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/bossMaxHealth),6);
 }
 
 
@@ -876,7 +881,8 @@ function spawnPipe(){
   pipeCount++;
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
-        coinP = baseCoinProb  /* * decay*/;
+        coinP = baseCoinProb  /* * decay*/,
+        powerP= 0.05;
 
   // pick a random gap in the top half
   const topH = 50 + Math.random()*(H/2),
@@ -903,6 +909,13 @@ function spawnPipe(){
     if (!collidesApple && !collidesCoin) {
       coins.push({ x: cx, y: cy, taken: false });
     }
+  }
+
+  // — rocket powerup —
+  if (Math.random() < powerP) {
+    const px = W + pipeW/2;
+    const py = topH + gap * 0.3 + Math.random()*gap*0.4;
+    rocketUps.push({x:px,y:py,taken:false});
   }
 }
 
@@ -962,8 +975,8 @@ function updateRockets() {
       }
     }
 
-    // 2) existing rocket-vs-rocket collisions
-    for (let k = rocketsIn.length - 1; k >= 0; k--) {
+  // 2) existing rocket-vs-rocket collisions
+  for (let k = rocketsIn.length - 1; k >= 0; k--) {
       const rin = rocketsIn[k];
       if (rin.isBossShot) continue;
       if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
@@ -986,9 +999,21 @@ function updateRockets() {
         playTone(1000, 0.2);
         return;
       }
-    }
+  }
 
-    // 3) pipe collisions & off-screen
+      // 3) rocket vs jellyfish
+      for (let j = jellies.length - 1; j >= 0; j--) {
+        const jelly = jellies[j];
+        const rad = jelly.isShocking ? 40 : 24;
+        if (Math.hypot(r.x - jelly.x, r.y - jelly.y) < rad) {
+          jellies.splice(j,1);
+          rocketsOut.splice(i,1);
+          playTone(800,0.1);
+          return;
+        }
+      }
+
+      // 4) pipe collisions & off-screen
     pipes.forEach((p, pi) => {
       if (r.x > p.x && r.x < p.x+pipeW
           && r.y > p.top && r.y < p.top+p.gap) {
@@ -1293,13 +1318,33 @@ function updateJellies() {
   if (c.x + coinR < 0 || c.taken) coins.splice(i, 1);
 });
 
+  // ── rocket powerup pickup ──
+  rocketUps.forEach((p,i)=>{
+    p.x -= currentSpeed;
+    if(!p.taken){
+      ctx.fillStyle='purple';
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,coinR,0,2*Math.PI);
+      ctx.fill();
+      if(Math.hypot(bird.x-p.x,bird.y-p.y)<bird.rad+coinR){
+        p.taken=true;
+        rocketPower=3;
+        rocketPowerTimer=300;
+        playTone(1500,0.2);
+        updateScore();
+      }
+    }
+    if(p.x+coinR<0||p.taken) rocketUps.splice(i,1);
+  });
+
 }
 
 
     // ── Score, Game Over, High Scores ──
-    function updateScore(){
+function updateScore(){
   let txt = score;
   if (coinCount   > 0) txt += ` 🟡×${coinCount}`;
+  if (rocketPower > 1) txt += ` 🚀×${rocketPower}`;
   scoreEl.textContent = txt;
 }
       // ── boss after +100 in Mecha ─────────────────────────
@@ -1347,6 +1392,7 @@ function updateJellies() {
   // reset pipes & pickups
   pipes.length = 0;
   apples.length = 0;
+  rocketUps.length = 0;
 
   // speeds & counters
   currentSpeed = baseSpeed;
@@ -1354,6 +1400,8 @@ function updateJellies() {
   frames       = 0;
   superTimer   = 0;
   speedFlashTimer = 0;
+  rocketPower = 1;
+  rocketPowerTimer = 0;
 
   // reposition bird
   bird.reset();
@@ -1469,11 +1517,18 @@ function flapHandler(e){
   if (state === STATE.Start) {
     state = STATE.Play;
     trackEvent('game_start');
-  } else if (state === STATE.Play || state === STATE.Boss) {
-    bird.flap();
-    // always allow shooting in Boss fight (regardless of inMecha)
-    rocketsOut.push({ x: bird.x+40, y: bird.y, vx: 4 });
-  }
+    } else if (state === STATE.Play || state === STATE.Boss) {
+      bird.flap();
+      // shoot rockets
+      for(let n=0;n<rocketPower;n++){
+        rocketsOut.push({
+          x: bird.x+40,
+          y: bird.y + (n-(rocketPower-1)/2)*10,
+          vx: 4,
+          power: rocketPower
+        });
+      }
+    }
 }
 canvas.addEventListener('mousedown', flapHandler);
 canvas.addEventListener('touchstart',  flapHandler, {passive:true});
@@ -1669,7 +1724,11 @@ if (state === STATE.Play) {
          ctx.fillText('🚀 SPEED UP!', W/2, H/4);
          ctx.restore();
  }
-      if(superTimer>0) superTimer--;
+       if(superTimer>0) superTimer--;
+       if(rocketPowerTimer>0){
+         rocketPowerTimer--;
+         if(rocketPowerTimer===0) rocketPower=1;
+       }
       requestAnimationFrame(loop);
     }
     updateScore();
