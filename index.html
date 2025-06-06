@@ -1300,7 +1300,7 @@ function updateJellies() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = currentSpeed * (inMecha ? 0.33 : 1);
+  const coinSpeed = baseSpeed * (inMecha ? 0.33 : 1);
   c.x -= coinSpeed;
 
   if (!c.taken) {
@@ -1341,7 +1341,7 @@ function updateJellies() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    const powerSpeed = currentSpeed * 0.6 * (inMecha ? 0.33 : 1);
+    const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.33 : 1);
     p.x -= powerSpeed;
     if(!p.taken){
       ctx.save();
@@ -1771,9 +1771,9 @@ if (state === STATE.Play) {
   drawPipes();
   updatePipes();
 
-  // — spawn bigger, evil rocket waves faster when in Mecha —
-  if (inMecha && frames % 40 === 0) {
-    for (let i = 0; i < 4; i++) {
+  // — spawn bigger, evil rocket waves when in Mecha —
+  if (inMecha && frames % 60 === 0) {
+    for (let i = 0; i < 3; i++) {
       rocketsIn.push({
         x: W + 20 + i * 60,
         y: Math.random() * (H - 100) + 50,
@@ -1797,7 +1797,7 @@ if (state === STATE.Play) {
       coins.push({ x: W + 40, y: cy, taken: false });
     }
 
-    if (rocketsSpawned >= 30 && frames % 120 === 0) spawnJelly();
+    if (rocketsSpawned >= 30 && frames % 132 === 0) spawnJelly();
     
       // homing bomb (only after 1 boss, and only 25% of those seconds)
   if (bossEncounterCount > 0 && Math.random() < 0.25) {
