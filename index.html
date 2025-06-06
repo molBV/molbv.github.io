@@ -108,6 +108,7 @@
     <button id="btnAdventure" class="menu-btn">Adventure</button>
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
+    <button id="btnShop" class="menu-btn">Shop</button>
   </div>
   <div id="achievementPopup"></div>
 
@@ -194,7 +195,9 @@
 
         // ── Preload bird sprite ──
     const birdSprite = new Image();
-    birdSprite.src = 'assets/birdieV2.png';
+    const ownedSkins = JSON.parse(localStorage.getItem('birdyOwnedSkins')||'{}');
+    let defaultSkin = localStorage.getItem('birdySkin') || 'birdieV2.png';
+    birdSprite.src = 'assets/' + defaultSkin;
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -254,6 +257,10 @@ let marathonMoving = false;
   document.getElementById('btnAchievements').onclick = () => {
     menuEl.style.display = 'none';
     showAchievementsList();
+  };
+  document.getElementById('btnShop').onclick = () => {
+    menuEl.style.display = 'none';
+    showShop();
   };
 
   // boss frames: phase 1 vs. phase 2
@@ -714,7 +721,7 @@ function triggerBossAttack(){
   inMecha         = false;
   mechaTriggered  = false;
   tripleShot      = false;
-  birdSprite.src  = 'assets/birdieV2.png';
+  birdSprite.src  = 'assets/' + defaultSkin;
   updateScore();
 
   // clear lingering projectiles
@@ -973,7 +980,7 @@ if (inMecha) {
     if (frames > mechaSafeExpiry) {
       inMecha = false;
       tripleShot = false;
-      birdSprite.src = 'assets/birdieV2.png';
+      birdSprite.src = 'assets/' + defaultSkin;
     }
   }
   // if not armored, die as normal
@@ -1291,7 +1298,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
           inMecha = false;
           mechaTriggered = false;
           mechSpeed = baseSpeed;
-          birdSprite.src = 'assets/birdieV2.png';
+          birdSprite.src = 'assets/' + defaultSkin;
           mechaMusic.pause();
           bgMusic.currentTime = 0;
           bgMusic.play().catch(()=>{});
@@ -1652,7 +1659,7 @@ function handleHit(){
   // (optionally also reset mechaSafeExpiry:)
   mechaSafeExpiry  = 0;
   tripleShot       = false;
-  birdSprite.src   = 'assets/birdieV2.png';
+  birdSprite.src   = 'assets/' + defaultSkin;
   mechSpeed        = baseSpeed;
 
   // finally, update the on-screen score/coin display:
@@ -1788,6 +1795,77 @@ function showAchievementsList() {
   };
 }
 
+function showShop() {
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+
+  function render() {
+    let html = `<h2>Shop</h2>` +
+               `<p>Coins: ${totalCoins}</p>` +
+               `<div style="display:flex;flex-direction:column;align-items:center;">`;
+
+    const skins = [
+      {key:'birdieV2.png', name:'Default', cost:0, owned:true},
+      {key:'FireSkinBase.png', name:'Fire Skin', cost:100, owned:ownedSkins['FireSkinBase.png']},
+      {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']}
+    ];
+
+    skins.forEach(s => {
+      html += `<div style="margin:6px;">` +
+              `<img src="assets/${s.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
+              `${s.name} `;
+      if (s.owned || s.cost === 0) {
+        if (defaultSkin === s.key) {
+          html += `(Equipped)`;
+        } else {
+          html += `<button data-equip="${s.key}">Equip</button>`;
+        }
+      } else {
+        html += `<button data-buy="${s.key}">Buy - ${s.cost}</button>`;
+      }
+      html += `</div>`;
+    });
+
+    html += `</div><button id="shopClose">Close</button>`;
+    ct.innerHTML = html;
+
+    ct.querySelectorAll('button[data-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-buy');
+        const cost = 100;
+        if (totalCoins >= cost) {
+          totalCoins -= cost;
+          ownedSkins[key] = true;
+          localStorage.setItem('birdyCoinsEarned', totalCoins);
+          localStorage.setItem('birdyOwnedSkins', JSON.stringify(ownedSkins));
+          defaultSkin = key;
+          localStorage.setItem('birdySkin', defaultSkin);
+          birdSprite.src = 'assets/' + defaultSkin;
+          render();
+        }
+      };
+    });
+
+    ct.querySelectorAll('button[data-equip]').forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-equip');
+        defaultSkin = key;
+        localStorage.setItem('birdySkin', defaultSkin);
+        birdSprite.src = 'assets/' + defaultSkin;
+        render();
+      };
+    });
+
+    document.getElementById('shopClose').onclick = () => {
+      ov.style.display = 'none';
+      if(state===STATE.Start) menuEl.style.display = 'block';
+    };
+  }
+
+  ov.style.display = 'block';
+  render();
+}
+
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) {
@@ -1855,7 +1933,7 @@ document.addEventListener('keydown', e=>{
           ctx.save();
           ctx.font = '18px sans-serif';
           ctx.globalAlpha = 0.5 + 0.5*Math.sin(frames/20);
-          ctx.fillText(`Next Quest: ${quest}`, W/2, 380);
+          ctx.fillText(`Next Quest: ${quest}`, W/2, 420);
           ctx.restore();
         }
 
