@@ -47,7 +47,7 @@
 
 <body>
   <!-- ── AdSense strip at top of page ── -->
-  <ins id="adStrip" class="adsbygoogle"
+  <ins class="adsbygoogle"
        style="display:block; width:100%; height:60px"
        data-ad-client="ca-pub-9879261118412366"
        data-ad-slot="6412265994"
@@ -58,7 +58,11 @@
   </script>
   <!-- ────────────────────────────────── -->
 
-
+  <audio id="bgMusic"
+         src="assets/dream.guitar.mp3"
+         loop
+         preload="metadata"></audio>
+  <!-- …the rest of your code… -->
 
   <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
@@ -250,30 +254,21 @@ document.addEventListener('mousedown', initMusic, {passive:true});
 document.addEventListener('keydown',   initMusic, {passive:true});
 
     const ORIGINAL_WIDTH  = canvas.width,
-          ORIGINAL_HEIGHT = canvas.height,
-          adStrip         = document.getElementById('adStrip');
+          ORIGINAL_HEIGHT = canvas.height;
     function resizeCanvas(){
-      const headerH = adStrip ? adStrip.offsetHeight : 0;
-      const availH  = window.innerHeight - headerH;
       const scale = Math.min(
         window.innerWidth  / ORIGINAL_WIDTH,
-        availH             / ORIGINAL_HEIGHT
+        window.innerHeight / ORIGINAL_HEIGHT
       );
       const dispW = ORIGINAL_WIDTH * scale,
             dispH = ORIGINAL_HEIGHT * scale;
       canvas.style.width  = dispW + 'px';
       canvas.style.height = dispH + 'px';
       canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
-      canvas.style.top    = headerH + (availH - dispH) / 2 + 'px';
-      // reposition score and overlay padding relative to header
-      scoreEl.style.top    = (headerH + 20) + 'px';
-      overlay.style.paddingTop = (headerH + 20) + 'px';
+      canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
     }
     window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('orientationchange', resizeCanvas);
     resizeCanvas();
-    // mobile ads may shift layout after load; re-run once more shortly
-    setTimeout(resizeCanvas, 500);
 
     
 
@@ -332,7 +327,7 @@ let bossObj;                // boss-specific timers & mode
 
     // spawn rate for the triple rocket power‑up. We want it to be
     // more common than apples but not quite as common as coins
-    const baseTripleProb = 0.10;
+    const baseTripleProb = 0.25;
     const rocketPowerR   = 16;
 
         // — load personal best & coin achievement flag —
@@ -1549,8 +1544,8 @@ function showHighScores(hs, autoScroll = false){
   const ct = document.getElementById('gameOverContent');
   let html = `<h2>Top 50</h2>` +
              `<div id="hsBox" style="height:200px;overflow:hidden;display:inline-block;">` +
-             `<ol id="hsList" style="text-align:left;margin:0;padding-left:20px;list-style:none;">`;
-  hs.forEach((i, idx) => html += `<li>${idx + 1}. ${i.name} — ${i.score}</li>`);
+             `<ol id="hsList" style="text-align:left;margin:0;padding-left:20px;">`;
+  hs.forEach(i => html += `<li>${i.name} — ${i.score}</li>`);
   html += `</ol></div><br/><button id="retryBtn">Play Again</button>`;
   ct.innerHTML = html;
   document.getElementById('retryBtn').onclick = () => {
@@ -1787,7 +1782,7 @@ if (state === STATE.Play) {
       rocketsSpawned++;
     }
 
-    if (Math.random() < baseTripleProb / 4) {
+    if (Math.random() < baseTripleProb) {
       const ry = Math.random() * (H - 80) + 40;
       rocketPowerups.push({
         x: W + 40,
@@ -1797,7 +1792,7 @@ if (state === STATE.Play) {
     }
 
     // occasional bonus coins during Mecha
-    if (Math.random() < 0.1) {
+    if (Math.random() < 0.5) {
       const cy = Math.random() * (H - 80) + 40;
       coins.push({ x: W + 40, y: cy, taken: false });
     }
