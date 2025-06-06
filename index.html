@@ -36,6 +36,38 @@
     }
     #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
     #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+
+    #menu {
+      position:absolute;
+      top:200px;
+      left:50%;
+      transform:translateX(-50%);
+      text-align:center;
+      z-index:15;
+    }
+    .menu-btn {
+      display:block;
+      margin:10px auto;
+      padding:10px 20px;
+      font-size:20px;
+      border:4px solid #000;
+      background:#fff;
+      cursor:pointer;
+    }
+    #achievementPopup {
+      position:absolute;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      padding:4px 8px;
+      border-radius:4px;
+      display:none;
+      z-index:30;
+      pointer-events:none;
+      font:16px sans-serif;
+    }
   </style>
 
   <!-- ==================== AdSense library loader ==================== -->
@@ -71,6 +103,12 @@
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
+  <div id="menu">
+    <button id="btnAdventure" class="menu-btn">Adventure</button>
+    <button id="btnMarathon"  class="menu-btn">Marathon</button>
+    <button id="btnAchievements" class="menu-btn">Achievements</button>
+  </div>
+  <div id="achievementPopup"></div>
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
   <script type="module">
@@ -164,6 +202,47 @@ let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
 let bossEncounterCount = 0; // tracks boss encounters
 let bossesDefeated    = 0; // number of times boss was beaten
+
+  // ── achievement tracking ──
+  const achievementDefs = [
+    { id:'pass20',   desc:'Pass 20 Pipes' },
+    { id:'coin10',   desc:'Collect 10 coins' },
+    { id:'kill5',    desc:'Destroy 5 Jellyfish' },
+    { id:'rocket3',  desc:'Get 3x Rocket Pickup' },
+    { id:'score100', desc:'Get 100 Points' },
+    { id:'boss1',    desc:'Beat Lv 1 Boss' },
+    { id:'boss2',    desc:'Beat Lv 2 Boss' },
+    { id:'score500', desc:'Get 500 Points' }
+  ];
+  let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
+
+  let runPipes=0, runCoins=0, runJellies=0, runPowerups=0;
+
+let marathonMode = false;
+let marathonMoving = false;
+
+  const menuEl = document.getElementById('menu');
+
+  function startAdventure(){
+    marathonMode = false;
+    menuEl.style.display = 'none';
+    state = STATE.Play;
+    trackEvent('game_start');
+  }
+
+  function startMarathon(){
+    marathonMode = true;
+    menuEl.style.display = 'none';
+    state = STATE.Play;
+    trackEvent('game_start_marathon');
+  }
+
+  document.getElementById('btnAdventure').onclick = startAdventure;
+  document.getElementById('btnMarathon').onclick  = startMarathon;
+  document.getElementById('btnAchievements').onclick = () => {
+    menuEl.style.display = 'none';
+    showAchievementsList();
+  };
 
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
@@ -334,18 +413,8 @@ let bossObj;                // boss-specific timers & mode
     const baseTripleProb = 0.25;
     const rocketPowerR   = 16;
 
-        // — load personal best & coin achievement flag —
-    let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
-    let coinAchievementUnlocked =
-      localStorage.getItem('coinAchievementUnlocked') === 'true';
-    canvas.addEventListener('click', e => {
-  // only in the Start state
-  if (state === STATE.Start) {
-    showAchievement(
-      `Achievements:\n` +
-      `${coinAchievementUnlocked ? '✅ Coin Hoarder' : '❌ Coin Hoarder'}\n`    );
-  }
-});
+    let personalBest = parseInt(localStorage.getItem('birdyBestScore')) || 0;
+
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
       trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
@@ -608,6 +677,8 @@ function triggerBossAttack(){
   if (victory) {
     trackEvent('boss_defeated', { score });
     bossesDefeated++;
+    if (bossesDefeated === 1) unlockAchievement('boss1');
+    if (bossesDefeated === 2) unlockAchievement('boss2');
     score += 50;
     mechaMusic.pause();
     mechaMusic.currentTime = 0;
@@ -902,7 +973,7 @@ function spawnPipe(){
   pipeCount++;
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
-        coinP = baseCoinProb  /* * decay*/,
+        coinP = baseCoinProb * (marathonMode ? 0.5 : 1) /* * decay*/,
         rocketP = baseTripleProb;
 
   // pick a random gap in the top half
@@ -910,8 +981,10 @@ function spawnPipe(){
         gap  = Math.max(minGap, initialGap - Math.floor(pipeCount/10)*10),
         color= pipeColors[Math.floor(pipeCount/20)%pipeColors.length];
 
+  if (marathonMode && gap === minGap) marathonMoving = true;
+
   // push the new pipe
-  const moving = bossesDefeated >= 2 && Math.random() < movingPipeChance;
+  const moving = (bossesDefeated >= 2 || marathonMoving) && Math.random() < movingPipeChance;
   pipes.push({
     x: W,
     top: topH,
@@ -1022,7 +1095,11 @@ function updateRockets() {
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
         rocketsOut.splice(i, 1);
         j.hp = (j.hp || 1) - 1;
-        if (j.hp <= 0) jellies.splice(jj, 1);
+        if (j.hp <= 0) {
+          jellies.splice(jj, 1);
+          runJellies++;
+          if (runJellies >= 5) unlockAchievement('kill5');
+        }
         return;
       }
     }
@@ -1036,7 +1113,7 @@ function updateRockets() {
         rocketsIn.splice(k, 1);
         score++; updateScore();
         bossRocketCount++;
-        if (bossRocketCount % 60 === 0 && !bossActive) { //triggering boss rocket
+        if (bossRocketCount % 60 === 0 && !bossActive && !marathonMode) { //triggering boss rocket
           rocketsIn.push({
             x: W + 40,
             y: Math.random()*(H-100)+50,
@@ -1044,7 +1121,7 @@ function updateRockets() {
             isBossTrigger: true
           });
         }
-        if (rin.isBossTrigger) {
+        if (rin.isBossTrigger && !marathonMode) {
           startBossFight();
           return;
         }
@@ -1279,6 +1356,8 @@ function updateJellies() {
       score++;
       updateScore();
       playTone(600, 0.08);
+      runPipes++;
+      if (runPipes >= 20) unlockAchievement('pass20');
     }
 
     // ←— NEW COLLISION / SHIELD LOGIC:
@@ -1346,6 +1425,8 @@ function updateJellies() {
       coinCount++;
       playTone(1000, 0.1);//playChord('V', audioCtx.currentTime);
       updateScore();
+      runCoins++;
+      if (runCoins >= 10) unlockAchievement('coin10');
 
       // ←— trigger Mecha when you hit 10 coins:
       if (coinCount >= 10 && !mechaTriggered) {
@@ -1388,6 +1469,8 @@ function updateJellies() {
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
         tripleShot = true;
+        runPowerups++;
+        if (runPowerups >= 3) unlockAchievement('rocket3');
       }
     }
     if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
@@ -1432,6 +1515,9 @@ function updateScore(){
   let txt = score;
   if (coinCount   > 0) txt += ` 🟡×${coinCount}`;
   scoreEl.textContent = txt;
+
+  if (score >= 100) unlockAchievement('score100');
+  if (score >= 500) unlockAchievement('score500');
 }
 
 function handleHit(){
@@ -1445,10 +1531,11 @@ function handleHit(){
   }
 }
       // ── boss after +100 in Mecha ─────────────────────────
-  if ( inMecha 
-      && !bossActive 
-      && state === STATE.Play 
+  if ( inMecha
+      && !bossActive
+      && state === STATE.Play
       && score - mechaStartScore >= 100
+      && !marathonMode
   ) {
     startBossFight();
   }
@@ -1474,6 +1561,9 @@ function handleHit(){
   state = STATE.Start;
   score = 0;
   shieldCount = 0;
+  runPipes = runCoins = runJellies = runPowerups = 0;
+  marathonMoving = false;
+  menuEl.style.display = 'block';
 
   // clear out any leftover bullets/rockets:
   rocketsOut.length = 0;
@@ -1593,24 +1683,57 @@ function showHighScores(hs, autoScroll = false){
   }
 }
 function showAchievement(message, duration = 2000) {
-    // clear any previous hide-timer
-    clearTimeout(achievementHideTimer);
-    trackEvent('achievement_unlocked', { achievement: message }); 
-    const ov = document.getElementById('overlay');
-    const ct = document.getElementById('gameOverContent');
-    ov.style.display = 'block';
-    ct.innerHTML = `<h2>${message}</h2>`;
-    // schedule this one
-    achievementHideTimer = setTimeout(() => {
-      ov.style.display = 'none';
-    }, duration);
+  clearTimeout(achievementHideTimer);
+  trackEvent('achievement_unlocked', { achievement: message });
+  const pop = document.getElementById('achievementPopup');
+  pop.textContent = `Achievement Unlocked: ${message}`;
+  pop.style.display = 'block';
+  achievementHideTimer = setTimeout(() => {
+    pop.style.display = 'none';
+  }, duration);
+}
+
+function unlockAchievement(id) {
+  if (!achievements[id]) {
+    achievements[id] = true;
+    localStorage.setItem('achievements', JSON.stringify(achievements));
+    const def = achievementDefs.find(a => a.id === id);
+    if (def) showAchievement(def.desc);
+  }
+}
+
+function nextAchievementDesc() {
+  for (const def of achievementDefs) {
+    if (!achievements[def.id]) return def.desc;
+  }
+  return '';
+}
+
+function showAchievementsList() {
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+  let html = '<h2>Achievements</h2><ul style="list-style:none;padding:0">';
+  achievementDefs.forEach(def => {
+    const done = achievements[def.id];
+    html += `<li>${done ? '✅' : '❌'} ${def.desc}</li>`;
+  });
+  html += '</ul><button id="achClose">Close</button>';
+  ct.innerHTML = html;
+  ov.style.display = 'block';
+  document.getElementById('achClose').onclick = () => {
+    ov.style.display = 'none';
+    if(state===STATE.Start) menuEl.style.display = 'block';
+  };
 }
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) {
     document.getElementById('overlay').style.display = 'none';
-     if (state === STATE.Over) {
+    if (state === STATE.Start) {
+      menuEl.style.display = 'block';
+    }
+    if (state === STATE.Over) {
       resetGame();
     }
   }
@@ -1632,8 +1755,7 @@ function flapHandler(e){
   }
 
   if (state === STATE.Start) {
-    state = STATE.Play;
-    trackEvent('game_start');
+    startAdventure();
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
@@ -1667,19 +1789,16 @@ document.addEventListener('keydown', e=>{
         ctx.fillText('🐦 Birdy - Rockets', W/2, H/2 - 40);
 
         ctx.font = '18px sans-serif';
-        ctx.fillText('Space/Click to Start', W/2, H/2);
+        ctx.fillText('Choose a mode below', W/2, H/2);
 
-        // ← new line:
-        // dynamically choose the prompt
-        let prompt;
-        if (!coinAchievementUnlocked) {
-          prompt = 'Collect 10 coins to unlock an achievement!';
-        } else {
-          prompt = 'Stay tuned for more epic quests!';
+        const quest = nextAchievementDesc();
+        if (quest) {
+          ctx.save();
+          ctx.globalAlpha = 0.5 + 0.5*Math.sin(frames/20);
+          ctx.fillText(`Next Quest: ${quest}`, W/2, H/2 + 40);
+          ctx.restore();
         }
-ctx.fillText(prompt, W/2, H/2 + 40);
 
-        // ← new line:
         ctx.fillText(`Personal Best: ${personalBest}`, W/2, H - 40);
       }
     }
