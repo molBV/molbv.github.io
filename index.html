@@ -327,7 +327,7 @@ let bossObj;                // boss-specific timers & mode
 
     // spawn rate for the triple rocket power‑up. We want it to be
     // more common than apples but not quite as common as coins
-    const baseTripleProb = 0.12;
+    const baseTripleProb = 0.25;
     const rocketPowerR   = 16;
 
         // — load personal best & coin achievement flag —
@@ -620,6 +620,11 @@ function triggerBossAttack(){
   tripleShot      = false;
   birdSprite.src  = 'assets/birdieV2.png';
   updateScore();
+
+  // clear lingering projectiles
+  radialBombs.length = 0;
+  tossBombs.length   = 0;
+  stage2Bombs.length = 0;
 }
 
 
@@ -1335,7 +1340,7 @@ function updateJellies() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    p.x -= currentSpeed;
+    p.x -= currentSpeed * 0.6;
     if(!p.taken){
       ctx.save();
       ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
@@ -1343,6 +1348,19 @@ function updateJellies() {
         ctx.drawImage(rocketOutSprite, -8, -12 + j*8, 16, 16);
       }
       ctx.restore();
+
+      if(frames % 4 === 0){
+        for(let n=0;n<2;n++){
+          rocketParticles.push({
+            x:p.x,
+            y:p.y,
+            vx:(Math.random()-0.5)*0.5,
+            vy:(Math.random()-0.5)*0.5,
+            life:20,
+            type:Math.floor(Math.random()*3)
+          });
+        }
+      }
 
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
@@ -1361,20 +1379,21 @@ function updateJellies() {
     ctx.globalAlpha = pa.life / 20;
     ctx.fillStyle = 'cyan';
     ctx.translate(pa.x, pa.y);
+    const size = 3 + (20 - pa.life) * 0.1;
     switch(pa.type){
       case 0:
         ctx.beginPath();
-        ctx.arc(0,0,3,0,Math.PI*2);
+        ctx.arc(0,0,size,0,Math.PI*2);
         ctx.fill();
         break;
       case 1:
-        ctx.fillRect(-3,-3,6,6);
+        ctx.fillRect(-size,-size,size*2,size*2);
         break;
       case 2:
         ctx.beginPath();
-        ctx.moveTo(0,-4);
-        ctx.lineTo(3,3);
-        ctx.lineTo(-3,3);
+        ctx.moveTo(0,-size);
+        ctx.lineTo(size, size);
+        ctx.lineTo(-size, size);
         ctx.closePath();
         ctx.fill();
         break;
@@ -1731,9 +1750,9 @@ if (state === STATE.Play) {
   drawPipes();
   updatePipes();
 
-  // — spawn bigger, evil rocket waves every second when in Mecha —
-  if (inMecha && frames % 60 === 0) {
-    for (let i = 0; i < 3; i++) {
+  // — spawn bigger, evil rocket waves faster when in Mecha —
+  if (inMecha && frames % 40 === 0) {
+    for (let i = 0; i < 4; i++) {
       rocketsIn.push({
         x: W + 20 + i * 60,
         y: Math.random() * (H - 100) + 50,
@@ -1749,6 +1768,12 @@ if (state === STATE.Play) {
         y: ry,
         taken: false
       });
+    }
+
+    // occasional bonus coins during Mecha
+    if (Math.random() < 0.5) {
+      const cy = Math.random() * (H - 80) + 40;
+      coins.push({ x: W + 40, y: cy, taken: false });
     }
 
     if (rocketsSpawned >= 30 && frames % 120 === 0) spawnJelly();
