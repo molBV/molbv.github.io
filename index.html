@@ -391,7 +391,14 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
-const STATE = { Start:0, Play:1, Over:2, MechaTransit:3, Boss:4 };
+const STATE = {
+  Start:0,
+  Play:1,
+  Over:2,
+  MechaTransit:3,
+  Boss:4,
+  BossExplode:5
+};
 
 // core game state
 let state      = STATE.Start;
@@ -408,6 +415,10 @@ let bossMaxHealth   = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
+let bossExplosionTimer = 0; // countdown for boss defeat explosion
+
+let altMecha = null;        // 'fire' or 'aqua' during alt mech transition
+let altMechaTimer = 0;
     const baseAppleProb=0.03,baseCoinProb=0.28;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
@@ -427,6 +438,7 @@ let bossObj;                // boss-specific timers & mode
     const rocketPowerups = [];
     const rocketParticles = [];
     const rocketSmoke = [];
+    const skinParticles = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -458,7 +470,9 @@ let bossObj;                // boss-specific timers & mode
 function startMechaTransition() {
   transitionTimer = 0;
   mechaStage      = 0;
-  inMecha         = false;  
+  inMecha         = false;
+  altMecha        = null;
+  altMechaTimer   = 0;
   // swap music
   bgMusic.pause();
   mechaMusic.load();
@@ -468,6 +482,14 @@ function startMechaTransition() {
     bossRetryHandler = () => mechaMusic.play().catch(()=>{});
     document.addEventListener('mousedown', bossRetryHandler, { once:true });
   });
+
+  if (defaultSkin === 'FireSkinBase.png') {
+    altMecha = 'fire';
+    altMechaTimer = 60;
+  } else if (defaultSkin === 'AquaSkinBase.png') {
+    altMecha = 'aqua';
+    altMechaTimer = 60;
+  }
 }
 function startBossFight() {
 bossEncounterCount++; 
@@ -702,7 +724,6 @@ function triggerBossAttack(){
       bossRetryHandler = null;
     }
   bossActive = false;
-  state      = STATE.Play;
   if (victory) {
     trackEvent('boss_defeated', { score });
     bossesDefeated++;
@@ -711,6 +732,16 @@ function triggerBossAttack(){
     score += 50;
     mechaMusic.pause();
     mechaMusic.currentTime = 0;
+    for (let i=0;i<5;i++) {
+      spawnExplosion(bossObj.x - bossObj.r + i*(bossObj.r*0.4), bossObj.y + (Math.random()*20-10));
+    }
+    explosionSfx.currentTime = 0;
+    explosionSfx.play();
+    triggerShake(10);
+    bossExplosionTimer = 90;
+    state = STATE.BossExplode;
+  } else {
+    state = STATE.Play;
   }
   bossRocketCount = 0;
 
@@ -968,11 +999,44 @@ function drawBackground(){
         ctx.drawImage(birdSprite, -32, -32, 64, 64);
         ctx.restore();
       },
-      flap(){ this.vel=-this.lift; playTone(300,0.08); },
+      flap(){
+        this.vel=-this.lift;
+        playTone(300,0.08);
+        if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
+          const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
+          for (let i=0;i<6;i++) {
+            skinParticles.push({
+              x:this.x-30,
+              y:this.y,
+              vx:(Math.random()-0.5)*2,
+              vy:(Math.random()-0.5)*2,
+              size:3+Math.random()*2,
+              life:20,
+              max:20,
+              type
+            });
+          }
+        }
+      },
       update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
           this.vel += this.gravity; this.y += this.vel;
+          if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
+            const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
+            for (let i=0;i<2;i++) {
+              skinParticles.push({
+                x:this.x-30,
+                y:this.y,
+                vx:(Math.random()-0.5)*1.5,
+                vy:(Math.random()-0.5)*1.5,
+                size:2+Math.random()*2,
+                life:20,
+                max:20,
+                type
+              });
+            }
+          }
           if (this.y + this.rad > H) {
   // while armored, always bounce
 if (inMecha) {
@@ -1091,6 +1155,38 @@ function updateExplosions() {
     ctx.drawImage(img, e.x - size / 2, e.y - size / 2, size, size);
     e.frame++;
     if (e.frame > 10) explosions.splice(i, 1);
+  }
+}
+
+function updateSkinParticles() {
+  for (let i = skinParticles.length - 1; i >= 0; i--) {
+    const p = skinParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    ctx.save();
+    ctx.globalAlpha = p.life / p.max;
+    if (p.type === 'fire') {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+      g.addColorStop(0, 'rgba(255,255,0,0.8)');
+      g.addColorStop(0.5, 'rgba(255,120,0,0.6)');
+      g.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'rgba(150,220,255,0.3)';
+      ctx.strokeStyle = 'rgba(150,220,255,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      p.vy -= 0.02; // gentle float up
+    }
+    ctx.restore();
+    if (p.life <= 0) skinParticles.splice(i, 1);
   }
 }
 
@@ -1894,7 +1990,7 @@ document.getElementById('overlay').addEventListener('click', e => {
 
 // Flap on click or touch (also hide overlay & reset if visible)
 function flapHandler(e){
-  if (state === STATE.MechaTransit) {
+  if (state === STATE.MechaTransit || state === STATE.BossExplode) {
     e.preventDefault();
     return;
   }
@@ -1995,10 +2091,48 @@ if (state === STATE.Boss) {
   return requestAnimationFrame(loop);
 }
 
+if (state === STATE.BossExplode) {
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  applyShake();
+  updateExplosions();
+  bird.draw();
+  if (--bossExplosionTimer <= 0) state = STATE.Play;
+  return requestAnimationFrame(loop);
+}
+
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
-  if (mechaTriggered && !inMecha) {
+  if (altMecha) {
+    for (let i = 0; i < 8; i++) {
+      skinParticles.push({
+        x: bird.x,
+        y: bird.y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        size: 3 + Math.random() * 2,
+        life: 20,
+        max: 20,
+        type: altMecha === 'fire' ? 'fire' : 'bubble'
+      });
+    }
+    altMechaTimer--;
+    triggerShake(15);
+    if (altMechaTimer <= 0) {
+      inMecha = true;
+      mechaSafeExpiry = frames + 120;
+      birdSprite.src = altMecha === 'fire'
+        ? 'assets/FireSkinMech.png'
+        : 'assets/AquaSkinMech.png';
+      console.log('🦾 FULL MECHA ENGAGED!');
+      showAchievement('🦾 Mecha Suit Assembled');
+      state = STATE.Play;
+      rocketsSpawned = 0;
+      mechaStartScore = score;
+      altMecha = null;
+    }
+  } else if (mechaTriggered && !inMecha) {
     transitionTimer++;
     const dur = 60;
     if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
@@ -2006,20 +2140,19 @@ if (state === STATE.MechaTransit) {
       triggerShake(15);
       mechaStage++;
     }
-if (mechaStage === mechaStages.length) {
-  inMecha = true;
-  mechaSafeExpiry = frames + 120;   // ≈2 seconds @ 60fps
-  console.log('🦾 FULL MECHA ENGAGED!');
-  showAchievement('🦾 Mecha Suit Assembled');
-  state = STATE.Play;
-
-  rocketsSpawned = 0;
-  
-  mechaStartScore = score;
-}
+    if (mechaStage === mechaStages.length) {
+      inMecha = true;
+      mechaSafeExpiry = frames + 120;
+      console.log('🦾 FULL MECHA ENGAGED!');
+      showAchievement('🦾 Mecha Suit Assembled');
+      state = STATE.Play;
+      rocketsSpawned = 0;
+      mechaStartScore = score;
+    }
   }
   applyShake();
   drawBackground();
+  updateSkinParticles();
   // ── draw & animate any flying armor pieces ──
 for (let j = flyingArmor.length - 1; j >= 0; j--) {
   const a = flyingArmor[j];
@@ -2039,6 +2172,7 @@ for (let j = flyingArmor.length - 1; j >= 0; j--) {
 applyShake();
 
  drawBackground();
+ updateSkinParticles();
 for (let j = flyingArmor.length - 1; j >= 0; j--) {
   const a = flyingArmor[j];
   a.vy += 0.2;
