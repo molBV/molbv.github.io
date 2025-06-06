@@ -219,7 +219,11 @@ let bossesDefeated    = 0; // number of times boss was beaten
     { id:'score100', desc:'Get 100 Points' },
     { id:'boss1',    desc:'Beat Lv 1 Boss' },
     { id:'boss2',    desc:'Beat Lv 2 Boss' },
-    { id:'score500', desc:'Get 500 Points' }
+    { id:'score500', desc:'Get 500 Points' },
+    { id:'coins500', desc:'Get 500 Coins' },
+    { id:'mar100', desc:'Get 100 Points in Marathon' },
+    { id:'mar250', desc:'Get 250 Points in Marathon' },
+    { id:'mar500', desc:'Get 500 Points in Marathon' }
   ];
   let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
 
@@ -428,6 +432,7 @@ let bossObj;                // boss-specific timers & mode
 
     let personalBest = parseInt(localStorage.getItem('birdyBestScore')) || 0;
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
+      if (totalCoins >= 500) unlockAchievement('coins500');
 
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
@@ -1436,7 +1441,7 @@ function updateJellies() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = baseSpeed * (inMecha ? 0.66 : 1);
+  const coinSpeed = currentSpeed * (inMecha ? 0.66 : 1);
   c.x -= coinSpeed;
 
   if (!c.taken) {
@@ -1461,6 +1466,7 @@ function updateJellies() {
       coinCount++;
       totalCoins++;
       localStorage.setItem('birdyCoinsEarned', totalCoins);
+      if (totalCoins >= 500) unlockAchievement('coins500');
       playTone(1000, 0.1);//playChord('V', audioCtx.currentTime);
       updateScore();
       runCoins++;
@@ -1556,6 +1562,9 @@ function updateScore(){
 
   if (score >= 100) unlockAchievement('score100');
   if (score >= 500) unlockAchievement('score500');
+  if (marathonMode && score >= 100) unlockAchievement("mar100");
+  if (marathonMode && score >= 250) unlockAchievement("mar250");
+  if (marathonMode && score >= 500) unlockAchievement("mar500");
 }
 
 function handleHit(){
