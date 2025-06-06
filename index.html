@@ -485,10 +485,10 @@ function startMechaTransition() {
 
   if (defaultSkin === 'FireSkinBase.png') {
     altMecha = 'fire';
-    altMechaTimer = 60;
+    altMechaTimer = 90;
   } else if (defaultSkin === 'AquaSkinBase.png') {
     altMecha = 'aqua';
-    altMechaTimer = 60;
+    altMechaTimer = 90;
   }
 }
 function startBossFight() {
@@ -738,7 +738,7 @@ function triggerBossAttack(){
     explosionSfx.currentTime = 0;
     explosionSfx.play();
     triggerShake(10);
-    bossExplosionTimer = 90;
+    bossExplosionTimer = 180;
     state = STATE.BossExplode;
   } else {
     state = STATE.Play;
@@ -1008,13 +1008,25 @@ function drawBackground(){
             skinParticles.push({
               x:this.x-30,
               y:this.y,
-              vx:(Math.random()-0.5)*2,
-              vy:(Math.random()-0.5)*2,
+              vx:(Math.random()-0.5)*3,
+              vy:(Math.random()-0.5)*3,
               size:3+Math.random()*2,
               life:20,
               max:20,
               type
             });
+            if (type === 'fire' && Math.random() < 0.5) {
+              skinParticles.push({
+                x:this.x-30,
+                y:this.y,
+                vx:(Math.random()-0.5)*4,
+                vy:(Math.random()-0.5)*4,
+                size:3+Math.random()*3,
+                life:25,
+                max:25,
+                type:'smoke'
+              });
+            }
           }
         }
       },
@@ -1028,13 +1040,25 @@ function drawBackground(){
               skinParticles.push({
                 x:this.x-30,
                 y:this.y,
-                vx:(Math.random()-0.5)*1.5,
-                vy:(Math.random()-0.5)*1.5,
+                vx:(Math.random()-0.5)*2,
+                vy:(Math.random()-0.5)*2,
                 size:2+Math.random()*2,
                 life:20,
                 max:20,
                 type
               });
+              if (type === 'fire' && Math.random() < 0.4) {
+                skinParticles.push({
+                  x:this.x-30,
+                  y:this.y,
+                  vx:(Math.random()-0.5)*3,
+                  vy:(Math.random()-0.5)*3,
+                  size:2+Math.random()*3,
+                  life:25,
+                  max:25,
+                  type:'smoke'
+                });
+              }
             }
           }
           if (this.y + this.rad > H) {
@@ -1163,6 +1187,8 @@ function updateSkinParticles() {
     const p = skinParticles[i];
     p.x += p.vx;
     p.y += p.vy;
+    p.vx *= 0.96;
+    p.vy *= 0.96;
     p.life--;
     ctx.save();
     ctx.globalAlpha = p.life / p.max;
@@ -1174,6 +1200,14 @@ function updateSkinParticles() {
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.type === 'smoke') {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 1.5);
+      g.addColorStop(0, 'rgba(80,60,40,0.2)');
+      g.addColorStop(1, 'rgba(80,60,40,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 1.5, 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.fillStyle = 'rgba(150,220,255,0.3)';
@@ -1558,7 +1592,7 @@ function updateJellies() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = baseSpeed * (inMecha ? 0.66 : 1);
+  const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
   c.x -= coinSpeed;
 
   if (!c.taken) {
@@ -2095,6 +2129,11 @@ if (state === STATE.BossExplode) {
   ctx.clearRect(0,0,W,H);
   drawBackground();
   applyShake();
+  if (frames % 12 === 0) {
+    const rx = bossObj.x + (Math.random()-0.5) * bossObj.r * 2;
+    const ry = bossObj.y + (Math.random()-0.5) * bossObj.r * 2;
+    spawnExplosion(rx, ry);
+  }
   updateExplosions();
   bird.draw();
   if (--bossExplosionTimer <= 0) state = STATE.Play;
@@ -2116,6 +2155,18 @@ if (state === STATE.MechaTransit) {
         max: 20,
         type: altMecha === 'fire' ? 'fire' : 'bubble'
       });
+      if (altMecha === 'fire' && Math.random() < 0.5) {
+        skinParticles.push({
+          x: bird.x,
+          y: bird.y,
+          vx: (Math.random() - 0.5) * 5,
+          vy: (Math.random() - 0.5) * 5,
+          size: 3 + Math.random() * 3,
+          life: 25,
+          max: 25,
+          type: 'smoke'
+        });
+      }
     }
     altMechaTimer--;
     triggerShake(15);
@@ -2134,7 +2185,7 @@ if (state === STATE.MechaTransit) {
     }
   } else if (mechaTriggered && !inMecha) {
     transitionTimer++;
-    const dur = 60;
+    const dur = 80;
     if (transitionTimer === dur * (mechaStage + 1) && mechaStage < mechaStages.length) {
       birdSprite.src = mechaStages[mechaStage];
       triggerShake(15);
