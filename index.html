@@ -163,6 +163,7 @@ let mechaTriggered = false;
 let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
 let bossEncounterCount = 0; // tracks boss encounters
+let bossesDefeated    = 0; // number of times boss was beaten
 
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
@@ -311,6 +312,9 @@ let bossObj;                // boss-specific timers & mode
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     let mechSpeed = baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
+    const movingPipeChance = 0.3;  // chance a pipe oscillates after boss 2
+    const pipeMoveAmplitude = 15;   // max up/down movement in pixels
+    const pipeMoveSpeed = 0.04;     // radians per frame
     const clouds=[], trees=[];
     const rocketsOut = [];
     const rocketsIn  = [];
@@ -603,9 +607,10 @@ function triggerBossAttack(){
   state      = STATE.Play;
   if (victory) {
     trackEvent('boss_defeated', { score });
+    bossesDefeated++;
     score += 50;
-  mechaMusic.pause();
-  mechaMusic.currentTime = 0;
+    mechaMusic.pause();
+    mechaMusic.currentTime = 0;
   }
   bossRocketCount = 0;
 
@@ -906,7 +911,18 @@ function spawnPipe(){
         color= pipeColors[Math.floor(pipeCount/20)%pipeColors.length];
 
   // push the new pipe
-  pipes.push({ x:W, top:topH, gap, color, passed:false });
+  const moving = bossesDefeated >= 2 && Math.random() < movingPipeChance;
+  pipes.push({
+    x: W,
+    top: topH,
+    baseTop: topH,
+    gap,
+    color,
+    passed: false,
+    moving,
+    phase: Math.random() * Math.PI * 2,
+    amp: pipeMoveAmplitude
+  });
 
   // — apples —
   if (Math.random() < appP) {
@@ -1249,8 +1265,13 @@ function updateJellies() {
 
   // ── pipe movement, scoring & collision ──
   pipes.forEach((p,i) => {
-    // move pipe
+    // move pipe horizontally
     p.x -= currentSpeed;
+
+    // optional vertical oscillation
+    if (p.moving) {
+      p.top = p.baseTop + Math.sin(frames * pipeMoveSpeed + p.phase) * p.amp;
+    }
 
     // score for passing through
     if (!p.passed && p.x + pipeW < bird.x) {
@@ -1483,6 +1504,7 @@ function handleHit(){
 
       // ←─ ADD THIS:
   bossEncounterCount = 0;
+  bossesDefeated   = 0;
 
   // ── reset mech state ──
   mechaTriggered   = false;
