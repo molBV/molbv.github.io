@@ -196,12 +196,16 @@ const bossRockets  = ['boss_rocket1','boss_rocket2'].map(r=>Object.assign(new Im
 const bombSprite   = Object.assign(new Image(),{src:'assets/boss_animation/bomb.png'});
 const flyingArmor   = [];
 const stage2Bombs = [];  // boss-2 special slow bombs
+// ── jellyfish sprites ──
+const jellyFrames = ['assets/jelly1.png','assets/jelly2.png','assets/jelly3.png'].map(src=>Object.assign(new Image(),{src}));
+const jellyShockFrames = ['assets/jelly.shock1.png','assets/jelly.shock2.png','assets/jelly.shock3.png'].map(src=>Object.assign(new Image(),{src}));
+const jellies = [];
 
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
     // ── Strong‐attack bomb queues ─────────────────────────────
 const tossBombs   = [];   // upward‐toss bombs
-const radialBombs = [];   // 8‐way fragments
+    const radialBombs = [];   // 8‐way fragments
 
 
     // ── Responsive canvas setup ──
@@ -868,7 +872,7 @@ if (inMecha) {
     };
 
     // ── Pipes & pickups ──
-    function spawnPipe(){
+function spawnPipe(){
   pipeCount++;
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
@@ -902,6 +906,21 @@ if (inMecha) {
   }
 }
 
+function spawnJelly(){
+  jellies.push({
+    x: W + 40,
+    baseY: Math.random() * (H - 100) + 50,
+    amp: 30 + Math.random()*20,
+    freq: 0.04 + Math.random()*0.02,
+    vx: -1.5,
+    frame: 0,
+    shockTimer: 0,
+    shockInterval: 180,
+    shockDuration: 40,
+    isShocking: false
+  });
+}
+
     function drawPipes(){
       pipes.forEach(p=>{
         ctx.fillStyle=p.color;
@@ -912,7 +931,7 @@ if (inMecha) {
         ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
       });
     }
-    function updateRockets() {
+function updateRockets() {
   // only run rockets logic during Mecha or Boss fight
   if (!(inMecha || state === STATE.Boss)) return;
 
@@ -952,7 +971,7 @@ if (inMecha) {
         rocketsIn.splice(k, 1);
         score++; updateScore();
         bossRocketCount++;
-        if (bossRocketCount % 20 === 0 && !bossActive) { //triggering boss rocket
+        if (bossRocketCount % 60 === 0 && !bossActive) { //triggering boss rocket
           rocketsIn.push({
             x: W + 40,
             y: Math.random()*(H-100)+50,
@@ -1112,8 +1131,54 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     }
 
     // 5) off-screen cleanup
-    if (r.x < -20) rocketsIn.splice(i, 1);
+  if (r.x < -20) rocketsIn.splice(i, 1);
   });
+}
+
+function updateJellies() {
+  if (!inMecha || bossActive) return;
+  for (let i = jellies.length - 1; i >= 0; i--) {
+    const j = jellies[i];
+    j.frame++;
+    j.x += j.vx;
+    j.y = j.baseY + Math.sin(j.frame * j.freq) * j.amp;
+
+    // shock cycle
+    j.shockTimer++;
+    if (!j.isShocking && j.shockTimer > j.shockInterval) {
+      j.isShocking = true;
+      j.shockTimer = 0;
+    } else if (j.isShocking && j.shockTimer > j.shockDuration) {
+      j.isShocking = false;
+      j.shockTimer = 0;
+    }
+
+    // draw jelly
+    const framesArr = j.isShocking ? jellyShockFrames : jellyFrames;
+    const img = framesArr[Math.floor(j.frame / 8) % framesArr.length];
+    ctx.drawImage(img, j.x - 32, j.y - 32, 64, 64);
+
+    if (j.isShocking) {
+      const shockImg = jellyShockFrames[Math.floor(j.frame / 4) % jellyShockFrames.length];
+      for (let a = 0; a < 4; a++) {
+        const ang = a * Math.PI/2 + j.frame * 0.1;
+        ctx.drawImage(shockImg, j.x + Math.cos(ang)*40 - 16, j.y + Math.sin(ang)*40 - 16, 32, 32);
+      }
+    }
+
+    const rad = j.isShocking ? 40 : 24;
+    if (Math.hypot(bird.x - j.x, bird.y - j.y) < bird.rad + rad) {
+      if (coinCount > 0) {
+        coinCount--; updateScore(); playTone(1000,0.2);
+      } else {
+        endGame();
+      }
+      jellies.splice(i,1);
+      continue;
+    }
+
+    if (j.x < -60) jellies.splice(i,1);
+  }
 }
 
 
@@ -1271,6 +1336,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
   // clear out any leftover bullets/rockets:
   rocketsOut.length = 0;
   rocketsIn.length  = 0;
+  jellies.length    = 0;
 
   // reset coins _before_ updating the UI
   coinCount         = 0;
@@ -1559,6 +1625,8 @@ if (state === STATE.Play) {
         vx: -3
       });
     }
+
+    if (frames % 120 === 0) spawnJelly();
     
       // homing bomb (only after 1 boss, and only 25% of those seconds)
   if (bossEncounterCount > 0 && Math.random() < 0.25) {
@@ -1576,6 +1644,7 @@ if (state === STATE.Play) {
 
   if (inMecha) {
     updateRockets();
+    updateJellies();
   }
   bird.update();
 
