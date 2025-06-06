@@ -927,6 +927,7 @@ function spawnJelly(){
     freq: 0.04 + Math.random()*0.02,
     vx: -1.5,
     frame: 0,
+    hp: 6,
     shockTimer: 0,
     shockInterval: 180,
     shockDuration: 40,
@@ -975,12 +976,13 @@ function updateRockets() {
       }
     }
 
-    // 1b) kill jellies
+    // 1b) damage jellies
     for (let jj = jellies.length - 1; jj >= 0; jj--) {
       const j = jellies[jj];
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
         rocketsOut.splice(i, 1);
-        jellies.splice(jj, 1);
+        j.hp = (j.hp || 1) - 1;
+        if (j.hp <= 0) jellies.splice(jj, 1);
         return;
       }
     }
@@ -1670,6 +1672,14 @@ if (state === STATE.Play) {
         vx: -3
       });
       rocketsSpawned++;
+    }
+
+    if (Math.random() < baseTripleProb) {
+      rocketPowerups.push({
+        x: W + 40,
+        y: Math.random() * (H - 80) + 40,
+        taken: false
+      });
     }
 
     if (rocketsSpawned >= 30 && frames % 120 === 0) spawnJelly();
