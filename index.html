@@ -217,6 +217,7 @@ let bossesDefeated    = 0; // number of times boss was beaten
   // ── achievement tracking ──
   const achievementDefs = [
     { id:'pass20',   desc:'Pass 20 Pipes' },
+    { id:'break20',  desc:'Break 20 Pipes' },
     { id:'coin10',   desc:'Collect 10 coins' },
     { id:'kill5',    desc:'Destroy 5 Jellyfish' },
     { id:'rocket3',  desc:'Get 3x Rocket Pickup' },
@@ -231,7 +232,7 @@ let bossesDefeated    = 0; // number of times boss was beaten
   ];
   let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
 
-  let runPipes=0, runCoins=0, runJellies=0, runPowerups=0;
+  let runPipes=0, runCoins=0, runJellies=0, runPowerups=0, runPipeBreaks=0;
 
 let marathonMode = false;
 let marathonMoving = false;
@@ -416,7 +417,8 @@ let bossObj;                // boss-specific timers & mode
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     let mechSpeed = baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
-    const movingPipeChance = 0.3;  // chance a pipe oscillates after boss 2
+    const movingPipeChanceBase   = 0.3;  // initial chance a pipe oscillates
+    const movingPipeChanceActive = 0.6;  // after movement unlocked
     const pipeMoveAmplitude = 15;   // max up/down movement in pixels
     const pipeMoveSpeed = 0.04;     // radians per frame
     const clouds=[], trees=[];
@@ -1000,8 +1002,8 @@ function spawnPipe(){
   pipeCount++;
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
-        coinP = baseCoinProb * (marathonMode ? 0.5 : 1) /* * decay*/,
         rocketP = baseTripleProb;
+  let coinP = baseCoinProb * (marathonMode ? 0.5 : 1) /* * decay*/;
 
   // pick a random gap in the top half
   const topH = 50 + Math.random()*(H/2),
@@ -1011,7 +1013,11 @@ function spawnPipe(){
   if (marathonMode && gap === minGap) marathonMoving = true;
 
   // push the new pipe
-  const moving = (bossesDefeated >= 2 || marathonMoving) && Math.random() < movingPipeChance;
+  const movingChance = (bossesDefeated >= 2 || marathonMoving)
+    ? movingPipeChanceActive
+    : movingPipeChanceBase;
+  const moving = (bossesDefeated >= 2 || marathonMoving) && Math.random() < movingChance;
+  if (moving) coinP *= 0.5;
   pipes.push({
     x: W,
     top: topH,
@@ -1415,16 +1421,23 @@ function updateJellies() {
       bird.x - bird.rad < p.x + pipeW &&
       (bird.y - bird.rad < p.top || bird.y + bird.rad > p.top + p.gap)
     ) {
+      let broke = false;
       if (superTimer > 0) {
         // you’re “super” (apple), break pipe as before
         pipes.splice(i, 1);
         score++;
         updateScore();
         playTone(900, 0.2);
+        broke = true;
       } else {
+        if (coinCount > 0) broke = true;
         handleHit();
         // remove the pipe so you don’t get stuck
         pipes.splice(i, 1);
+      }
+      if (broke) {
+        runPipeBreaks++;
+        if (runPipeBreaks >= 20) unlockAchievement('break20');
       }
     }
 
@@ -1449,7 +1462,7 @@ function updateJellies() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = currentSpeed * (inMecha ? 0.66 : 1);
+  const coinSpeed = baseSpeed * (inMecha ? 0.66 : 1);
   c.x -= coinSpeed;
 
   if (!c.taken) {
@@ -1616,7 +1629,7 @@ function handleHit(){
   state = STATE.Start;
   score = 0;
   shieldCount = 0;
-  runPipes = runCoins = runJellies = runPowerups = 0;
+  runPipes = runCoins = runJellies = runPowerups = runPipeBreaks = 0;
   marathonMoving = false;
   menuEl.style.display = 'block';
 
