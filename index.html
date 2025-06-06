@@ -302,7 +302,7 @@ let bossMaxHealth   = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
 let bossObj;                // boss-specific timers & mode
-    const baseAppleProb=0.03,baseCoinProb=0.25;
+    const baseAppleProb=0.03,baseCoinProb=0.18;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
@@ -327,7 +327,7 @@ let bossObj;                // boss-specific timers & mode
 
     // spawn rate for the triple rocket power‑up. We want it to be
     // more common than apples but not quite as common as coins
-    const baseTripleProb = 0.1;
+    const baseTripleProb = 0.12;
     const rocketPowerR   = 16;
 
         // — load personal best & coin achievement flag —
@@ -928,12 +928,7 @@ function spawnPipe(){
     const ry = topH + gap*0.5 + (Math.random()*gap*0.4 - gap*0.2);
     rocketPowerups.push({
       x: rx,
-      baseY: ry,
       y: ry,
-      amp: 20 + Math.random()*10,
-      freq: 0.04 + Math.random()*0.02,
-      vx: -1.5,
-      frame: 0,
       taken: false
     });
   }
@@ -1340,28 +1335,14 @@ function updateJellies() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    p.frame++;
-    p.x += p.vx;
-    p.y = p.baseY + Math.sin(p.frame * p.freq) * p.amp;
+    p.x -= currentSpeed;
     if(!p.taken){
       ctx.save();
-      ctx.translate(p.x, p.y);
+      ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
       for(let j=0;j<3;j++){
-        ctx.drawImage(rocketOutSprite, -10, -14 + j*10, 20, 20);
+        ctx.drawImage(rocketOutSprite, -8, -12 + j*8, 16, 16);
       }
       ctx.restore();
-
-      // spawn a small electric particle behind the powerup
-      if (frames % 2 === 0) {
-        rocketParticles.push({
-          x: p.x,
-          y: p.y,
-          vx: (Math.random()-0.5)*0.5,
-          vy: (Math.random()-0.5)*0.5,
-          life: 20,
-          type: Math.floor(Math.random()*3) // 0 circle,1 square,2 triangle
-        });
-      }
 
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
@@ -1765,12 +1746,7 @@ if (state === STATE.Play) {
       const ry = Math.random() * (H - 80) + 40;
       rocketPowerups.push({
         x: W + 40,
-        baseY: ry,
         y: ry,
-        amp: 20 + Math.random()*10,
-        freq: 0.04 + Math.random()*0.02,
-        vx: -1.5,
-        frame: 0,
         taken: false
       });
     }
