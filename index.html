@@ -316,6 +316,7 @@ let bossObj;                // boss-specific timers & mode
     const rocketsIn  = [];
     const rocketPowerups = [];
     const rocketParticles = [];
+    const rocketSmoke = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -327,7 +328,7 @@ let bossObj;                // boss-specific timers & mode
     // spawn rate for the triple rocket power‑up. We want it to be
     // more common than apples but not quite as common as coins
     const baseTripleProb = 0.1;
-    const rocketPowerR   = 12;
+    const rocketPowerR   = 16;
 
         // — load personal best & coin achievement flag —
     let personalBest        = parseInt(localStorage.getItem('birdyBestScore')) || 0;
@@ -925,7 +926,16 @@ function spawnPipe(){
   if (inMecha && Math.random() < rocketP) {
     const rx = W + pipeW/2;
     const ry = topH + gap*0.5 + (Math.random()*gap*0.4 - gap*0.2);
-    rocketPowerups.push({ x: rx, y: ry, taken: false });
+    rocketPowerups.push({
+      x: rx,
+      baseY: ry,
+      y: ry,
+      amp: 20 + Math.random()*10,
+      freq: 0.04 + Math.random()*0.02,
+      vx: -1.5,
+      frame: 0,
+      taken: false
+    });
   }
 }
 
@@ -963,7 +973,11 @@ function updateRockets() {
   rocketsOut.forEach((r, i) => {
     // advance & draw the outgoing rocket
     r.x += r.vx;
-    ctx.drawImage(rocketOutSprite, r.x, r.y - 10, 16, 16);
+    const size = r.triple ? 20 : 16;
+    ctx.drawImage(rocketOutSprite, r.x, r.y - size/2, size, size);
+    if (r.triple && frames % 2 === 0) {
+      rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
+    }
 
     // 1) check hits on stage-2 bombs
     for (let j = stage2Bombs.length - 1; j >= 0; j--) {
@@ -1161,6 +1175,20 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     // 5) off-screen cleanup
   if (r.x < -20) rocketsIn.splice(i, 1);
   });
+
+  // draw and fade smoke for triple rockets
+  rocketSmoke.forEach((s, si) => {
+    s.r += 0.2;
+    s.alpha -= 0.05;
+    ctx.save();
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = 'grey';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (s.alpha <= 0) rocketSmoke.splice(si, 1);
+  });
 }
 
 function updateJellies() {
@@ -1312,12 +1340,14 @@ function updateJellies() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    p.x -= currentSpeed;
+    p.frame++;
+    p.x += p.vx;
+    p.y = p.baseY + Math.sin(p.frame * p.freq) * p.amp;
     if(!p.taken){
       ctx.save();
-      ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
+      ctx.translate(p.x, p.y);
       for(let j=0;j<3;j++){
-        ctx.drawImage(rocketOutSprite, -8, -12 + j*8, 16, 16);
+        ctx.drawImage(rocketOutSprite, -10, -14 + j*10, 20, 20);
       }
       ctx.restore();
 
@@ -1426,6 +1456,7 @@ function handleHit(){
   rocketsOut.length = 0;
   rocketsIn.length  = 0;
   jellies.length    = 0;
+  rocketSmoke.length = 0;
   rocketPowerups.length = 0;
   
   // reset coins _before_ updating the UI
@@ -1569,7 +1600,8 @@ function flapHandler(e){
         x: bird.x + 40,
         y: bird.y + (s - (shots-1)/2) * 8,
         vx: 4,
-        damage: tripleShot ? 20 : 10
+        damage: tripleShot ? 20 : 10,
+        triple: tripleShot
       });
     }
   }
@@ -1730,9 +1762,15 @@ if (state === STATE.Play) {
     }
 
     if (Math.random() < baseTripleProb) {
+      const ry = Math.random() * (H - 80) + 40;
       rocketPowerups.push({
         x: W + 40,
-        y: Math.random() * (H - 80) + 40,
+        baseY: ry,
+        y: ry,
+        amp: 20 + Math.random()*10,
+        freq: 0.04 + Math.random()*0.02,
+        vx: -1.5,
+        frame: 0,
         taken: false
       });
     }
