@@ -315,11 +315,18 @@ let bossObj;                // boss-specific timers & mode
     const rocketsOut = [];
     const rocketsIn  = [];
     const rocketPowerups = [];
+    const rocketParticles = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
 
-    const baseTripleProb = 0.02;
+    // cooldown so the boss radial shot only drains one coin even if
+    // multiple fragments hit on the same frame
+    let radialHitCooldown = 0;
+
+    // spawn rate for the triple rocket power‑up. We want it to be
+    // more common than apples but not quite as common as coins
+    const baseTripleProb = 0.1;
     const rocketPowerR   = 12;
 
         // — load personal best & coin achievement flag —
@@ -542,7 +549,10 @@ for (let i = radialBombs.length - 1; i >= 0; i--) {
 
   // 1) collision with bird?
   if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
-    handleHit();
+    if (radialHitCooldown <= 0) {
+      handleHit();
+      radialHitCooldown = 10; // short immunity window
+    }
     radialBombs.splice(i, 1);
     continue;
   }
@@ -911,8 +921,8 @@ function spawnPipe(){
     }
   }
 
-  // — triple rocket powerup —
-  if (Math.random() < rocketP) {
+  // — triple rocket powerup — (only spawn once the Mecha suit is active)
+  if (inMecha && Math.random() < rocketP) {
     const rx = W + pipeW/2;
     const ry = topH + gap*0.5 + (Math.random()*gap*0.4 - gap*0.2);
     rocketPowerups.push({ x: rx, y: ry, taken: false });
@@ -1310,12 +1320,56 @@ function updateJellies() {
         ctx.drawImage(rocketOutSprite, -8, -12 + j*8, 16, 16);
       }
       ctx.restore();
+
+      // spawn a small electric particle behind the powerup
+      if (frames % 2 === 0) {
+        rocketParticles.push({
+          x: p.x,
+          y: p.y,
+          vx: (Math.random()-0.5)*0.5,
+          vy: (Math.random()-0.5)*0.5,
+          life: 20,
+          type: Math.floor(Math.random()*3) // 0 circle,1 square,2 triangle
+        });
+      }
+
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
         tripleShot = true;
       }
     }
     if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
+  });
+
+  // update & draw rocket powerup particles
+  rocketParticles.forEach((pa, idx) => {
+    pa.x += pa.vx;
+    pa.y += pa.vy;
+    pa.life--;
+    ctx.save();
+    ctx.globalAlpha = pa.life / 20;
+    ctx.fillStyle = 'cyan';
+    ctx.translate(pa.x, pa.y);
+    switch(pa.type){
+      case 0:
+        ctx.beginPath();
+        ctx.arc(0,0,3,0,Math.PI*2);
+        ctx.fill();
+        break;
+      case 1:
+        ctx.fillRect(-3,-3,6,6);
+        break;
+      case 2:
+        ctx.beginPath();
+        ctx.moveTo(0,-4);
+        ctx.lineTo(3,3);
+        ctx.lineTo(-3,3);
+        ctx.closePath();
+        ctx.fill();
+        break;
+    }
+    ctx.restore();
+    if(pa.life<=0) rocketParticles.splice(idx,1);
   });
 }
 
@@ -1573,6 +1627,7 @@ function applyShake() {
 
     function loop(){
       frames++;
+      if (radialHitCooldown > 0) radialHitCooldown--;
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
   // 1) clear the canvas
