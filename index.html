@@ -295,6 +295,18 @@ let marathonMoving = false;
     if (state === STATE.Start) menuEl.style.display = 'block';
   };
 
+  musicSlider.oninput = () => {
+    musicVolume = parseFloat(musicSlider.value);
+    localStorage.setItem('musicVolume', musicVolume);
+    updateVolume();
+  };
+  sfxSlider.oninput = () => {
+    sfxVolume = parseFloat(sfxSlider.value);
+    localStorage.setItem('sfxVolume', sfxVolume);
+    updateVolume();
+  };
+
+
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
@@ -389,6 +401,7 @@ function updateVolume(){
 }
 updateVolume();
 
+
   musicSlider.oninput = () => {
     musicVolume = parseFloat(musicSlider.value);
     localStorage.setItem('musicVolume', musicVolume);
@@ -399,6 +412,8 @@ updateVolume();
     localStorage.setItem('sfxVolume', sfxVolume);
     updateVolume();
   };
+
+
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
