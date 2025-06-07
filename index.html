@@ -400,7 +400,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const reviveCountEl = document.getElementById('reviveCount');
-    updateReviveDisplay();
+
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
 const STATE = {
   Start:0,
@@ -472,6 +472,7 @@ let altMechaTimer = 0;
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
     let usedRevive    = false;
     let reviveTimer   = 0;
+    updateReviveDisplay();
 
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
