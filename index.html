@@ -27,6 +27,13 @@
       text-shadow:2px 2px 4px #000;
       z-index:10;
     }
+    #reviveDisplay {
+      position:absolute; bottom:10px; left:10px;
+      color:#fff; font:1rem sans-serif;
+      text-shadow:2px 2px 4px #000;
+      z-index:10;
+      display:flex; align-items:center;
+    }
     #overlay {
       display:none; position:absolute; top:0; left:0;
       width:100%; height:100%;
@@ -103,6 +110,7 @@
        preload="metadata"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
+  <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
   <div id="menu">
     <button id="btnAdventure" class="menu-btn">Adventure</button>
@@ -391,6 +399,8 @@ document.addEventListener('keydown',   initMusic, {passive:true});
 
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
+    const reviveCountEl = document.getElementById('reviveCount');
+    updateReviveDisplay();
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
 const STATE = {
   Start:0,
@@ -459,6 +469,9 @@ let altMechaTimer = 0;
     let personalBest = parseInt(localStorage.getItem('birdyBestScore')) || 0;
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
       if (totalCoins >= 500) unlockAchievement('coins500');
+    let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
+    let usedRevive    = false;
+    let reviveTimer   = 0;
 
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
@@ -1037,6 +1050,16 @@ function drawBackground(){
           ctx.beginPath(); ctx.arc(this.x,this.y,this.rad+8,0,2*Math.PI); ctx.stroke();
           ctx.restore();
         }
+        if(reviveTimer>0){
+          ctx.save();
+          ctx.strokeStyle='pink';
+          ctx.lineWidth=6;
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.rad+12, 0, 2*Math.PI);
+          ctx.stroke();
+          ctx.restore();
+        }
         // draw bird sprite
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -1126,7 +1149,7 @@ if (inMecha) {
   }
   // if not armored, die as normal
   else if (state === STATE.Play || state === STATE.Boss) {
-    endGame();
+    if (reviveTimer <= 0) endGame();
   }
 }
 
@@ -1850,7 +1873,92 @@ function updateScore(){
   if (marathonMode && score >= 500) unlockAchievement("mar500");
 }
 
+function updateReviveDisplay(){
+  document.getElementById('reviveCount').textContent = `${storedRevives}/1`;
+}
+
+function startReviveEffect(){
+  usedRevive = true;
+  reviveTimer = 60;
+  bird.vel = 0;
+  updateReviveDisplay();
+  for(let i=0;i<20;i++){
+    skinParticles.push({
+      x: bird.x,
+      y: bird.y,
+      vx:(Math.random()-0.5)*4,
+      vy:(Math.random()-0.5)*4,
+      size:4+Math.random()*3,
+      life:30,
+      max:30,
+      type:'bubble'
+    });
+  }
+}
+
+let revivePromptActive = false;
+
+function finalizeGameOver(){
+  trackEvent('game_over', { score });
+  state = STATE.Over;
+  hasSubmittedScore  = false;
+  overlayTop10Lock   = false;
+
+  if (score > personalBest) {
+    personalBest = score;
+    localStorage.setItem('birdyBestScore', personalBest);
+  }
+
+  playTone(100, 0.3);
+  showOverlay();
+}
+
+function showRevivePrompt(){
+  if (revivePromptActive || usedRevive || totalCoins < 50) return false;
+  revivePromptActive = true;
+  let countdown = 10;
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+  function render(){
+    ct.innerHTML = `
+      <h2>Continue for 50 coins?</h2>
+      <p>Coins: ${totalCoins}</p>
+      <p id="reviveClock">${countdown}</p>
+      <button id="revYes">Yes</button>
+      <button id="revNo">No</button>
+    `;
+  }
+  render();
+  ov.style.display = 'block';
+  const int = setInterval(()=>{
+    countdown--;
+    const clk = document.getElementById('reviveClock');
+    if (clk) clk.textContent = countdown;
+    if (countdown <= 0) cleanup(false);
+  },1000);
+  function cleanup(use){
+    clearInterval(int);
+    ov.style.display = 'none';
+    revivePromptActive = false;
+    if(use){
+      totalCoins -= 50;
+      localStorage.setItem('birdyCoinsEarned', totalCoins);
+      startReviveEffect();
+      updateScore();
+    } else {
+      finalizeGameOver();
+    }
+    updateReviveDisplay();
+  }
+  ct.onclick = (e)=>{
+    if(e.target.id==='revYes') cleanup(true);
+    if(e.target.id==='revNo')  cleanup(false);
+  };
+  return true;
+}
+
 function handleHit(){
+  if (reviveTimer > 0) return;
   tripleShot = false;
   bird.flashTimer = 8;
   if (coinCount > 0) {
@@ -1871,20 +1979,16 @@ function handleHit(){
     startBossFight();
   }
        function endGame(){
-    trackEvent('game_over', { score });
-    state = STATE.Over;
-    // reset our save/lock flags for the next round
-    hasSubmittedScore  = false;
-    overlayTop10Lock   = false;
-
-    // check personal best…
-    if (score > personalBest) {
-      personalBest = score;
-      localStorage.setItem('birdyBestScore', personalBest);
+    if (!usedRevive) {
+      if (storedRevives > 0) {
+        storedRevives--;
+        localStorage.setItem('birdyRevives', storedRevives);
+        startReviveEffect();
+        return;
+      }
+      if (showRevivePrompt()) return;
     }
-
-    playTone(100, 0.3);
-    showOverlay();
+    finalizeGameOver();
   }
 
   function resetGame(){ 
@@ -1940,6 +2044,9 @@ function handleHit(){
 
   // finally, update the on-screen score/coin display:
   updateScore();
+  usedRevive = false;
+  reviveTimer = 0;
+  updateReviveDisplay();
 }
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
@@ -2086,6 +2193,8 @@ function showShop() {
       {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']}
     ];
 
+    const revive = {key:'Revive.png', name:'Revive', cost:25};
+
     skins.forEach(s => {
       html += `<div style="margin:6px;">` +
               `<img src="assets/${s.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
@@ -2101,6 +2210,16 @@ function showShop() {
       }
       html += `</div>`;
     });
+
+    html += `<div style="margin:6px;">` +
+            `<img src="assets/${revive.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
+            `${revive.name} <small>Continue after falling, max 1 per run</small> `;
+    if (storedRevives > 0) {
+      html += `(Owned)`;
+    } else {
+      html += `<button id="buyRevive">Buy - ${revive.cost}</button>`;
+    }
+    html += `</div>`;
 
     html += `</div><button id="shopClose">Close</button>`;
     ct.innerHTML = html;
@@ -2132,6 +2251,20 @@ function showShop() {
       };
     });
 
+    const buyRev = document.getElementById('buyRevive');
+    if(buyRev){
+      buyRev.onclick = () => {
+        if(totalCoins >= revive.cost && storedRevives === 0){
+          totalCoins -= revive.cost;
+          storedRevives = 1;
+          localStorage.setItem('birdyCoinsEarned', totalCoins);
+          localStorage.setItem('birdyRevives', storedRevives);
+          updateReviveDisplay();
+          render();
+        }
+      };
+    }
+
     document.getElementById('shopClose').onclick = () => {
       ov.style.display = 'none';
       if(state===STATE.Start) menuEl.style.display = 'block';
@@ -2144,6 +2277,7 @@ function showShop() {
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
+  if (revivePromptActive) return;
   if (e.target === e.currentTarget) {
     document.getElementById('overlay').style.display = 'none';
     if (state === STATE.Start) {
@@ -2161,6 +2295,7 @@ function flapHandler(e){
     e.preventDefault();
     return;
   }
+  if(revivePromptActive) return;
   const ov = document.getElementById('overlay');
   if (ov.style.display === 'block') {
     ov.style.display = 'none';
@@ -2259,6 +2394,7 @@ function applyShake() {
 
     function loop(){
       frames++;
+      if(reviveTimer>0) reviveTimer--;
       if (radialHitCooldown > 0) radialHitCooldown--;
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
@@ -2451,10 +2587,12 @@ if (state === STATE.Play) {
 
 
   if (inMecha) {
-    updateRockets();
-    updateJellies();
+    if(reviveTimer<=0){
+      updateRockets();
+      updateJellies();
+    }
   }
-  bird.update();
+  if(reviveTimer<=0) bird.update();
 
 } else {
   // Start or Over screen
