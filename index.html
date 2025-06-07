@@ -1098,6 +1098,9 @@ function drawBackground(){
       update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
+          if (revivePromptActive) {
+            return;
+          }
           if (reviveTimer > 0) {
             this.vel = 0;
             this.y += (H/2 - this.y) * 0.1;
@@ -1145,7 +1148,7 @@ if (inMecha) {
     }
   }
   // if not armored, die as normal
-  else if (state === STATE.Play || state === STATE.Boss) {
+  else if ((state === STATE.Play || state === STATE.Boss) && !revivePromptActive) {
     if (reviveTimer <= 0) endGame();
   }
 }
@@ -1942,6 +1945,7 @@ function showRevivePrompt(){
   const useItem = storedRevives > 0;
   if (!useItem && totalCoins < 50) return false;
   revivePromptActive = true;
+  bird.vel = 0;
   let countdown = 10;
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
@@ -1989,7 +1993,7 @@ function showRevivePrompt(){
 }
 
 function handleHit(){
-  if (reviveTimer > 0) return;
+  if (revivePromptActive || reviveTimer > 0) return;
   tripleShot = false;
   bird.flashTimer = 8;
   if (coinCount > 0) {
