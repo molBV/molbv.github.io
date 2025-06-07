@@ -415,6 +415,9 @@ let bossHealth      = 500;
 let bossMaxHealth   = 500;
 //let birdBossHP      = 2;    // how many hits bird can take
 let bossRocketCount = 0;    // count rockets you’ve broken
+let bossRocketThreshold = 60; // rockets needed for next boss trigger
+let bossTriggerMisses  = 0;   // times a boss rocket despawned unhit
+let bossTriggerActive  = false; // is a boss trigger rocket on-screen
 let bossObj;                // boss-specific timers & mode
 let bossExplosionTimer = 0; // countdown for boss defeat explosion
 
@@ -493,7 +496,7 @@ function startMechaTransition() {
   }
 }
 function startBossFight() {
-bossEncounterCount++; 
+bossEncounterCount++;
   // …and pick the right art for this fight:
   bossFrames = bossEncounterCount > 1
     ? bossFramesS2
@@ -504,6 +507,10 @@ trackEvent('boss_fight_start');
   state            = STATE.Boss;
   bossMaxHealth    = bossEncounterCount > 1 ? 750 : 500;
   bossHealth       = bossMaxHealth;
+  bossTriggerActive = false;
+  bossTriggerMisses = 0;
+  bossRocketThreshold = 60;
+  bossRocketCount = 0;
   //birdBossHP       = 2;
   // freeze main environment:
 // freeze main environment:
@@ -540,6 +547,8 @@ pipes.length     = apples.length = coins.length = 0;
   const targetX = W - 80;
   if (p.x > targetX) {
     p.x += p.vx;           // moves left by 6px/frame
+    if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
+    if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
     return;                // skip the rest until you arrive
   } else {
     p.x = targetX;
@@ -761,6 +770,9 @@ function triggerBossAttack(){
     state = STATE.Play;
   }
   bossRocketCount = 0;
+  bossTriggerActive = false;
+  bossTriggerMisses = 0;
+  bossRocketThreshold = 60;
 
   // switch back to normal music
   mechaMusic.pause();
@@ -1378,16 +1390,23 @@ function updateRockets() {
         spawnExplosion(r.x, r.y);
         score++; updateScore();
         bossRocketCount++;
-        if (bossRocketCount % 60 === 0 && !bossActive && !marathonMode) { //triggering boss rocket
+        if (!bossActive && !marathonMode && !bossTriggerActive &&
+            bossRocketCount >= bossRocketThreshold) {
           rocketsIn.push({
             x: W + 40,
-            y: Math.random()*(H-100)+50,
+            y: Math.random() * (H - 100) + 50,
             vx: -1,
             isBossTrigger: true
           });
+          bossRocketCount = 0;
+          bossTriggerActive = true;
         }
         if (rin.isBossTrigger && !marathonMode) {
           startBossFight();
+          bossTriggerActive = false;
+          bossTriggerMisses = 0;
+          bossRocketThreshold = 60;
+          bossRocketCount = 0;
           return;
         }
         playTone(1000, 0.2);
@@ -1525,13 +1544,24 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
           flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
           flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
         }
+      } else {
+        bossTriggerActive = false;
+        bossTriggerMisses++;
+        bossRocketThreshold = bossTriggerMisses >= 2 ? 5 : 10;
       }
       rocketsIn.splice(i, 1);
       return;
     }
 
     // 5) off-screen cleanup
-  if (r.x < -20) rocketsIn.splice(i, 1);
+  if (r.x < -20) {
+    if (r.isBossTrigger) {
+      bossTriggerActive = false;
+      bossTriggerMisses++;
+      bossRocketThreshold = bossTriggerMisses >= 2 ? 5 : 10;
+    }
+    rocketsIn.splice(i, 1);
+  }
   });
 
   // draw and fade smoke for triple rockets
