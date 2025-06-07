@@ -1006,22 +1006,23 @@ function drawBackground(){
           const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
           for (let i=0;i<6;i++) {
             skinParticles.push({
-              x:this.x-30,
+              x:this.x-20,
               y:this.y,
               vx:(Math.random()-0.5)*3,
               vy:(Math.random()-0.5)*3,
-              size:3+Math.random()*2,
+              size:4+Math.random()*3,
               life:20,
               max:20,
-              type
+              type,
+              shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
             });
             if (type === 'fire' && Math.random() < 0.5) {
               skinParticles.push({
-                x:this.x-30,
+                x:this.x-20,
                 y:this.y,
                 vx:(Math.random()-0.5)*4,
                 vy:(Math.random()-0.5)*4,
-                size:3+Math.random()*3,
+                size:4+Math.random()*4,
                 life:25,
                 max:25,
                 type:'smoke'
@@ -1038,22 +1039,23 @@ function drawBackground(){
             const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
             for (let i=0;i<2;i++) {
               skinParticles.push({
-                x:this.x-30,
+                x:this.x-20,
                 y:this.y,
                 vx:(Math.random()-0.5)*2,
                 vy:(Math.random()-0.5)*2,
-                size:2+Math.random()*2,
+                size:3+Math.random()*3,
                 life:20,
                 max:20,
-                type
+                type,
+                shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
               });
               if (type === 'fire' && Math.random() < 0.4) {
                 skinParticles.push({
-                  x:this.x-30,
+                  x:this.x-20,
                   y:this.y,
                   vx:(Math.random()-0.5)*3,
                   vy:(Math.random()-0.5)*3,
-                  size:2+Math.random()*3,
+                  size:3+Math.random()*4,
                   life:25,
                   max:25,
                   type:'smoke'
@@ -1191,15 +1193,24 @@ function updateSkinParticles() {
     p.vy *= 0.96;
     p.life--;
     ctx.save();
-    ctx.globalAlpha = p.life / p.max;
+    ctx.globalAlpha = (p.life / p.max) * 0.7;
     if (p.type === 'fire') {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-      g.addColorStop(0, 'rgba(255,255,0,0.8)');
-      g.addColorStop(0.5, 'rgba(255,120,0,0.6)');
+      g.addColorStop(0, 'rgba(255,255,0,0.5)');
+      g.addColorStop(0.5, 'rgba(255,120,0,0.3)');
       g.addColorStop(1, 'rgba(255,0,0,0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      if (p.shape === 'triangle') {
+        ctx.moveTo(p.x, p.y - p.size);
+        ctx.lineTo(p.x + p.size, p.y + p.size);
+        ctx.lineTo(p.x - p.size, p.y + p.size);
+        ctx.closePath();
+      } else if (p.shape === 'square') {
+        ctx.rect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+      } else {
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      }
       ctx.fill();
     } else if (p.type === 'smoke') {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 1.5);
@@ -2134,6 +2145,7 @@ if (state === STATE.BossExplode) {
     const ry = bossObj.y + (Math.random()-0.5) * bossObj.r * 2;
     spawnExplosion(rx, ry);
   }
+  drawBoss();
   updateExplosions();
   bird.draw();
   if (--bossExplosionTimer <= 0) state = STATE.Play;
@@ -2150,10 +2162,11 @@ if (state === STATE.MechaTransit) {
         y: bird.y,
         vx: (Math.random() - 0.5) * 4,
         vy: (Math.random() - 0.5) * 4,
-        size: 3 + Math.random() * 2,
+        size: 4 + Math.random() * 3,
         life: 20,
         max: 20,
-        type: altMecha === 'fire' ? 'fire' : 'bubble'
+        type: altMecha === 'fire' ? 'fire' : 'bubble',
+        shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
       });
       if (altMecha === 'fire' && Math.random() < 0.5) {
         skinParticles.push({
@@ -2161,7 +2174,7 @@ if (state === STATE.MechaTransit) {
           y: bird.y,
           vx: (Math.random() - 0.5) * 5,
           vy: (Math.random() - 0.5) * 5,
-          size: 3 + Math.random() * 3,
+          size: 4 + Math.random() * 4,
           life: 25,
           max: 25,
           type: 'smoke'
