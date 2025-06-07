@@ -472,6 +472,7 @@ let altMechaTimer = 0;
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
     let usedRevive    = false;
     let reviveTimer   = 0;
+    const reviveRings = [];
     updateReviveDisplay();
 
     for(let i=0;i<7;i++){
@@ -1051,16 +1052,6 @@ function drawBackground(){
           ctx.beginPath(); ctx.arc(this.x,this.y,this.rad+8,0,2*Math.PI); ctx.stroke();
           ctx.restore();
         }
-        if(reviveTimer>0){
-          ctx.save();
-          ctx.strokeStyle='pink';
-          ctx.lineWidth=6;
-          ctx.globalAlpha = 0.7;
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.rad+12, 0, 2*Math.PI);
-          ctx.stroke();
-          ctx.restore();
-        }
         // draw bird sprite
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -1107,7 +1098,12 @@ function drawBackground(){
       update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
-          this.vel += this.gravity; this.y += this.vel;
+          if (reviveTimer > 0) {
+            this.vel = 0;
+            this.y += (H/2 - this.y) * 0.1;
+          } else {
+            this.vel += this.gravity; this.y += this.vel;
+          }
           if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
             const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
             for (let i=0;i<2;i++) {
@@ -1345,6 +1341,32 @@ function updateSkinParticles() {
     ctx.restore();
     if (p.life <= 0) skinParticles.splice(i, 1);
   }
+}
+
+function updateReviveEffect() {
+  if (reviveTimer <= 0) return;
+  if (frames % 15 === 0) {
+    reviveRings.push({ r: bird.rad, alpha: 0.7 });
+  }
+  for (let i = reviveRings.length - 1; i >= 0; i--) {
+    const ring = reviveRings[i];
+    ring.r += 3;
+    ring.alpha -= 0.02;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${ring.alpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(bird.x, bird.y, ring.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    if (ring.alpha <= 0) reviveRings.splice(i, 1);
+  }
+  ctx.save();
+  ctx.fillStyle = 'white';
+  ctx.font = '48px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(Math.ceil(reviveTimer/60), W/2, H/2);
+  ctx.restore();
 }
 
     function drawPipes(){
@@ -1880,7 +1902,8 @@ function updateReviveDisplay(){
 
 function startReviveEffect(){
   usedRevive = true;
-  reviveTimer = 60;
+  reviveTimer = 180;         // 3 second countdown
+  reviveRings.length = 0;
   bird.vel = 0;
   updateReviveDisplay();
   for(let i=0;i<20;i++){
@@ -1915,15 +1938,17 @@ function finalizeGameOver(){
 }
 
 function showRevivePrompt(){
-  if (revivePromptActive || usedRevive || totalCoins < 50) return false;
+  if (revivePromptActive || usedRevive) return false;
+  const useItem = storedRevives > 0;
+  if (!useItem && totalCoins < 50) return false;
   revivePromptActive = true;
   let countdown = 10;
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
   function render(){
     ct.innerHTML = `
-      <h2>Continue for 50 coins?</h2>
-      <p>Coins: ${totalCoins}</p>
+      <h2>${useItem ? 'Use Revive?' : 'Continue for 50 coins?'}</h2>
+      ${useItem ? '' : `<p>Coins: ${totalCoins}</p>`}
       <p id="reviveClock">${countdown}</p>
       <button id="revYes">Yes</button>
       <button id="revNo">No</button>
@@ -1942,10 +1967,15 @@ function showRevivePrompt(){
     ov.style.display = 'none';
     revivePromptActive = false;
     if(use){
-      totalCoins -= 50;
-      localStorage.setItem('birdyCoinsEarned', totalCoins);
+      if(useItem){
+        storedRevives--;
+        localStorage.setItem('birdyRevives', storedRevives);
+      } else {
+        totalCoins -= 50;
+        localStorage.setItem('birdyCoinsEarned', totalCoins);
+        updateScore();
+      }
       startReviveEffect();
-      updateScore();
     } else {
       finalizeGameOver();
     }
@@ -1981,12 +2011,6 @@ function handleHit(){
   }
        function endGame(){
     if (!usedRevive) {
-      if (storedRevives > 0) {
-        storedRevives--;
-        localStorage.setItem('birdyRevives', storedRevives);
-        startReviveEffect();
-        return;
-      }
       if (showRevivePrompt()) return;
     }
     finalizeGameOver();
@@ -2542,6 +2566,7 @@ if (state === STATE.Play) {
 
   // — normal draw/update —
   bird.draw();
+  updateReviveEffect();
   drawPipes();
   updatePipes();
 
@@ -2593,7 +2618,7 @@ if (state === STATE.Play) {
       updateJellies();
     }
   }
-  if(reviveTimer<=0) bird.update();
+  bird.update();
 
 } else {
   // Start or Over screen
