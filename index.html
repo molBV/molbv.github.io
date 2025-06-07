@@ -419,7 +419,7 @@ let bossExplosionTimer = 0; // countdown for boss defeat explosion
 
 let altMecha = null;        // 'fire' or 'aqua' during alt mech transition
 let altMechaTimer = 0;
-    const baseAppleProb=0.03,baseCoinProb=0.28;
+    const baseAppleProb=0.03,baseCoinProb=0.14;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
@@ -1221,6 +1221,10 @@ function updateSkinParticles() {
       ctx.arc(p.x, p.y, p.size * 1.5, 0, Math.PI * 2);
       ctx.fill();
     } else {
+      if (p.floatPhase === undefined) p.floatPhase = Math.random() * Math.PI * 2;
+      p.floatPhase += 0.05;
+      p.vy -= 0.02; // gentle float up
+      p.x += Math.sin(p.floatPhase) * 0.3;
       ctx.fillStyle = 'rgba(150,220,255,0.3)';
       ctx.strokeStyle = 'rgba(150,220,255,0.6)';
       ctx.lineWidth = 1;
@@ -1228,7 +1232,6 @@ function updateSkinParticles() {
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      p.vy -= 0.02; // gentle float up
     }
     ctx.restore();
     if (p.life <= 0) skinParticles.splice(i, 1);
@@ -1634,8 +1637,8 @@ function updateJellies() {
       runCoins++;
       if (runCoins >= 10) unlockAchievement('coin10');
 
-      // ←— trigger Mecha when you hit 10 coins:
-      if (coinCount >= 10 && !mechaTriggered) {
+      // ←— trigger Mecha when you hit 10 coins (Adventure only)
+      if (coinCount >= 10 && !mechaTriggered && !marathonMode) {
         mechaTriggered = true;
         state = STATE.MechaTransit;
         startMechaTransition();
@@ -1676,7 +1679,7 @@ function updateJellies() {
         p.taken = true;
         tripleShot = true;
         runPowerups++;
-        if (runPowerups >= 3) unlockAchievement('rocket3');
+        unlockAchievement('rocket3');
       }
     }
     if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
@@ -2063,6 +2066,22 @@ function flapHandler(e){
         triple: tripleShot
       });
     }
+    const bubbleShot = defaultSkin === 'AquaSkinBase.png' ||
+                       birdSprite.src.includes('AquaSkinMech');
+    if (bubbleShot) {
+      for (let b = 0; b < 8; b++) {
+        skinParticles.push({
+          x: bird.x,
+          y: bird.y,
+          vx:(Math.random()-0.5)*3,
+          vy:(Math.random()-0.5)*3,
+          size:3+Math.random()*3,
+          life:20,
+          max:20,
+          type:'bubble'
+        });
+      }
+    }
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
@@ -2079,15 +2098,21 @@ document.addEventListener('keydown', e=>{
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
 
+        const menuRect = menuEl.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        const scale = H / canvasRect.height;
+        const nameY  = Math.max(60, (menuRect.top - canvasRect.top) * scale - 20);
+        const questY = (menuRect.bottom - canvasRect.top) * scale + 20;
+
         ctx.font = '32px sans-serif';
-        ctx.fillText('🐦 Birdy - Rockets', W/2, 160);
+        ctx.fillText('🐦 Birdy - Rockets', W/2, nameY);
 
         const quest = nextAchievementDesc();
         if (quest) {
           ctx.save();
           ctx.font = '18px sans-serif';
           ctx.globalAlpha = 0.5 + 0.5*Math.sin(frames/20);
-          ctx.fillText(`Next Quest: ${quest}`, W/2, 420);
+          ctx.fillText(`Next Quest: ${quest}`, W/2, questY);
           ctx.restore();
         }
 
