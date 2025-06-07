@@ -113,11 +113,6 @@
          loop
          preload="metadata"></audio>
   <!-- …the rest of your code… -->
-
-  <audio id="bgMusic"
-       src="assets/dream.guitar.mp3"
-       loop
-       preload="metadata"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -260,7 +255,8 @@ let bossesDefeated    = 0; // number of times boss was beaten
 let marathonMode = false;
 let marathonMoving = false;
 
-  const menuEl = document.getElementById('menu');
+  const menuEl   = document.getElementById('menu');
+  const optionsEl= document.getElementById('optionsMenu');
 
   function startAdventure(){
     marathonMode = false;
@@ -351,7 +347,6 @@ const jellyFrames = ['assets/jelly1.png','assets/jelly2.png','assets/jelly3.png'
 const jellyShockFrames = ['assets/jelly.shock1.png','assets/jelly.shock2.png','assets/jelly.shock3.png'].map(src=>Object.assign(new Image(),{src}));
 const jellies = [];
 
-mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
     // ── Strong‐attack bomb queues ─────────────────────────────
 const tossBombs   = [];   // upward‐toss bombs
