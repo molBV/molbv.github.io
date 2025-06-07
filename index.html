@@ -386,7 +386,6 @@ function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
 bgMusic.volume = 0.5;
 
-const optionsEl   = document.getElementById('optionsMenu');
 
 const musicSlider  = document.getElementById('sliderMusic');
 const sfxSlider    = document.getElementById('sliderSfx');
@@ -2001,8 +2000,8 @@ function handleHit(){
       <button id="saveBtn">Save Score</button>
     `;
 
-    document.getElementById('saveBtn').onclick = async () => {
-      const name = document.getElementById('nameInput').value.trim() || 'Anon';
+    dyId('saveBtn').onclick = async () => {
+      const name = dyId('nameInput').value.trim() || 'Anon';
       await saveGlobalScore(name, score, marathonMode);
       trackEvent('submit_score', { score });
       hasSubmittedScore = true;
