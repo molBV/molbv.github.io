@@ -69,34 +69,6 @@
       pointer-events:none;
       font:16px sans-serif;
     }
-    #settingsBtn {
-      position:absolute;
-      bottom:10px;
-      left:10px;
-      width:40px;
-      height:40px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:24px;
-      border:4px solid #000;
-      background:#fff;
-      cursor:pointer;
-      z-index:15;
-    }
-    #settingsPanel {
-      position:absolute;
-      bottom:60px;
-      left:10px;
-      padding:10px;
-      border:4px solid #000;
-      background:#fff;
-      display:none;
-      z-index:15;
-    }
-    #settingsPanel input[type=range] {
-      width:120px;
-    }
   </style>
 
   <!-- ==================== AdSense library loader ==================== -->
@@ -139,11 +111,6 @@
     <button id="btnShop" class="menu-btn">Shop</button>
   </div>
   <div id="achievementPopup"></div>
-  <button id="settingsBtn" title="Settings">⚙️</button>
-  <div id="settingsPanel">
-    <label for="volumeSlider">Volume</label>
-    <input type="range" id="volumeSlider" min="0" max="1" step="0.01">
-  </div>
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
   <script type="module">
@@ -225,7 +192,6 @@
      // ── prevent any pending auto-hide from killing the name-entry prompt
   let achievementHideTimer;
   let bossRetryHandler = null;
-  let masterVolume = parseFloat(localStorage.getItem('birdyVolume') || '0.5');
 
         // ── Preload bird sprite ──
     const birdSprite = new Image();
@@ -298,28 +264,6 @@ let marathonMoving = false;
     showShop();
   };
 
-  const settingsBtn   = document.getElementById('settingsBtn');
-  const settingsPanel = document.getElementById('settingsPanel');
-  const volumeSlider  = document.getElementById('volumeSlider');
-  volumeSlider.value = masterVolume;
-
-  function applyVolume(){
-    bgMusic.volume      = masterVolume;
-    mechaMusic.volume   = masterVolume;
-    explosionSfx.volume = masterVolume * 0.8;
-  }
-  applyVolume();
-
-  settingsBtn.onclick = () => {
-    settingsPanel.style.display =
-      settingsPanel.style.display === 'block' ? 'none' : 'block';
-  };
-  volumeSlider.oninput = () => {
-    masterVolume = parseFloat(volumeSlider.value);
-    localStorage.setItem('birdyVolume', masterVolume);
-    applyVolume();
-  };
-
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
@@ -344,8 +288,7 @@ rocketInSprite.src    = 'assets/rocket2.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
-explosionSfx.volume  = masterVolume * 0.8;
-mechaMusic.volume    = masterVolume;
+explosionSfx.volume  = 0.4;
 const explosionImgs = [
   Object.assign(new Image(), { src: 'assets/explosion1.png' }),
   Object.assign(new Image(), { src: 'assets/explosion2.png' })
@@ -400,7 +343,7 @@ const tossBombs   = [];   // upward‐toss bombs
     // dummy chord function (no-op)
 function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
-bgMusic.volume = masterVolume;
+bgMusic.volume = 0.5;
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -442,7 +385,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
             g = audioCtx.createGain();
       o.connect(g); g.connect(audioCtx.destination);
       o.type = 'square'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.07 * masterVolume, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.07, audioCtx.currentTime);
       o.start(); o.stop(audioCtx.currentTime + dur);
     }
 
@@ -604,10 +547,12 @@ pipes.length     = apples.length = coins.length = 0;
   const targetX = W - 80;
   if (p.x > targetX) {
     p.x += p.vx;           // moves left by 6px/frame
-    if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
-    if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
-    return;                // skip the rest until you arrive
-  } else {
+//    if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
+//    if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
+//    return;                // skip the rest until you arrive
+ // } else {
+        if (p.x < targetX) p.x = targetX;
+  } else if (p.x < targetX) {
     p.x = targetX;
   }
   if (frames % 5 === 0) {
@@ -620,9 +565,18 @@ pipes.length     = apples.length = coins.length = 0;
   }
 
   // apply hit pushback with decay
-  if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
-  if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
-
+//  if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
+ // if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
+if (p.pushX || p.pushY) {
+    p.x += p.pushX;
+    p.y += p.pushY;
+    p.pushX *= 0.8;
+    p.pushY *= 0.8;
+    if (Math.abs(p.pushX) < 0.01) p.pushX = 0;
+    if (Math.abs(p.pushY) < 0.01) p.pushY = 0;
+  }
+  // gently move back toward base position
+  p.x += (targetX - p.x) * 0.1;
   // 2) Switch mode & auto‐attack faster when damaged
   p.modeTimer++;
   if (p.modeTimer > p.modeDuration) {
