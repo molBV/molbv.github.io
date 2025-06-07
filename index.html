@@ -55,6 +55,23 @@
       background:#fff;
       cursor:pointer;
     }
+    #optionsMenu {
+      position:absolute;
+      top:200px;
+      left:50%;
+      transform:translateX(-50%);
+      text-align:center;
+      z-index:15;
+      display:none;
+    }
+    #btnOptions {
+      position:absolute;
+      bottom:10px;
+      left:10px;
+      width:40px;
+      height:40px;
+      padding:0;
+    }
     #achievementPopup {
       position:absolute;
       top:20px;
@@ -109,6 +126,12 @@
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
     <button id="btnShop" class="menu-btn">Shop</button>
+  </div>
+  <button id="btnOptions" class="menu-btn">⚙</button>
+  <div id="optionsMenu">
+    <label>Music Volume<br><input id="sliderMusic" type="range" min="0" max="1" step="0.05"></label><br>
+    <label>SFX Volume<br><input id="sliderSfx" type="range" min="0" max="1" step="0.05"></label><br>
+    <button id="btnOptionsBack" class="menu-btn">Back</button>
   </div>
   <div id="achievementPopup"></div>
 
@@ -263,6 +286,24 @@ let marathonMoving = false;
     menuEl.style.display = 'none';
     showShop();
   };
+  document.getElementById('btnOptions').onclick = () => {
+    menuEl.style.display = 'none';
+    optionsEl.style.display = 'block';
+  };
+  document.getElementById('btnOptionsBack').onclick = () => {
+    optionsEl.style.display = 'none';
+    if (state === STATE.Start) menuEl.style.display = 'block';
+  };
+  musicSlider.oninput = () => {
+    musicVolume = parseFloat(musicSlider.value);
+    localStorage.setItem('musicVolume', musicVolume);
+    updateVolume();
+  };
+  sfxSlider.oninput = () => {
+    sfxVolume = parseFloat(sfxSlider.value);
+    localStorage.setItem('sfxVolume', sfxVolume);
+    updateVolume();
+  };
 
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
@@ -344,6 +385,19 @@ const tossBombs   = [];   // upward‐toss bombs
 function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
 bgMusic.volume = 0.5;
+const optionsEl   = document.getElementById('optionsMenu');
+const musicSlider  = document.getElementById('sliderMusic');
+const sfxSlider    = document.getElementById('sliderSfx');
+let musicVolume = parseFloat(localStorage.getItem('musicVolume') || '1');
+let sfxVolume   = parseFloat(localStorage.getItem('sfxVolume') || '1');
+musicSlider.value = musicVolume;
+sfxSlider.value   = sfxVolume;
+function updateVolume(){
+  bgMusic.volume    = 0.5 * musicVolume;
+  mechaMusic.volume = musicVolume;
+  explosionSfx.volume = 0.4 * sfxVolume;
+}
+updateVolume();
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -385,7 +439,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
             g = audioCtx.createGain();
       o.connect(g); g.connect(audioCtx.destination);
       o.type = 'square'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.07, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.07 * sfxVolume, audioCtx.currentTime);
       o.start(); o.stop(audioCtx.currentTime + dur);
     }
 
