@@ -294,6 +294,7 @@ const explosionImgs = [
   Object.assign(new Image(), { src: 'assets/explosion2.png' })
 ];
 const explosions = [];
+const impactParticles = [];
 const armorPiece1   = new Image(); armorPiece1.src = 'assets/mecharmor1.png';
 const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
     // ── boss sprites & rockets ──
@@ -524,7 +525,10 @@ pipes.length     = apples.length = coins.length = 0;
     isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
     justFired:false, smoke: [],
     secondAttackTriggered: false,   // flag for one‐time trigger
-    strongQueue: 0 
+    strongQueue: 0,
+    flashTimer: 0,
+    pushX: 0,
+    pushY: 0
   };
   showAchievement('🚀 Boss Incoming!');
 
@@ -537,15 +541,21 @@ pipes.length     = apples.length = coins.length = 0;
   if (p.x > targetX) {
     p.x += p.vx;           // moves left by 6px/frame
     return;                // skip the rest until you arrive
+  } else {
+    p.x = targetX;
   }
   if (frames % 5 === 0) {
-    p.smoke.push({ x:W-80 + Math.sin(p.y*0.04)*30 + p.r, y:p.y, alpha:1, r:4 });
+    p.smoke.push({ x:p.x + Math.sin(p.y*0.04)*30 + p.r, y:p.y, alpha:1, r:4 });
   }
   for (let i=p.smoke.length-1;i>=0;i--){
     const s=p.smoke[i];
     s.r+=0.3; s.alpha-=0.02;
     if (s.alpha<=0) p.smoke.splice(i,1);
   }
+
+  // apply hit pushback with decay
+  if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
+  if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
 
   // 2) Switch mode & auto‐attack faster when damaged
   p.modeTimer++;
@@ -569,7 +579,7 @@ pipes.length     = apples.length = coins.length = 0;
     // 3b) once per second, toss a bomb straight upward
     if (frames % 60 === 0) {
       tossBombs.push({
-        x:   W - 80 + Math.sin(p.y * 0.04) * 30,
+        x:   p.x + Math.sin(p.y * 0.04) * 30,
         y:   p.y,
         vy:  -12,
         r:    12,
@@ -594,8 +604,8 @@ pipes.length     = apples.length = coins.length = 0;
   if (p.isCharging) {
     p.chargeTimer++;
     if (p.chargeTimer>=p.chargeDuration){
-      rocketsIn.push({ 
-        x: W - 80 + Math.sin(p.y*0.04)*30 - p.r,
+      rocketsIn.push({
+        x: p.x + Math.sin(p.y*0.04)*30 - p.r,
         y: p.y, vx:-6, isBossShot:true
       });
       p.isCharging=false; p.shakeMag=0; p.justFired=true;
@@ -604,7 +614,7 @@ if (p.strongQueue > 0) {
   // spawn exactly p.strongQueue bombs
   for (let i = 0; i < p.strongQueue; i++) {
     tossBombs.push({
-      x: W - 80 + Math.sin(p.y*0.04)*30,
+      x: p.x + Math.sin(p.y*0.04)*30,
       y: p.y,
       vy: -12, r:12, exploded:false
     });
@@ -634,8 +644,15 @@ if (p.strongQueue > 0) {
 
   // 6) Check bossHP←birdShots collisions
   rocketsOut.forEach((b,i)=>{
-    if (Math.hypot(b.x - (W-80), b.y - p.y) < p.r + 8) {
+    if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
+      spawnExplosion(p.x, p.y);
+      triggerShake(8);
+      spawnImpactParticles(p.x, p.y, p.x - b.x, p.y - b.y);
+      const mag = Math.hypot(p.x - b.x, p.y - b.y) || 1;
+      p.pushX += (p.x - b.x) / mag * 4;
+      p.pushY += (p.y - b.y) / mag * 4;
+      p.flashTimer = 6;
       bossHealth -= (b.damage || 10);
       if (bossHealth<=0) endBossFight(true);
     }
@@ -706,7 +723,7 @@ function triggerBossAttack(){
   if (bossEncounterCount > 1 && Math.random() < 0.5) {
     // spawn a slow bomb at the boss’s mouth
     stage2Bombs.push({
-      x: W - 80 + Math.sin(p.y*0.04)*30 - 8,
+      x: p.x + Math.sin(p.y*0.04)*30 - 8,
       y: p.y,
       vx: -0.5,     // slow float
       hits: 0       // count of times the player hit it
@@ -856,10 +873,13 @@ radialBombs.forEach(b => {
 
   ctx.save();
     ctx.translate(
-      W - 80 + Math.sin(p.y * 0.04) * 30,
+      p.x + Math.sin(p.y * 0.04) * 30,
       p.y
     );
     ctx.scale(-1, 1);
+    if (p.flashTimer > 0 && Math.floor(p.flashTimer/2)%2===0) {
+      ctx.filter = 'brightness(2)';
+    }
     // draw centered at the new size
     ctx.drawImage(
       bossFrames[frame],
@@ -867,6 +887,7 @@ radialBombs.forEach(b => {
        size,    size
     );
   ctx.restore();
+  if (p.flashTimer > 0) p.flashTimer--;
 
   // draw attach-rocket (also scaled) if charging
 // only draw a charge‐sprite on the second boss fight
@@ -883,7 +904,7 @@ radialBombs.forEach(b => {
   p.justFired = false;
 
   // d) draw health bar
-  const bx = W-80 + Math.sin(p.y*0.04)*30, barW=80;
+  const bx = p.x + Math.sin(p.y*0.04)*30, barW=80;
   ctx.fillStyle='#444';
   ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
   ctx.fillStyle='lime';
@@ -960,6 +981,7 @@ function drawBackground(){
     // ── Bird object ──
     const bird = {
       x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
+      flashTimer:0,
       draw(){
         if(shieldCount>0){
           ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
@@ -996,8 +1018,12 @@ function drawBackground(){
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(Math.min(Math.PI/4, this.vel/10));
+        if (this.flashTimer > 0 && Math.floor(this.flashTimer/2)%2===0) {
+          ctx.filter = 'brightness(2)';
+        }
         ctx.drawImage(birdSprite, -32, -32, 64, 64);
         ctx.restore();
+        if (this.flashTimer > 0) this.flashTimer--;
       },
       flap(){
         this.vel=-this.lift;
@@ -1163,7 +1189,10 @@ function spawnJelly(){
     shockTimer: 0,
     shockInterval: 180,
     shockDuration: 40,
-    isShocking: false
+    isShocking: false,
+    flashTimer: 0,
+    pushX: 0,
+    pushY: 0
   });
 }
 
@@ -1181,6 +1210,39 @@ function updateExplosions() {
     ctx.drawImage(img, e.x - size / 2, e.y - size / 2, size, size);
     e.frame++;
     if (e.frame > 10) explosions.splice(i, 1);
+  }
+}
+
+function spawnImpactParticles(x, y, dx, dy) {
+  const mag = Math.hypot(dx, dy) || 1;
+  dx /= mag; dy /= mag;
+  for (let i = 0; i < 5; i++) {
+    impactParticles.push({
+      x,
+      y,
+      vx: dx * (1 + Math.random()*0.5) * 3 + (Math.random()-0.5),
+      vy: dy * (1 + Math.random()*0.5) * 3 + (Math.random()-0.5),
+      life: 15
+    });
+  }
+}
+
+function updateImpactParticles() {
+  for (let i = impactParticles.length - 1; i >= 0; i--) {
+    const p = impactParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.9;
+    p.vy *= 0.9;
+    p.life--;
+    ctx.save();
+    ctx.fillStyle = 'orange';
+    ctx.globalAlpha = p.life / 15;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (p.life <= 0) impactParticles.splice(i,1);
   }
 }
 
@@ -1290,6 +1352,12 @@ function updateRockets() {
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
         rocketsOut.splice(i, 1);
         spawnExplosion(j.x, j.y);
+        triggerShake(5);
+        spawnImpactParticles(j.x, j.y, j.x - r.x, j.y - r.y);
+        const mag = Math.hypot(j.x - r.x, j.y - r.y) || 1;
+        j.pushX += (j.x - r.x) / mag * 6;
+        j.pushY += (j.y - r.y) / mag * 6;
+        j.flashTimer = 6;
         j.hp = (j.hp || 1) - 1;
         if (j.hp <= 0) {
           jellies.splice(jj, 1);
@@ -1481,6 +1549,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
   });
 
   updateExplosions();
+  updateImpactParticles();
 }
 
 function updateJellies() {
@@ -1489,7 +1558,9 @@ function updateJellies() {
     const j = jellies[i];
     j.frame++;
     j.x += j.vx;
-    j.y = j.baseY + Math.sin(j.frame * j.freq) * j.amp;
+    if (j.pushX) { j.x += j.pushX; j.pushX *= 0.8; }
+    j.y = j.baseY + Math.sin(j.frame * j.freq) * j.amp + (j.pushY || 0);
+    if (j.pushY) j.pushY *= 0.8;
 
     // shock cycle
     j.shockTimer++;
@@ -1504,7 +1575,13 @@ function updateJellies() {
     // draw jelly
     const framesArr = j.isShocking ? jellyShockFrames : jellyFrames;
     const img = framesArr[Math.floor(j.frame / 8) % framesArr.length];
+    ctx.save();
+    if (j.flashTimer > 0 && Math.floor(j.flashTimer/2)%2===0) {
+      ctx.filter = 'brightness(2)';
+    }
     ctx.drawImage(img, j.x - 32, j.y - 32, 64, 64);
+    ctx.restore();
+    if (j.flashTimer > 0) j.flashTimer--;
 
     if (j.isShocking) {
       const shockImg = jellyShockFrames[Math.floor(j.frame / 4) % jellyShockFrames.length];
@@ -1734,6 +1811,7 @@ function updateScore(){
 
 function handleHit(){
   tripleShot = false;
+  bird.flashTimer = 8;
   if (coinCount > 0) {
     coinCount--;
     updateScore();
@@ -2172,6 +2250,7 @@ if (state === STATE.BossExplode) {
   }
   drawBoss();
   updateExplosions();
+  updateImpactParticles();
   bird.draw();
   if (--bossExplosionTimer <= 0) state = STATE.Play;
   return requestAnimationFrame(loop);
