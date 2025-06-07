@@ -113,11 +113,6 @@
          loop
          preload="metadata"></audio>
   <!-- …the rest of your code… -->
-
-  <audio id="bgMusic"
-       src="assets/dream.guitar.mp3"
-       loop
-       preload="metadata"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -260,7 +255,8 @@ let bossesDefeated    = 0; // number of times boss was beaten
 let marathonMode = false;
 let marathonMoving = false;
 
-  const menuEl = document.getElementById('menu');
+  const menuEl   = document.getElementById('menu');
+  const optionsEl= document.getElementById('optionsMenu');
 
   function startAdventure(){
     marathonMode = false;
@@ -295,6 +291,7 @@ let marathonMoving = false;
     if (state === STATE.Start) menuEl.style.display = 'block';
   };
 
+
   musicSlider.oninput = () => {
     musicVolume = parseFloat(musicSlider.value);
     localStorage.setItem('musicVolume', musicVolume);
@@ -305,6 +302,7 @@ let marathonMoving = false;
     localStorage.setItem('sfxVolume', sfxVolume);
     updateVolume();
   };
+
 
 
   // boss frames: phase 1 vs. phase 2
@@ -387,7 +385,9 @@ const tossBombs   = [];   // upward‐toss bombs
 function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
 bgMusic.volume = 0.5;
+
 const optionsEl   = document.getElementById('optionsMenu');
+
 const musicSlider  = document.getElementById('sliderMusic');
 const sfxSlider    = document.getElementById('sliderSfx');
 let musicVolume = parseFloat(localStorage.getItem('musicVolume') || '1');
@@ -402,6 +402,8 @@ function updateVolume(){
 updateVolume();
 
 
+
+
   musicSlider.oninput = () => {
     musicVolume = parseFloat(musicSlider.value);
     localStorage.setItem('musicVolume', musicVolume);
@@ -412,6 +414,7 @@ updateVolume();
     localStorage.setItem('sfxVolume', sfxVolume);
     updateVolume();
   };
+
 
 
 
