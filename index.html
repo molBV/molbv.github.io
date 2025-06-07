@@ -403,20 +403,6 @@ updateVolume();
 
 
 
-  musicSlider.oninput = () => {
-    musicVolume = parseFloat(musicSlider.value);
-    localStorage.setItem('musicVolume', musicVolume);
-    updateVolume();
-  };
-  sfxSlider.oninput = () => {
-    sfxVolume = parseFloat(sfxSlider.value);
-    localStorage.setItem('sfxVolume', sfxVolume);
-    updateVolume();
-  };
-
-
-
-
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
