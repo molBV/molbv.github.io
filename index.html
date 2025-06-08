@@ -2459,6 +2459,7 @@ function triggerStoryEvent(id) {
       showStoryMessage(entry.epithet);
 
     }
+    trackEvent('story_event', { id });
     checkStoryAchievements();
   }
 }
@@ -2600,6 +2601,7 @@ function showShop() {
           defaultSkin = key;
           localStorage.setItem('birdySkin', defaultSkin);
           birdSprite.src = 'assets/' + defaultSkin;
+          trackEvent('shop_skin_purchased', { skin: key });
           render();
         }
       };
@@ -2620,6 +2622,7 @@ function showShop() {
             storedDoubles = 1;
             localStorage.setItem('birdyDouble', storedDoubles);
           }
+          trackEvent('shop_item_purchased', { item: key });
           render();
         }
       };
