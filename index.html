@@ -90,11 +90,13 @@
       pointer-events:none;
       font:18px serif;
     }
+
     @keyframes flash {
       0%,100%{opacity:1}
       50%{opacity:0.3}
     }
     .flash { animation: flash 1s infinite; }
+
   </style>
 
   <!-- ==================== AdSense library loader ==================== -->
@@ -263,101 +265,121 @@ let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
 
   const storyEntries = [
     { id:'Suit_Assembled', epithet:'Steel awakens beneath living feather…', req:'Collect 10 coins', log:[
+
       'You hit 10 coins—suddenly plating erupts around your wings, fusing metal to bone.',
       'This Mecha suit turns fragile feathers into weapons, letting you fire rockets for the first time.',
       'Accepting this power marks your first step away from the free sky… and into obligation.'
     ]},
     { id:'Boss1_Appeared', epithet:'A great owl of gears stirs in shadowed wood…', req:'Encounter the Owl boss', log:[
+
       'From the mechanical canopy descends the Forest Warden—your own mech‐self in owl form.',
       'It challenges you to prove that this borrowed power belongs to you.',
       'Defeat it, or remain a prisoner of your own creation.'
     ]},
     { id:'Boss1_Defeated', epithet:"The owl’s gear-heart shatters into silence…", req:'Defeat the Owl', log:[
+
       'Your rockets strike true; the Warden’s core explodes in a ring of sparks.',
       'A fragment of its armor drifts to your talon—proof you bested your first mech incarnation.',
       'Tear off your plating and remember: every victory carries the cost of what you’ve become.'
     ]},
     { id:'Boss1_Perseverance', epithet:'Victory’s echo deepens the resolve…', req:'Beat the Owl three times', log:[
+
       'Three times you faced the Owl again, each rematch harder than the last.',
       'With every clash, you temper your skill—iron-sharp but colder in the heart.',
       'Perseverance earns you confidence… and reminds you why you donned this suit at all.'
     ]},
     { id:'Pipe_Threshold_Reached', epithet:'Branches of metal part before your flight…', req:'Pass 20 pipes', log:[
+
       'After passing 20 pipes, you move through them as if each were an open bough.',
       'Recall your youth, balancing on thin branches—now replaced by these iron conduits.',
       'Mastery of obstacles binds you tighter to the mech’s unending grind.'
     ]},
     { id:'Mecha_Mastery', epithet:'A steady hum of engines beats in your chest…', req:'Stay in Mecha for 60s', log:[
+
       'Surviving 60 seconds in Mecha, you and the suit have become one.',
       'Each engine pulse echoes a heartbeat, reminding you how deeply you depend on it.',
       'This bond grants power—and a fear of what you lose if it fails.'
     ]},
     { id:'Boss2_Appeared', epithet:'From the forge’s flame, a stag of iron emerges…', req:'Encounter the Forge Titan', log:[
+
       'The Forge Titan strides in molten majesty—your second mech self reborn as a stag.',
       'Its red-hot core glows with the fire you once commanded in the forge of your mind.',
       'To defeat it is to confront your own ambition untempered by restraint.'
     ]},
     { id:'Boss2_Defeated', epithet:"The Titan’s furnace heart cools to ash…", req:'Defeat the Forge Titan', log:[
+
       'A final blast quells its blazing core; molten metal scalds the ground at your feet.',
       'You pluck a cooling ember of armor—proof that you survived your own fervor.',
       'But as the heat fades, you taste regret on your tongue.'
     ]},
     { id:'Boss2_Revive_Drop', epithet:'A crystalline token spins free in fiery dusk…', req:'Forge Titan drops Revive', log:[
+
       'From the Titan’s ashes falls a translucent gem—your one chance at revival.',
       'Hold it if you dare: it cheats death once, but leaves scars on memory.',
       'Use it wisely, for not every defeat begs forgiveness.'
     ]},
     { id:'Revive_Used', epithet:"Death’s whisper turned into a second heartbeat…", req:'Use the Revive token', log:[
+
       'Your vision dims—then the token’s glow floods your veins with stolen life.',
       'You rise again, chest heaving, a reminder that even fate can be bargained with.',
       'But borrowed time tastes bittersweet, and each revival deepens your obsession.'
     ]},
     { id:'Pipe_Breaker', epithet:'Barriers shatter beneath sharpened resolve…', req:'Break 20 pipes', log:[
+
       'Breaking 20 pipes with super-charged flaps, you feel raw power in your talons.',
       'These metal barriers crumble under your will—yet every fracture demands a toll.',
       'In destruction you glimpse creation: what new path will you forge now?'
     ]},
     { id:'Coin_Threshold', epithet:'Golden orbs spin in a ring of remembrance…', req:'Collect 100 total coins', log:[
+
       'Collecting 100 coins, you clutch each as if it were a memory long forgotten.',
       'They glimmer with warmth you once felt beneath the sunrise.',
       'Yet hoarding them chains you to a cycle of endless striving.'
     ]},
     { id:'Gauntlet_Cleared', epithet:'Tunnels of code fracture beneath your wings…', req:'Clear the Glitch Gauntlet', log:[
+
       'Passing the glitching gauntlet, pipes pulse with digital static.',
       'You sense the Architect’s blueprint etched into every corridor.',
       'Surviving here means navigating the labyrinth of your own mind.'
     ]},
     { id:'Architect_Appeared', epithet:'A shattered mirror beckons from the void…', req:'Encounter the Null Architect', log:[
+
       'In the heart of the maze stands the Null Architect—your reflection spun to chaos.',
       'Its voice crackles: “I am all you feared you might become.”',
       'To defeat it is to reclaim the shards of your lost identity.'
     ]},
     { id:'Architect_Defeated', epithet:'Shards of self dissolve in pixelated hush…', req:'Defeat the Null Architect', log:[
+
       'Your final strike scatters neon fragments like fallen stars.',
       'One shard drifts to rest in your palm, etched with a single word: “Avius.”',
       'You glimpse your name—yet the mirror remains half-shattered.'
     ]},
     { id:'Self_Glimpse', epithet:'Mirror cracks reveal half-wing, half-gear…', req:'Glimpse your true self', log:[
+
       'A flash of pure clarity shows you: organic feather fused with living steel.',
       'Your name resounds in the echoing void—Avius, Stormbird of the Celestial Grove.',
       'Still, one final form awaits to test your harmony.'
     ]},
     { id:'Prime_Appeared', epithet:'A perfect fusion steps from shadow and light…', req:'Encounter Avius Prime', log:[
+
       'Avius Prime lands—half-feather, half-plating, chest orb blazing amber and cyan.',
       'This ultimate self wields every power you’ve claimed—and every regret you bear.',
       'Its challenge: reconcile bird and machine in a single soul.'
     ]},
     { id:'Prime_Titan_Defeated', epithet:'A hulking form collapses in thunderous silence…', req:'Defeat Prime Titan phase', log:[
+
       'The heavy Titan phase topples with a roar, leaving sparks in its wake.',
       'You tear away the bulky armor, shedding the last weight of your past.',
       'Now stands the true test: can you embrace what remains?'
     ]},
     { id:'Prime_Ascendant', epithet:'Feather-blades shimmer in transcendent flight…', req:'Reach Prime Ascendant', log:[
+
       'Armor refines into feather-shaped blades of living light.',
       'You dart and spin with joyous grace, every flap a hymn of reclamation.',
       'Machine and bird merge at last in perfect symphony.'
     ]},
     { id:'Prime_Final_Defeated', epithet:'Harmony resonates as all shards converge…', req:'Defeat Avius Prime', log:[
+
       'With a final pulse, Avius Prime dissolves into dawn’s gentle glow.',
       'Feathers and metal hum together—no longer adversaries, but kin.',
       'Free from obsession’s cycle, you return to the pipes—this time as master of your own story.'
@@ -2349,6 +2371,7 @@ function triggerStoryEvent(id) {
     const entry = storyEntries.find(e => e.id === id);
     if (entry) {
       showStoryMessage(entry.epithet);
+
     }
   }
 }
@@ -2404,6 +2427,7 @@ function showStoryLog() {
   if (nextHint) {
     html += `<p id="nextStory" class="flash" style="font-style:italic;margin-top:10px;">Next: ${nextHint}</p>`;
   }
+
   html += '</div><button id="storyClose">Close</button>';
   ct.innerHTML = html;
   ov.style.display = 'block';
