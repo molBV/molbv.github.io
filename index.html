@@ -244,6 +244,7 @@ let transitionTimer= 0;      // ticks for staging
 let mechaSafeExpiry = 0;     // frames until bounce‐only immunity expires
 let bossEncounterCount = 0; // tracks boss encounters
 let bossesDefeated    = 0; // number of times boss was beaten
+let bossHitless       = false; // true if current boss fight had no hits
 
   // ── achievement tracking ──
   const achievementDefs = [
@@ -255,6 +256,9 @@ let bossesDefeated    = 0; // number of times boss was beaten
     { id:'score100', desc:'Get 100 Points' },
     { id:'boss1',    desc:'Beat Lv 1 Boss' },
     { id:'boss2',    desc:'Beat Lv 2 Boss' },
+    { id:'boss1_nohit', desc:'Beat Lv 1 Boss Hitless' },
+    { id:'boss2_nohit', desc:'Beat Lv 2 Boss Hitless' },
+    { id:'boss3_nohit', desc:'Beat Lv 3 Boss Hitless' },
     { id:'score500', desc:'Get 500 Points' },
     { id:'coins500', desc:'Get 500 Coins' },
     { id:'mar100', desc:'Get 100 Points in Marathon' },
@@ -694,6 +698,7 @@ function startMechaTransition() {
 }
 function startBossFight() {
 bossEncounterCount++;
+  bossHitless = true;
   if (bossEncounterCount === 1) triggerStoryEvent('Boss1_Appeared');
   else if (bossEncounterCount === 2) triggerStoryEvent('Boss2_Appeared');
   else if (bossEncounterCount === 3) triggerStoryEvent('Architect_Appeared');
@@ -976,8 +981,17 @@ function triggerBossAttack(){
     if (bossesDefeated >= 3 && !storyLog['Boss1_Perseverance']) {
       triggerStoryEvent('Boss1_Perseverance');
     }
-    if (bossesDefeated === 1) unlockAchievement('boss1');
-    if (bossesDefeated === 2) unlockAchievement('boss2');
+    if (bossesDefeated === 1) {
+      unlockAchievement('boss1');
+      if (bossHitless) unlockAchievement('boss1_nohit');
+    }
+    if (bossesDefeated === 2) {
+      unlockAchievement('boss2');
+      if (bossHitless) unlockAchievement('boss2_nohit');
+    }
+    if (bossesDefeated === 3 && bossHitless) {
+      unlockAchievement('boss3_nohit');
+    }
     score += 50;
     mechaMusic.pause();
     mechaMusic.currentTime = 0;
@@ -1013,6 +1027,7 @@ function triggerBossAttack(){
   radialBombs.length = 0;
   tossBombs.length   = 0;
   stage2Bombs.length = 0;
+  bossHitless = false;
 }
 
 
@@ -1585,17 +1600,17 @@ function updateReviveEffect() {
 function updateDoubleEffect() {
   if (!doubleActive) return;
   if (frames % 15 === 0 || (doublePulse > 0 && frames % 5 === 0)) {
-    doubleRings.push({ r: bird.rad, alpha: 0.6 });
+    doubleRings.push({ r: bird.rad, alpha: 0.4 });
   }
   for (let i = doubleRings.length - 1; i >= 0; i--) {
     const ring = doubleRings[i];
-    ring.r += 3;
-    ring.alpha -= 0.02;
+    ring.r += 2;
+    ring.alpha -= 0.015;
     ctx.save();
     ctx.strokeStyle = `rgba(255,223,0,${ring.alpha})`;
-    ctx.lineWidth = 4;
-    ctx.shadowColor = 'rgba(255,223,0,0.8)';
-    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(255,223,0,0.5)';
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     ctx.arc(bird.x, bird.y, ring.r, 0, Math.PI * 2);
     ctx.stroke();
@@ -2039,8 +2054,8 @@ function updateJellies() {
     // collect
     if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.rad + coinR) {
       c.taken = true;
-      coinCount++;
       const gain = doubleActive ? 2 : 1;
+      coinCount += gain;
       totalCoins += gain;
       if (doubleActive) doublePulse = 60;
       localStorage.setItem('birdyCoinsEarned', totalCoins);
@@ -2242,6 +2257,7 @@ function showRevivePrompt(){
 
 function handleHit(){
   if (revivePromptActive || reviveTimer > 0) return;
+  if (bossActive) bossHitless = false;
   tripleShot = false;
   bird.flashTimer = 8;
   if (coinCount > 0) {
