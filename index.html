@@ -76,6 +76,20 @@
       pointer-events:none;
       font:16px sans-serif;
     }
+    #storyPopup {
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(255,255,255,0.8);
+      color:#000;
+      padding:6px 12px;
+      border-radius:6px;
+      display:none;
+      z-index:35;
+      pointer-events:none;
+      font:18px serif;
+    }
   </style>
 
   <!-- ==================== AdSense library loader ==================== -->
@@ -116,9 +130,11 @@
     <button id="btnAdventure" class="menu-btn">Adventure</button>
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
+    <button id="btnStory" class="menu-btn">📖 Story Log</button>
     <button id="btnShop" class="menu-btn">Shop</button>
   </div>
   <div id="achievementPopup"></div>
+  <div id="storyPopup"></div>
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
   <script type="module">
@@ -238,7 +254,113 @@ let bossesDefeated    = 0; // number of times boss was beaten
     { id:'mar250', desc:'Get 250 Points in Marathon' },
     { id:'mar500', desc:'Get 500 Points in Marathon' }
   ];
-  let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
+let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
+
+  const storyEntries = [
+    { id:'Suit_Assembled', epithet:'Steel awakens beneath living feather…', log:[
+      'You hit 10 coins—suddenly plating erupts around your wings, fusing metal to bone.',
+      'This Mecha suit turns fragile feathers into weapons, letting you fire rockets for the first time.',
+      'Accepting this power marks your first step away from the free sky… and into obligation.'
+    ]},
+    { id:'Boss1_Appeared', epithet:'A great owl of gears stirs in shadowed wood…', log:[
+      'From the mechanical canopy descends the Forest Warden—your own mech‐self in owl form.',
+      'It challenges you to prove that this borrowed power belongs to you.',
+      'Defeat it, or remain a prisoner of your own creation.'
+    ]},
+    { id:'Boss1_Defeated', epithet:"The owl’s gear-heart shatters into silence…", log:[
+      'Your rockets strike true; the Warden’s core explodes in a ring of sparks.',
+      'A fragment of its armor drifts to your talon—proof you bested your first mech incarnation.',
+      'Tear off your plating and remember: every victory carries the cost of what you’ve become.'
+    ]},
+    { id:'Boss1_Perseverance', epithet:'Victory’s echo deepens the resolve…', log:[
+      'Three times you faced the Owl again, each rematch harder than the last.',
+      'With every clash, you temper your skill—iron-sharp but colder in the heart.',
+      'Perseverance earns you confidence… and reminds you why you donned this suit at all.'
+    ]},
+    { id:'Pipe_Threshold_Reached', epithet:'Branches of metal part before your flight…', log:[
+      'After passing 20 pipes, you move through them as if each were an open bough.',
+      'Recall your youth, balancing on thin branches—now replaced by these iron conduits.',
+      'Mastery of obstacles binds you tighter to the mech’s unending grind.'
+    ]},
+    { id:'Mecha_Mastery', epithet:'A steady hum of engines beats in your chest…', log:[
+      'Surviving 60 seconds in Mecha, you and the suit have become one.',
+      'Each engine pulse echoes a heartbeat, reminding you how deeply you depend on it.',
+      'This bond grants power—and a fear of what you lose if it fails.'
+    ]},
+    { id:'Boss2_Appeared', epithet:'From the forge’s flame, a stag of iron emerges…', log:[
+      'The Forge Titan strides in molten majesty—your second mech self reborn as a stag.',
+      'Its red-hot core glows with the fire you once commanded in the forge of your mind.',
+      'To defeat it is to confront your own ambition untempered by restraint.'
+    ]},
+    { id:'Boss2_Defeated', epithet:"The Titan’s furnace heart cools to ash…", log:[
+      'A final blast quells its blazing core; molten metal scalds the ground at your feet.',
+      'You pluck a cooling ember of armor—proof that you survived your own fervor.',
+      'But as the heat fades, you taste regret on your tongue.'
+    ]},
+    { id:'Boss2_Revive_Drop', epithet:'A crystalline token spins free in fiery dusk…', log:[
+      'From the Titan’s ashes falls a translucent gem—your one chance at revival.',
+      'Hold it if you dare: it cheats death once, but leaves scars on memory.',
+      'Use it wisely, for not every defeat begs forgiveness.'
+    ]},
+    { id:'Revive_Used', epithet:"Death’s whisper turned into a second heartbeat…", log:[
+      'Your vision dims—then the token’s glow floods your veins with stolen life.',
+      'You rise again, chest heaving, a reminder that even fate can be bargained with.',
+      'But borrowed time tastes bittersweet, and each revival deepens your obsession.'
+    ]},
+    { id:'Pipe_Breaker', epithet:'Barriers shatter beneath sharpened resolve…', log:[
+      'Breaking 20 pipes with super-charged flaps, you feel raw power in your talons.',
+      'These metal barriers crumble under your will—yet every fracture demands a toll.',
+      'In destruction you glimpse creation: what new path will you forge now?'
+    ]},
+    { id:'Coin_Threshold', epithet:'Golden orbs spin in a ring of remembrance…', log:[
+      'Collecting 100 coins, you clutch each as if it were a memory long forgotten.',
+      'They glimmer with warmth you once felt beneath the sunrise.',
+      'Yet hoarding them chains you to a cycle of endless striving.'
+    ]},
+    { id:'Gauntlet_Cleared', epithet:'Tunnels of code fracture beneath your wings…', log:[
+      'Passing the glitching gauntlet, pipes pulse with digital static.',
+      'You sense the Architect’s blueprint etched into every corridor.',
+      'Surviving here means navigating the labyrinth of your own mind.'
+    ]},
+    { id:'Architect_Appeared', epithet:'A shattered mirror beckons from the void…', log:[
+      'In the heart of the maze stands the Null Architect—your reflection spun to chaos.',
+      'Its voice crackles: “I am all you feared you might become.”',
+      'To defeat it is to reclaim the shards of your lost identity.'
+    ]},
+    { id:'Architect_Defeated', epithet:'Shards of self dissolve in pixelated hush…', log:[
+      'Your final strike scatters neon fragments like fallen stars.',
+      'One shard drifts to rest in your palm, etched with a single word: “Avius.”',
+      'You glimpse your name—yet the mirror remains half-shattered.'
+    ]},
+    { id:'Self_Glimpse', epithet:'Mirror cracks reveal half-wing, half-gear…', log:[
+      'A flash of pure clarity shows you: organic feather fused with living steel.',
+      'Your name resounds in the echoing void—Avius, Stormbird of the Celestial Grove.',
+      'Still, one final form awaits to test your harmony.'
+    ]},
+    { id:'Prime_Appeared', epithet:'A perfect fusion steps from shadow and light…', log:[
+      'Avius Prime lands—half-feather, half-plating, chest orb blazing amber and cyan.',
+      'This ultimate self wields every power you’ve claimed—and every regret you bear.',
+      'Its challenge: reconcile bird and machine in a single soul.'
+    ]},
+    { id:'Prime_Titan_Defeated', epithet:'A hulking form collapses in thunderous silence…', log:[
+      'The heavy Titan phase topples with a roar, leaving sparks in its wake.',
+      'You tear away the bulky armor, shedding the last weight of your past.',
+      'Now stands the true test: can you embrace what remains?'
+    ]},
+    { id:'Prime_Ascendant', epithet:'Feather-blades shimmer in transcendent flight…', log:[
+      'Armor refines into feather-shaped blades of living light.',
+      'You dart and spin with joyous grace, every flap a hymn of reclamation.',
+      'Machine and bird merge at last in perfect symphony.'
+    ]},
+    { id:'Prime_Final_Defeated', epithet:'Harmony resonates as all shards converge…', log:[
+      'With a final pulse, Avius Prime dissolves into dawn’s gentle glow.',
+      'Feathers and metal hum together—no longer adversaries, but kin.',
+      'Free from obsession’s cycle, you return to the pipes—this time as master of your own story.'
+    ]}
+  ];
+  let storyLog = JSON.parse(localStorage.getItem('storyLog')||'{}');
+  let slowMoTimer = 0;
+  let mechaStartFrame = 0;
 
   let runPipes=0, runCoins=0, runJellies=0, runPowerups=0, runPipeBreaks=0;
 
@@ -266,6 +388,10 @@ let marathonMoving = false;
   document.getElementById('btnAchievements').onclick = () => {
     menuEl.style.display = 'none';
     showAchievementsList();
+  };
+  document.getElementById('btnStory').onclick = () => {
+    menuEl.style.display = 'none';
+    showStoryLog();
   };
   document.getElementById('btnShop').onclick = () => {
     menuEl.style.display = 'none';
@@ -512,6 +638,10 @@ function startMechaTransition() {
 }
 function startBossFight() {
 bossEncounterCount++;
+  if (bossEncounterCount === 1) triggerStoryEvent('Boss1_Appeared');
+  else if (bossEncounterCount === 2) triggerStoryEvent('Boss2_Appeared');
+  else if (bossEncounterCount === 3) triggerStoryEvent('Architect_Appeared');
+  else if (bossEncounterCount === 4) triggerStoryEvent('Prime_Appeared');
   // …and pick the right art for this fight:
   bossFrames = bossEncounterCount > 1
     ? bossFramesS2
@@ -779,6 +909,17 @@ function triggerBossAttack(){
   if (victory) {
     trackEvent('boss_defeated', { score });
     bossesDefeated++;
+    if (bossesDefeated === 1) triggerStoryEvent('Boss1_Defeated');
+    if (bossesDefeated === 2) {
+      triggerStoryEvent('Boss2_Defeated');
+      triggerStoryEvent('Boss2_Revive_Drop');
+      storedRevives = 1;
+      localStorage.setItem('birdyRevives', storedRevives);
+      updateReviveDisplay();
+    }
+    if (bossesDefeated >= 3 && !storyLog['Boss1_Perseverance']) {
+      triggerStoryEvent('Boss1_Perseverance');
+    }
     if (bossesDefeated === 1) unlockAchievement('boss1');
     if (bossesDefeated === 2) unlockAchievement('boss2');
     score += 50;
@@ -1385,11 +1526,12 @@ function updateReviveEffect() {
 function updateRockets() {
   // only run rockets logic during Mecha or Boss fight
   if (!(inMecha || state === STATE.Boss)) return;
+  const ts = slowMoTimer > 0 ? 0.5 : 1;
 
   // ── OUTGOING ROCKETS ────────────────────────────────
   rocketsOut.forEach((r, i) => {
     // advance & draw the outgoing rocket
-    r.x += r.vx;
+    r.x += r.vx * ts;
     const size = r.triple ? 20 : 16;
     ctx.drawImage(rocketOutSprite, r.x, r.y - size/2, size, size);
     if (r.triple && frames % 2 === 0) {
@@ -1489,9 +1631,10 @@ function updateRockets() {
 // ── STAGE-2 SLOW BOMBS ───────────────────────────────
 for (let i = stage2Bombs.length - 1; i >= 0; i--) {
   const b = stage2Bombs[i];
+  const ts = slowMoTimer > 0 ? 0.5 : 1;
 
   // advance
-  b.x += b.vx;
+  b.x += b.vx * ts;
 
   // pick the right sprite
   const img = b.homingActive ? activeHomingImg : bombSprite;
@@ -1541,8 +1684,8 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     }
 
     // 2) advance
-    r.x += r.vx;
-    r.y += (r.vy || 0);
+    r.x += r.vx * ts;
+    r.y += (r.vy || 0) * ts;
 
    // 3) draw incoming rocket, rotated when homing
    const rocketSize = r.isBossTrigger ? 96 : 48;
@@ -1647,7 +1790,8 @@ function updateJellies() {
   for (let i = jellies.length - 1; i >= 0; i--) {
     const j = jellies[i];
     j.frame++;
-    j.x += j.vx;
+    const ts = slowMoTimer > 0 ? 0.5 : 1;
+    j.x += j.vx * ts;
     if (j.pushX) { j.x += j.pushX; j.pushX *= 0.8; }
     j.y = j.baseY + Math.sin(j.frame * j.freq) * j.amp + (j.pushY || 0);
     if (j.pushY) j.pushY *= 0.8;
@@ -1693,9 +1837,11 @@ function updateJellies() {
 }
 
 
-   function updatePipes(){
+  function updatePipes(){
   // only run during normal play
   if (state !== STATE.Play) return;
+
+  const ts = slowMoTimer > 0 ? 0.5 : 1;
 
   // — handle coin boosts & dynamic speed (unchanged) —
   coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
@@ -1709,7 +1855,7 @@ function updateJellies() {
   // ── pipe movement, scoring & collision ──
   pipes.forEach((p,i) => {
     // move pipe horizontally
-    p.x -= currentSpeed;
+    p.x -= currentSpeed * ts;
 
     // optional vertical oscillation
     if (p.moving) {
@@ -1723,7 +1869,10 @@ function updateJellies() {
       updateScore();
       playTone(600, 0.08);
       runPipes++;
-      if (runPipes >= 20) unlockAchievement('pass20');
+      if (runPipes >= 20) {
+        unlockAchievement('pass20');
+        triggerStoryEvent('Pipe_Threshold_Reached');
+      }
     }
 
     // ←— NEW COLLISION / SHIELD LOGIC:
@@ -1748,7 +1897,10 @@ function updateJellies() {
       }
       if (broke) {
         runPipeBreaks++;
-        if (runPipeBreaks >= 20) unlockAchievement('break20');
+        if (runPipeBreaks >= 20) {
+          unlockAchievement('break20');
+          triggerStoryEvent('Pipe_Breaker');
+        }
       }
     }
 
@@ -1758,7 +1910,7 @@ function updateJellies() {
 
   // ── apple pickup (unchanged) ──
   apples.forEach((a,i)=>{
-    a.x -= currentSpeed;
+    a.x -= currentSpeed * ts;
     if(!a.taken){
       ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(a.x,a.y,appleR,0,2*Math.PI); ctx.fill();
       ctx.fillStyle='green'; ctx.beginPath();
@@ -1774,7 +1926,7 @@ function updateJellies() {
   coins.forEach((c, i) => {
   // move
   const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
-  c.x -= coinSpeed;
+  c.x -= coinSpeed * ts;
 
   if (!c.taken) {
     // draw spinning coin…
@@ -1798,6 +1950,7 @@ function updateJellies() {
       coinCount++;
       totalCoins++;
       localStorage.setItem('birdyCoinsEarned', totalCoins);
+      if (totalCoins >= 100) triggerStoryEvent('Coin_Threshold');
       if (totalCoins >= 500) unlockAchievement('coins500');
       playTone(1000, 0.1);//playChord('V', audioCtx.currentTime);
       updateScore();
@@ -1820,7 +1973,7 @@ function updateJellies() {
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
     const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
-    p.x -= powerSpeed;
+    p.x -= powerSpeed * ts;
     if(!p.taken){
       ctx.save();
       ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
@@ -1909,6 +2062,7 @@ function startReviveEffect(){
   reviveRings.length = 0;
   bird.vel = 0;
   updateReviveDisplay();
+  triggerStoryEvent('Revive_Used');
   for(let i=0;i<20;i++){
     skinParticles.push({
       x: bird.x,
@@ -2174,6 +2328,27 @@ function showAchievement(message, duration = 2000) {
   }, duration);
 }
 
+let storyHideTimer;
+function showStoryMessage(text, duration = 3000) {
+  clearTimeout(storyHideTimer);
+  const pop = document.getElementById('storyPopup');
+  pop.textContent = `📖 ${text}`;
+  pop.style.display = 'block';
+  storyHideTimer = setTimeout(() => { pop.style.display = 'none'; }, duration);
+}
+
+function triggerStoryEvent(id) {
+  if (!storyLog[id]) {
+    storyLog[id] = true;
+    localStorage.setItem('storyLog', JSON.stringify(storyLog));
+    const entry = storyEntries.find(e => e.id === id);
+    if (entry) {
+      showStoryMessage(entry.epithet);
+      slowMoTimer = 180;
+    }
+  }
+}
+
 function unlockAchievement(id) {
   if (!achievements[id]) {
     achievements[id] = true;
@@ -2202,6 +2377,27 @@ function showAchievementsList() {
   ct.innerHTML = html;
   ov.style.display = 'block';
   document.getElementById('achClose').onclick = () => {
+    ov.style.display = 'none';
+    if(state===STATE.Start) menuEl.style.display = 'block';
+  };
+}
+
+function showStoryLog() {
+  const ov = document.getElementById('overlay');
+  const ct = document.getElementById('gameOverContent');
+  let html = '<h2>Story Log</h2><div style="text-align:left">';
+  storyEntries.forEach(ent => {
+    if (storyLog[ent.id]) {
+      html += `<p>📖 <strong>${ent.epithet}</strong></p>`;
+      ent.log.forEach(line => {
+        html += `<p style="margin-left:20px;">${line}</p>`;
+      });
+    }
+  });
+  html += '</div><button id="storyClose">Close</button>';
+  ct.innerHTML = html;
+  ov.style.display = 'block';
+  document.getElementById('storyClose').onclick = () => {
     ov.style.display = 'none';
     if(state===STATE.Start) menuEl.style.display = 'block';
   };
@@ -2423,6 +2619,10 @@ function applyShake() {
 
     function loop(){
       frames++;
+      if (slowMoTimer > 0) slowMoTimer--;
+      if (inMecha && !storyLog['Mecha_Mastery'] && frames - mechaStartFrame >= 3600) {
+        triggerStoryEvent('Mecha_Mastery');
+      }
       if(reviveTimer>0) reviveTimer--;
       if (radialHitCooldown > 0) radialHitCooldown--;
   // ── Boss fight branch ──────────────────────────────────
@@ -2501,6 +2701,8 @@ if (state === STATE.MechaTransit) {
         : 'assets/AquaSkinMech.png';
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
+      triggerStoryEvent('Suit_Assembled');
+      mechaStartFrame = frames;
       state = STATE.Play;
       rocketsSpawned = 0;
       mechaStartScore = score;
@@ -2519,6 +2721,8 @@ if (state === STATE.MechaTransit) {
       mechaSafeExpiry = frames + 120;
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
+      triggerStoryEvent('Suit_Assembled');
+      mechaStartFrame = frames;
       state = STATE.Play;
       rocketsSpawned = 0;
       mechaStartScore = score;
