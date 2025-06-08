@@ -411,6 +411,11 @@ let marathonMoving = false;
   function startAdventure(){
     marathonMode = false;
     menuEl.style.display = 'none';
+    if (storedDoubles > 0) {
+      storedDoubles--;
+      localStorage.setItem('birdyDouble', storedDoubles);
+      doubleActive = true;
+    }
     state = STATE.Play;
     trackEvent('game_start');
   }
@@ -418,6 +423,11 @@ let marathonMoving = false;
   function startMarathon(){
     marathonMode = true;
     menuEl.style.display = 'none';
+    if (storedDoubles > 0) {
+      storedDoubles--;
+      localStorage.setItem('birdyDouble', storedDoubles);
+      doubleActive = true;
+    }
     state = STATE.Play;
     trackEvent('game_start_marathon');
   }
@@ -635,9 +645,13 @@ let altMechaTimer = 0;
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
       if (totalCoins >= 500) unlockAchievement('coins500');
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
+    let storedDoubles = parseInt(localStorage.getItem('birdyDouble')||'0');
     let usedRevive    = false;
     let reviveTimer   = 0;
     const reviveRings = [];
+    let doubleActive  = false;
+    const doubleRings = [];
+    let doublePulse   = 0;
     updateReviveDisplay();
 
     for(let i=0;i<7;i++){
@@ -1568,6 +1582,29 @@ function updateReviveEffect() {
   ctx.restore();
 }
 
+function updateDoubleEffect() {
+  if (!doubleActive) return;
+  if (frames % 15 === 0 || (doublePulse > 0 && frames % 5 === 0)) {
+    doubleRings.push({ r: bird.rad, alpha: 0.6 });
+  }
+  for (let i = doubleRings.length - 1; i >= 0; i--) {
+    const ring = doubleRings[i];
+    ring.r += 3;
+    ring.alpha -= 0.02;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,223,0,${ring.alpha})`;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = 'rgba(255,223,0,0.8)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(bird.x, bird.y, ring.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    if (ring.alpha <= 0) doubleRings.splice(i, 1);
+  }
+  if (doublePulse > 0) doublePulse--;
+}
+
     function drawPipes(){
       pipes.forEach(p=>{
         ctx.fillStyle=p.color;
@@ -2003,7 +2040,9 @@ function updateJellies() {
     if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.rad + coinR) {
       c.taken = true;
       coinCount++;
-      totalCoins++;
+      const gain = doubleActive ? 2 : 1;
+      totalCoins += gain;
+      if (doubleActive) doublePulse = 60;
       localStorage.setItem('birdyCoinsEarned', totalCoins);
       if (totalCoins >= 100) triggerStoryEvent('Coin_Threshold');
       if (totalCoins >= 500) unlockAchievement('coins500');
@@ -2285,6 +2324,9 @@ function handleHit(){
   usedRevive = false;
   reviveTimer = 0;
   updateReviveDisplay();
+  doubleActive = false;
+  doubleRings.length = 0;
+  doublePulse = 0;
 }
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
@@ -2469,10 +2511,15 @@ function showStoryLog() {
 function showShop() {
   const ov = document.getElementById('overlay');
   const ct = document.getElementById('gameOverContent');
+  let section = 'skins';
 
   function render() {
     let html = `<h2>Shop</h2>` +
                `<p>Coins: ${totalCoins}</p>` +
+               `<div style="margin-bottom:10px;">`+
+               `<button id="tabSkins" ${section==='skins'?'disabled':''}>Skins</button>`+
+               `<button id="tabItems" ${section==='items'?'disabled':''}>Items</button>`+
+               `</div>`+
                `<div style="display:flex;flex-direction:column;align-items:center;">`;
 
     const skins = [
@@ -2482,38 +2529,48 @@ function showShop() {
       {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10}
     ];
 
-    const revive = {key:'Revive.png', name:'Revive', cost:25};
+    const items = [
+      {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after falling, max 1 per run</small>'},
+      {key:'Double.png', name:'Double Coins', cost:20, owned:storedDoubles>0, extra:'<small>Next run doubles coins</small>'}
+    ];
 
-    skins.forEach(s => {
-      html += `<div style="margin:6px;">` +
-              `<img src="assets/${s.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
-              `${s.name} `;
-      if (s.owned || s.cost === 0) {
-        if (defaultSkin === s.key) {
-          html += `(Equipped)`;
+    if(section==='skins'){
+      skins.forEach(s => {
+        html += `<div style="margin:6px;">` +
+                `<img src="assets/${s.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
+                `${s.name} `;
+        if (s.owned || s.cost === 0) {
+          if (defaultSkin === s.key) {
+            html += `(Equipped)`;
+          } else {
+            html += `<button data-equip="${s.key}">Equip</button>`;
+          }
+        } else if (s.req && Object.keys(storyLog).length < s.req) {
+          html += `<span>Complete ${s.req} story logs</span>`;
         } else {
-          html += `<button data-equip="${s.key}">Equip</button>`;
+          html += `<button data-buy="${s.key}">Buy - ${s.cost}</button>`;
         }
-      } else if (s.req && Object.keys(storyLog).length < s.req) {
-        html += `<span>Complete ${s.req} story logs</span>`;
-      } else {
-        html += `<button data-buy="${s.key}">Buy - ${s.cost}</button>`;
-      }
-      html += `</div>`;
-    });
-
-    html += `<div style="margin:6px;">` +
-            `<img src="assets/${revive.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">` +
-            `${revive.name} <small>Continue after falling, max 1 per run</small> `;
-    if (storedRevives > 0) {
-      html += `(Owned)`;
+        html += `</div>`;
+      });
     } else {
-      html += `<button id="buyRevive">Buy - ${revive.cost}</button>`;
+      items.forEach(it => {
+        html += `<div style="margin:6px;">`+
+                `<img src="assets/${it.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">`+
+                `${it.name} ${it.extra||''} `;
+        if(it.owned){
+          html += `(Owned)`;
+        } else {
+          html += `<button data-itembuy="${it.key}">Buy - ${it.cost}</button>`;
+        }
+        html += `</div>`;
+      });
     }
-    html += `</div>`;
 
     html += `</div><button id="shopClose">Close</button>`;
     ct.innerHTML = html;
+
+    ct.querySelectorAll('#tabSkins').forEach(b=>b.onclick=()=>{section='skins';render();});
+    ct.querySelectorAll('#tabItems').forEach(b=>b.onclick=()=>{section='items';render();});
 
     ct.querySelectorAll('button[data-buy]').forEach(btn => {
       btn.onclick = () => {
@@ -2532,6 +2589,26 @@ function showShop() {
       };
     });
 
+    ct.querySelectorAll('button[data-itembuy]').forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-itembuy');
+        const item = items.find(i=>i.key===key);
+        if (totalCoins >= item.cost && !item.owned) {
+          totalCoins -= item.cost;
+          localStorage.setItem('birdyCoinsEarned', totalCoins);
+          if(key==='Revive.png') {
+            storedRevives = 1;
+            localStorage.setItem('birdyRevives', storedRevives);
+            updateReviveDisplay();
+          } else if(key==='Double.png') {
+            storedDoubles = 1;
+            localStorage.setItem('birdyDouble', storedDoubles);
+          }
+          render();
+        }
+      };
+    });
+
     ct.querySelectorAll('button[data-equip]').forEach(btn => {
       btn.onclick = () => {
         const key = btn.getAttribute('data-equip');
@@ -2542,19 +2619,6 @@ function showShop() {
       };
     });
 
-    const buyRev = document.getElementById('buyRevive');
-    if(buyRev){
-      buyRev.onclick = () => {
-        if(totalCoins >= revive.cost && storedRevives === 0){
-          totalCoins -= revive.cost;
-          storedRevives = 1;
-          localStorage.setItem('birdyCoinsEarned', totalCoins);
-          localStorage.setItem('birdyRevives', storedRevives);
-          updateReviveDisplay();
-          render();
-        }
-      };
-    }
 
     document.getElementById('shopClose').onclick = () => {
       ov.style.display = 'none';
@@ -2862,6 +2926,7 @@ if (state === STATE.Play) {
   // — normal draw/update —
   bird.draw();
   updateReviveEffect();
+  updateDoubleEffect();
   drawPipes();
   updatePipes();
 
