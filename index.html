@@ -259,7 +259,11 @@ let bossesDefeated    = 0; // number of times boss was beaten
     { id:'coins500', desc:'Get 500 Coins' },
     { id:'mar100', desc:'Get 100 Points in Marathon' },
     { id:'mar250', desc:'Get 250 Points in Marathon' },
-    { id:'mar500', desc:'Get 500 Points in Marathon' }
+    { id:'mar500', desc:'Get 500 Points in Marathon' },
+    { id:'story5',  desc:'Get 5 Story events \ud83d\udcd6' },
+    { id:'story10', desc:'Get 10 Story events \ud83d\udcd6' },
+    { id:'story15', desc:'Get 15 Story events \ud83d\udcd6' },
+    { id:'story20', desc:'Get 20 Story events \ud83d\udcd6' }
   ];
 let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
 
@@ -386,6 +390,14 @@ let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
     ]}
   ];
   let storyLog = JSON.parse(localStorage.getItem('storyLog')||'{}');
+  function checkStoryAchievements() {
+    const count = Object.keys(storyLog).length;
+    if (count >= 5)  unlockAchievement('story5');
+    if (count >= 10) unlockAchievement('story10');
+    if (count >= 15) unlockAchievement('story15');
+    if (count >= 20) unlockAchievement('story20');
+  }
+  checkStoryAchievements();
   let slowMoTimer = 0;
   let mechaStartFrame = 0;
 
@@ -584,7 +596,7 @@ let bossTriggerActive  = false; // is a boss trigger rocket on-screen
 let bossObj;                // boss-specific timers & mode
 let bossExplosionTimer = 0; // countdown for boss defeat explosion
 
-let altMecha = null;        // 'fire' or 'aqua' during alt mech transition
+let altMecha = null;        // 'fire', 'aqua', or 'story' during alt mech transition
 let altMechaTimer = 0;
     const baseAppleProb=0.03,baseCoinProb=0.2;
     const cycleLength=6000;
@@ -660,6 +672,9 @@ function startMechaTransition() {
     altMechaTimer = 90;
   } else if (defaultSkin === 'AquaSkinBase.png') {
     altMecha = 'aqua';
+    altMechaTimer = 90;
+  } else if (defaultSkin === 'story_bird.png') {
+    altMecha = 'story';
     altMechaTimer = 90;
   }
 }
@@ -1234,8 +1249,9 @@ function drawBackground(){
       flap(){
         this.vel=-this.lift;
         playTone(300,0.08);
-        if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
-          const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
+        if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png' || defaultSkin === 'story_bird.png') {
+          const type = defaultSkin === 'FireSkinBase.png' ? 'fire'
+                      : defaultSkin === 'AquaSkinBase.png' ? 'bubble' : 'page';
           for (let i=0;i<6;i++) {
             skinParticles.push({
               x:this.x-20,
@@ -1275,8 +1291,9 @@ function drawBackground(){
           } else {
             this.vel += this.gravity; this.y += this.vel;
           }
-          if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
-            const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
+          if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png' || defaultSkin === 'story_bird.png') {
+            const type = defaultSkin === 'FireSkinBase.png' ? 'fire'
+                        : defaultSkin === 'AquaSkinBase.png' ? 'bubble' : 'page';
             for (let i=0;i<2;i++) {
               skinParticles.push({
                 x:this.x-20,
@@ -1470,7 +1487,18 @@ function updateSkinParticles() {
     p.life--;
     ctx.save();
     ctx.globalAlpha = (p.life / p.max) * 0.7;
-    if (p.type === 'fire') {
+    if (p.type === 'page') {
+      ctx.globalAlpha = 1;
+      p.vy += 0.1;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(p.x - p.size, p.y - p.size);
+      ctx.lineTo(p.x + p.size, p.y - p.size);
+      ctx.quadraticCurveTo(p.x + p.size * 1.2, p.y, p.x + p.size, p.y + p.size);
+      ctx.lineTo(p.x - p.size, p.y + p.size);
+      ctx.quadraticCurveTo(p.x - p.size * 1.2, p.y, p.x - p.size, p.y - p.size);
+      ctx.fill();
+    } else if (p.type === 'fire') {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
       g.addColorStop(0, 'rgba(255,255,0,0.5)');
       g.addColorStop(0.5, 'rgba(255,120,0,0.3)');
@@ -2373,6 +2401,7 @@ function triggerStoryEvent(id) {
       showStoryMessage(entry.epithet);
 
     }
+    checkStoryAchievements();
   }
 }
 
@@ -2449,7 +2478,8 @@ function showShop() {
     const skins = [
       {key:'birdieV2.png', name:'Default', cost:0, owned:true},
       {key:'FireSkinBase.png', name:'Fire Skin', cost:100, owned:ownedSkins['FireSkinBase.png']},
-      {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']}
+      {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
+      {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10}
     ];
 
     const revive = {key:'Revive.png', name:'Revive', cost:25};
@@ -2464,6 +2494,8 @@ function showShop() {
         } else {
           html += `<button data-equip="${s.key}">Equip</button>`;
         }
+      } else if (s.req && Object.keys(storyLog).length < s.req) {
+        html += `<span>Complete ${s.req} story logs</span>`;
       } else {
         html += `<button data-buy="${s.key}">Buy - ${s.cost}</button>`;
       }
@@ -2581,6 +2613,8 @@ function flapHandler(e){
     }
     const bubbleShot = defaultSkin === 'AquaSkinBase.png' ||
                        birdSprite.src.includes('AquaSkinMech');
+    const pageShot = defaultSkin === 'story_bird.png' ||
+                     birdSprite.src.includes('Story_mech');
     if (bubbleShot) {
       for (let b = 0; b < 8; b++) {
         skinParticles.push({
@@ -2592,6 +2626,20 @@ function flapHandler(e){
           life:20,
           max:20,
           type:'bubble'
+        });
+      }
+    }
+    if (pageShot) {
+      for (let p = 0; p < 8; p++) {
+        skinParticles.push({
+          x: bird.x,
+          y: bird.y,
+          vx:(Math.random()-0.5)*4,
+          vy:(Math.random()-0.5)*4,
+          size:3+Math.random()*3,
+          life:20,
+          max:20,
+          type:'page'
         });
       }
     }
@@ -2701,6 +2749,9 @@ if (state === STATE.BossExplode) {
 if (state === STATE.MechaTransit) {
   if (altMecha) {
     for (let i = 0; i < 8; i++) {
+      const type = altMecha === 'fire' ? 'fire'
+                  : altMecha === 'aqua' ? 'bubble'
+                  : 'page';
       skinParticles.push({
         x: bird.x,
         y: bird.y,
@@ -2709,7 +2760,7 @@ if (state === STATE.MechaTransit) {
         size: 4 + Math.random() * 3,
         life: 20,
         max: 20,
-        type: altMecha === 'fire' ? 'fire' : 'bubble',
+        type,
         shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
       });
       if (altMecha === 'fire' && Math.random() < 0.5) {
@@ -2732,7 +2783,9 @@ if (state === STATE.MechaTransit) {
       mechaSafeExpiry = frames + 120;
       birdSprite.src = altMecha === 'fire'
         ? 'assets/FireSkinMech.png'
-        : 'assets/AquaSkinMech.png';
+        : altMecha === 'aqua'
+          ? 'assets/AquaSkinMech.png'
+          : 'assets/Story_mech.png';
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
