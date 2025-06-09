@@ -106,7 +106,9 @@
     }
     .iconBounce { animation: bounce 1s infinite; display:inline-block; }
     .iconWrap { position:relative; display:inline-block; width:32px; height:32px; margin-right:6px; }
-    .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); }
+    .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
+
+    #gameOverContent { position:relative; height:100%; }
 
   </style>
 
@@ -686,7 +688,7 @@ const moneyLeaves = [];
         id: 'natural',
         name: 'Natural Self',
         color: '#7CFC00',
-        costBase: 100,
+        costBase: 50,
         upgrades: [
           {
             id: 'natural_coin10',
@@ -701,7 +703,7 @@ const moneyLeaves = [];
         id: 'mech',
         name: 'Mech & Rocket',
         color: '#FFA500',
-        costBase: 150,
+        costBase: 100,
         upgrades: [
           {
             id: 'mech_rocket_power1',
@@ -2700,8 +2702,8 @@ function showShop() {
       ];
 
     const items = [
-      {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after falling, max 1 per run</small>'},
-      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:'<small>Next run doubles coins</small>'}
+      {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after death</small>'},
+      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''}
     ];
 
     if(section==='skins'){
@@ -2716,7 +2718,7 @@ function showShop() {
             html += `<button data-equip="${s.key}">Equip</button>`;
           }
         } else if (s.req && Object.keys(storyLog).length < s.req) {
-          html += `<span>Complete ${s.req} story logs</span>`;
+          html += `<span>(Complete ${s.req} story logs)</span>`;
         } else {
           html += `<button data-buy="${s.key}">Buy - ${s.cost}</button>`;
         }
@@ -2735,7 +2737,7 @@ function showShop() {
         html += `</div>`;
       });
     } else if(section==='upgrades') {
-      html += `<div id="upgradeTreeWrap" style="text-align:center;width:100%;height:100%;display:flex;justify-content:center;align-items:center;">`+
+      html += `<div id="upgradeTreeWrap" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;height:100%;display:flex;justify-content:center;align-items:center;">`+
               `<svg id="upgradeTreeSVG" style="width:100%;height:100%;max-width:600px;max-height:600px;"></svg>`+
               `</div>`;
     }
@@ -2821,7 +2823,7 @@ function renderUpgradeTree() {
   const radius = Math.min(w,h)/2 - 40;
   const branchCount = upgradeTreeConfig.length;
   upgradeTreeConfig.forEach((branch, bIndex) => {
-    const angle = (Math.PI*2/branchCount)*bIndex - Math.PI/2;
+    const angle = (Math.PI*2/branchCount)*bIndex;
     const line = document.createElementNS(svg.namespaceURI,'line');
     const lx = cx + Math.cos(angle)*radius;
     const ly = cy + Math.sin(angle)*radius;
