@@ -497,6 +497,10 @@ const jellyFrames = ['assets/jelly1.png','assets/jelly2.png','assets/jelly3.png'
 const jellyShockFrames = ['assets/jelly.shock1.png','assets/jelly.shock2.png','assets/jelly.shock3.png'].map(src=>Object.assign(new Image(),{src}));
 const jellies = [];
 
+// ── money leaf images ──
+const leafImages = ['assets/bill1.png','assets/biill2.png','assets/bill3.png','assets/bill4.png']
+  .map(src => Object.assign(new Image(), { src }));
+
 mechaMusic.loop       = true;
 mechaMusic.preload    = 'auto';
     // ── Strong‐attack bomb queues ─────────────────────────────
@@ -612,7 +616,7 @@ let bossTriggerActive  = false; // is a boss trigger rocket on-screen
 let bossObj;                // boss-specific timers & mode
 let bossExplosionTimer = 0; // countdown for boss defeat explosion
 
-let altMecha = null;        // 'fire', 'aqua', or 'story' during alt mech transition
+let altMecha = null;        // 'fire', 'aqua', 'story', or 'money' during alt mech transition
 let altMechaTimer = 0;
     const baseAppleProb=0.03,baseCoinProb=0.18;
     const cycleLength=6000;
@@ -631,9 +635,10 @@ let altMechaTimer = 0;
     const rocketsOut = [];
     const rocketsIn  = [];
     const rocketPowerups = [];
-    const rocketParticles = [];
-    const rocketSmoke = [];
-    const skinParticles = [];
+const rocketParticles = [];
+const rocketSmoke = [];
+const skinParticles = [];
+const moneyLeaves = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -695,6 +700,9 @@ function startMechaTransition() {
     altMechaTimer = 90;
   } else if (defaultSkin === 'story_bird.png') {
     altMecha = 'story';
+    altMechaTimer = 90;
+  } else if (defaultSkin === 'MoneySkin.png') {
+    altMecha = 'money';
     altMechaTimer = 90;
   }
 }
@@ -1312,6 +1320,12 @@ function drawBackground(){
             }
           }
         }
+        if (defaultSkin === 'MoneySkin.png') {
+          const cnt = 4 + Math.floor(Math.random()*4);
+          for(let i=0;i<cnt;i++) {
+            spawnMoneyLeaf(this.x, this.y, (Math.random()-0.5)*0.5, 1+Math.random());
+          }
+        }
       },
       update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
@@ -1385,6 +1399,7 @@ function spawnPipe(){
         appP  = baseAppleProb /* * decay*/,
         rocketP = baseTripleProb;
   let coinP = baseCoinProb * (marathonMode ? 0.5 : 1) /* * decay*/;
+  if (defaultSkin === 'MoneySkin.png') coinP *= 1.2;
 
   // pick a random gap in the top half
   const topH = 50 + Math.random()*(H/2),
@@ -1576,6 +1591,36 @@ function updateSkinParticles() {
   }
 }
 
+function spawnMoneyLeaf(x, y, vx, vy) {
+  const img = leafImages[Math.floor(Math.random() * leafImages.length)];
+  moneyLeaves.push({
+    x, y, vx, vy,
+    rot: Math.random() * Math.PI * 2,
+    vrot:(Math.random()-0.5)*0.1,
+    size:12+Math.random()*6,
+    life:60+Math.random()*20,
+    img
+  });
+}
+
+function updateMoneyLeaves(){
+  for(let i=moneyLeaves.length-1;i>=0;i--){
+    const l = moneyLeaves[i];
+    l.x  += l.vx;
+    l.y  += l.vy;
+    l.vy += 0.05;
+    l.vx *= 0.99;
+    l.rot+= l.vrot;
+    l.life--;
+    ctx.save();
+    ctx.translate(l.x, l.y);
+    ctx.rotate(l.rot);
+    ctx.drawImage(l.img, -l.size/2, -l.size/2, l.size, l.size);
+    ctx.restore();
+    if(l.life<=0 || l.y>H+40) moneyLeaves.splice(i,1);
+  }
+}
+
 function updateReviveEffect() {
   if (reviveTimer <= 0) return;
   if (frames % 15 === 0) {
@@ -1648,6 +1693,9 @@ function updateRockets() {
     ctx.drawImage(rocketOutSprite, r.x, r.y - size/2, size, size);
     if (r.triple && frames % 2 === 0) {
       rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
+    }
+    if (r.money && frames % 3 === 0) {
+      spawnMoneyLeaf(r.x, r.y, -1+(Math.random()-0.5)*0.5, 0.5+Math.random()*0.5);
     }
 
     // 1) check hits on stage-2 bombs
@@ -2544,12 +2592,13 @@ function showShop() {
                `</div>`+
                `<div style="display:flex;flex-direction:column;align-items:center;">`;
 
-    const skins = [
-      {key:'birdieV2.png', name:'Default', cost:0, owned:true},
-      {key:'FireSkinBase.png', name:'Fire Skin', cost:100, owned:ownedSkins['FireSkinBase.png']},
-      {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
-      {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10}
-    ];
+      const skins = [
+        {key:'birdieV2.png', name:'Default', cost:0, owned:true},
+        {key:'FireSkinBase.png', name:'Fire Skin', cost:100, owned:ownedSkins['FireSkinBase.png']},
+        {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
+        {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10},
+        {key:'MoneySkin.png', name:'Money Bags', cost:500, owned:ownedSkins['MoneySkin.png']}
+      ];
 
     const items = [
       {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after falling, max 1 per run</small>'},
@@ -2597,7 +2646,8 @@ function showShop() {
     ct.querySelectorAll('button[data-buy]').forEach(btn => {
       btn.onclick = () => {
         const key = btn.getAttribute('data-buy');
-        const cost = 100;
+        const skin = skins.find(s=>s.key===key);
+        const cost = skin ? skin.cost : 100;
         if (totalCoins >= cost) {
           totalCoins -= cost;
           ownedSkins[key] = true;
@@ -2689,16 +2739,20 @@ function flapHandler(e){
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
-    const shots = tripleShot ? 3 : 1;
-    for(let s=0;s<shots;s++){
-      rocketsOut.push({
-        x: bird.x + 40,
-        y: bird.y + (s - (shots-1)/2) * 8,
-        vx: 4,
-        damage: tripleShot ? 20 : 10,
-        triple: tripleShot
-      });
-    }
+      const shots = tripleShot ? 3 : 1;
+      for(let s=0;s<shots;s++){
+        rocketsOut.push({
+          x: bird.x + 40,
+          y: bird.y + (s - (shots-1)/2) * 8,
+          vx: 4,
+          damage: tripleShot ? 20 : 10,
+          triple: tripleShot,
+          money: defaultSkin === 'MoneySkin.png'
+        });
+        if (defaultSkin === 'MoneySkin.png') {
+          spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
+        }
+      }
     const bubbleShot = defaultSkin === 'AquaSkinBase.png' ||
                        birdSprite.src.includes('AquaSkinMech');
     const pageShot = defaultSkin === 'story_bird.png' ||
@@ -2835,35 +2889,39 @@ if (state === STATE.BossExplode) {
 
 // ── if we’re mid-transition, only run mech staging/draw, no game logic ──
 if (state === STATE.MechaTransit) {
-  if (altMecha) {
-    for (let i = 0; i < 8; i++) {
-      const type = altMecha === 'fire' ? 'fire'
-                  : altMecha === 'aqua' ? 'bubble'
-                  : 'page';
-      skinParticles.push({
-        x: bird.x,
-        y: bird.y,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4,
-        size: 4 + Math.random() * 3,
-        life: 20,
-        max: 20,
-        type,
-        shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
-      });
-      if (altMecha === 'fire' && Math.random() < 0.5) {
-        skinParticles.push({
-          x: bird.x,
-          y: bird.y,
-          vx: (Math.random() - 0.5) * 5,
-          vy: (Math.random() - 0.5) * 5,
-          size: 4 + Math.random() * 4,
-          life: 25,
-          max: 25,
-          type: 'smoke'
-        });
+    if (altMecha) {
+      for (let i = 0; i < 8; i++) {
+        if (altMecha === 'money') {
+          spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
+        } else {
+          const type = altMecha === 'fire' ? 'fire'
+                      : altMecha === 'aqua' ? 'bubble'
+                      : 'page';
+          skinParticles.push({
+            x: bird.x,
+            y: bird.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            size: 4 + Math.random() * 3,
+            life: 20,
+            max: 20,
+            type,
+            shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
+          });
+          if (altMecha === 'fire' && Math.random() < 0.5) {
+            skinParticles.push({
+              x: bird.x,
+              y: bird.y,
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              size: 4 + Math.random() * 4,
+              life: 25,
+              max: 25,
+              type: 'smoke'
+            });
+          }
+        }
       }
-    }
     altMechaTimer--;
     triggerShake(15);
     if (altMechaTimer <= 0) {
@@ -2873,7 +2931,9 @@ if (state === STATE.MechaTransit) {
         ? 'assets/FireSkinMech.png'
         : altMecha === 'aqua'
           ? 'assets/AquaSkinMech.png'
-          : 'assets/Story_mech.png';
+          : altMecha === 'story'
+            ? 'assets/Story_mech.png'
+            : 'assets/MoneyMech.png';
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
@@ -2906,6 +2966,7 @@ if (state === STATE.MechaTransit) {
   applyShake();
   drawBackground();
   updateSkinParticles();
+  updateMoneyLeaves();
   // ── draw & animate any flying armor pieces ──
 for (let j = flyingArmor.length - 1; j >= 0; j--) {
   const a = flyingArmor[j];
@@ -2924,8 +2985,9 @@ for (let j = flyingArmor.length - 1; j >= 0; j--) {
 // then shake
 applyShake();
 
- drawBackground();
+drawBackground();
  updateSkinParticles();
+ updateMoneyLeaves();
 for (let j = flyingArmor.length - 1; j >= 0; j--) {
   const a = flyingArmor[j];
   a.vy += 0.2;
@@ -2975,7 +3037,9 @@ if (state === STATE.Play) {
     }
 
     // occasional bonus coins during Mecha
-    if (Math.random() < 0.5 / 4) {
+    let bonusP = 0.5 / 4;
+    if (defaultSkin === 'MoneySkin.png') bonusP *= 1.2;
+    if (Math.random() < bonusP) {
       const cy = Math.random() * (H - 80) + 40;
       coins.push({ x: W + 40, y: cy, taken: false });
     }
