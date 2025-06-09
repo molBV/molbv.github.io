@@ -619,7 +619,7 @@ let altMechaTimer = 0;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
     const pipes=[], apples=[], coins=[];
-    const appleR=10, coinR=8, initialGap=300, minGap=140, pipeW=60, baseSpeed=2;
+    const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60, baseSpeed=2;
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     let mechSpeed = baseSpeed;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
@@ -1385,7 +1385,7 @@ function spawnPipe(){
 
   // pick a random gap in the top half
   const topH = 50 + Math.random()*(H/2),
-        gap  = Math.max(minGap, initialGap - Math.floor(pipeCount/10)*10),
+        gap  = Math.max(minGap, initialGap - Math.floor(pipeCount/15)*10),
         color= pipeColors[Math.floor(pipeCount/20)%pipeColors.length];
 
   if (marathonMode && gap === minGap) marathonMoving = true;
