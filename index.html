@@ -1023,6 +1023,9 @@ function triggerBossAttack(){
   mechaTriggered  = false;
   tripleShot      = false;
   birdSprite.src  = 'assets/' + defaultSkin;
+  mechSpeed       = baseSpeed;
+  flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
+  flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
   updateScore();
 
   // clear lingering projectiles
