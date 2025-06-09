@@ -637,6 +637,7 @@ let altMechaTimer = 0;
     const rocketPowerups = [];
 const rocketParticles = [];
 const rocketSmoke = [];
+const rocketFlames = [];
 const skinParticles = [];
 const moneyLeaves = [];
 
@@ -663,7 +664,79 @@ const moneyLeaves = [];
     let doubleActive  = false;
     const doubleRings = [];
     let doublePulse   = 0;
+
+    // ── Upgrade state ──
+    let coinSpawnMult    = 1;
+    let rocketSizeMult   = 1;
+    let rocketDamageMult = 1;
+    let rocketFlameEnabled = false;
+    let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
+
+    const upgradeTreeConfig = [
+      {
+        id: 'natural',
+        name: 'Natural Self',
+        color: '#7CFC00',
+        costBase: 100,
+        upgrades: [
+          {
+            id: 'natural_coin10',
+            name: '+10% Coin Spawn',
+            description: 'Increase coin spawn rate by 10%',
+            effect: () => { coinSpawnMult *= 1.10; },
+            costFactor: 1
+          }
+        ]
+      },
+      {
+        id: 'mech',
+        name: 'Mech & Rocket',
+        color: '#FFA500',
+        costBase: 150,
+        upgrades: [
+          {
+            id: 'mech_rocket_power1',
+            name: 'Rocket Power I',
+            description: 'Rocket size & damage ×1.5; emit flame particles',
+            effect: () => {
+              rocketSizeMult   *= 1.5;
+              rocketDamageMult *= 1.5;
+              rocketFlameEnabled = true;
+            },
+            costFactor: 1
+          }
+        ]
+      }
+    ];
+
+    function applyPurchasedUpgrades() {
+      upgradeTreeConfig.forEach(branch => {
+        branch.upgrades.forEach(upg => {
+          if (purchasedUpgrades.includes(upg.id)) upg.effect();
+        });
+      });
+    }
+    applyPurchasedUpgrades();
     updateReviveDisplay();
+
+    // tooltip element for upgrade tree
+    const tip = document.createElement('div');
+    tip.style.position = 'absolute';
+    tip.style.background = 'rgba(0,0,0,0.8)';
+    tip.style.color = '#fff';
+    tip.style.padding = '4px 8px';
+    tip.style.borderRadius = '4px';
+    tip.style.pointerEvents = 'none';
+    tip.style.opacity = 0;
+    tip.style.transition = 'opacity .1s';
+    document.body.appendChild(tip);
+    function showTooltip(text) {
+      tip.textContent = text;
+      tip.style.left = (window.event.pageX+10)+'px';
+      tip.style.top  = (window.event.pageY+10)+'px';
+      tip.style.opacity = 1;
+    }
+    function hideTooltip() { tip.style.opacity = 0; }
 
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
@@ -1398,7 +1471,7 @@ function spawnPipe(){
   const decay = Math.pow(0.9, Math.floor(pipeCount/10)),
         appP  = baseAppleProb /* * decay*/,
         rocketP = baseTripleProb;
-  let coinP = baseCoinProb * (marathonMode ? 0.5 : 1) /* * decay*/;
+  let coinP = baseCoinProb * (marathonMode ? 0.5 : 1) * coinSpawnMult;
   if (defaultSkin === 'MoneySkin.png') coinP *= 1.2;
 
   // pick a random gap in the top half
@@ -1689,8 +1762,11 @@ function updateRockets() {
   rocketsOut.forEach((r, i) => {
     // advance & draw the outgoing rocket
     r.x += r.vx * ts;
-    const size = r.triple ? 20 : 16;
+    const size = r.size || (r.triple ? 20 : 16);
     ctx.drawImage(rocketOutSprite, r.x, r.y - size/2, size, size);
+    if (r.flame && frames % 2 === 0) {
+      rocketFlames.push({x:r.x, y:r.y, life:10});
+    }
     if (r.triple && frames % 2 === 0) {
       rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
     }
@@ -1939,6 +2015,18 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     ctx.fill();
     ctx.restore();
     if (s.alpha <= 0) rocketSmoke.splice(si, 1);
+  });
+
+  rocketFlames.forEach((f, fi) => {
+    f.life--;
+    ctx.save();
+    ctx.globalAlpha = f.life / 10;
+    ctx.fillStyle = 'orange';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (f.life <= 0) rocketFlames.splice(fi, 1);
   });
 
   updateExplosions();
@@ -2351,6 +2439,7 @@ function handleHit(){
   rocketsIn.length  = 0;
   jellies.length    = 0;
   rocketSmoke.length = 0;
+  rocketFlames.length = 0;
   rocketPowerups.length = 0;
   
   // reset coins _before_ updating the UI
@@ -2589,6 +2678,7 @@ function showShop() {
                `<div style="margin-bottom:10px;">`+
                `<button id="tabSkins" ${section==='skins'?'disabled':''}>Skins</button>`+
                `<button id="tabItems" ${section==='items'?'disabled':''}>Items</button>`+
+               `<button id="tabUpgrades" ${section==='upgrades'?'disabled':''}>Upgrades</button>`+
                `</div>`+
                `<div style="display:flex;flex-direction:column;align-items:center;">`;
 
@@ -2623,7 +2713,7 @@ function showShop() {
         }
         html += `</div>`;
       });
-    } else {
+    } else if(section==='items') {
       items.forEach(it => {
         html += `<div style="margin:6px;">`+
                 `<img src="assets/${it.key}" width="32" height="32" style="vertical-align:middle;margin-right:6px;">`+
@@ -2635,13 +2725,19 @@ function showShop() {
         }
         html += `</div>`;
       });
+    } else if(section==='upgrades') {
+      html += `<div id="upgradeTreeWrap" style="text-align:center;">`+
+              `<svg id="upgradeTreeSVG" width="600" height="600"></svg>`+
+              `</div>`;
     }
 
     html += `</div><button id="shopClose">Close</button>`;
     ct.innerHTML = html;
+    if(section==='upgrades') renderUpgradeTree();
 
     ct.querySelectorAll('#tabSkins').forEach(b=>b.onclick=()=>{section='skins';render();});
     ct.querySelectorAll('#tabItems').forEach(b=>b.onclick=()=>{section='items';render();});
+    ct.querySelectorAll('#tabUpgrades').forEach(b=>b.onclick=()=>{section='upgrades';render();});
 
     ct.querySelectorAll('button[data-buy]').forEach(btn => {
       btn.onclick = () => {
@@ -2704,6 +2800,74 @@ function showShop() {
   render();
 }
 
+function renderUpgradeTree() {
+  const svg = document.getElementById('upgradeTreeSVG');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const cx = 300, cy = 300;
+  const radius = 200;
+  const branchCount = upgradeTreeConfig.length;
+  upgradeTreeConfig.forEach((branch, bIndex) => {
+    const angle = (Math.PI*2/branchCount)*bIndex - Math.PI/2;
+    const line = document.createElementNS(svg.namespaceURI,'line');
+    const lx = cx + Math.cos(angle)*radius;
+    const ly = cy + Math.sin(angle)*radius;
+    line.setAttribute('x1',cx);
+    line.setAttribute('y1',cy);
+    line.setAttribute('x2',lx);
+    line.setAttribute('y2',ly);
+    line.setAttribute('stroke',branch.color);
+    line.setAttribute('stroke-width','4');
+    svg.appendChild(line);
+
+    branch.upgrades.forEach((upg, idx) => {
+      const step = radius/branch.upgrades.length;
+      const r = step*(idx+1);
+      const nx = cx + Math.cos(angle)*r;
+      const ny = cy + Math.sin(angle)*r;
+      const cost = branch.costBase * Math.pow(upg.costFactor, idx);
+      const owned = purchasedUpgrades.includes(upg.id);
+
+      const circ = document.createElementNS(svg.namespaceURI,'circle');
+      circ.setAttribute('cx',nx);
+      circ.setAttribute('cy',ny);
+      circ.setAttribute('r',20);
+      circ.setAttribute('fill', owned ? branch.color : '#333');
+      circ.setAttribute('stroke',branch.color);
+      circ.setAttribute('stroke-width','2');
+      circ.style.cursor = owned ? 'default' : 'pointer';
+      svg.appendChild(circ);
+
+      const txt = document.createElementNS(svg.namespaceURI,'text');
+      txt.setAttribute('x',nx);
+      txt.setAttribute('y',ny+5);
+      txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('fill','#fff');
+      txt.setAttribute('font-size','10');
+      txt.textContent = owned ? '✓' : cost;
+      svg.appendChild(txt);
+
+      circ.addEventListener('mouseenter', e => {
+        showTooltip(upg.name+': '+upg.description);
+      });
+      circ.addEventListener('mouseleave', hideTooltip);
+      circ.addEventListener('click', () => {
+        if (owned) return;
+        if (totalCoins >= cost) {
+          totalCoins -= cost;
+          localStorage.setItem('birdyCoinsEarned', totalCoins);
+          upg.effect();
+          purchasedUpgrades.push(upg.id);
+          localStorage.setItem('purchasedUpgrades', JSON.stringify(purchasedUpgrades));
+          renderUpgradeTree();
+        } else {
+          showTooltip('Need '+cost+' coins');
+        }
+      });
+    });
+  });
+}
+
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
   if (revivePromptActive) return;
@@ -2741,13 +2905,16 @@ function flapHandler(e){
     // always allow shooting in Boss fight (regardless of inMecha)
       const shots = tripleShot ? 3 : 1;
       for(let s=0;s<shots;s++){
+        const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
         rocketsOut.push({
           x: bird.x + 40,
           y: bird.y + (s - (shots-1)/2) * 8,
           vx: 4,
-          damage: tripleShot ? 20 : 10,
+          damage: (tripleShot ? 20 : 10) * rocketDamageMult,
           triple: tripleShot,
-          money: defaultSkin === 'MoneySkin.png'
+          money: defaultSkin === 'MoneySkin.png',
+          size: baseSize,
+          flame: rocketFlameEnabled
         });
         if (defaultSkin === 'MoneySkin.png') {
           spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
