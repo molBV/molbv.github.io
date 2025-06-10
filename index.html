@@ -2857,7 +2857,7 @@ function renderUpgradeTree() {
   const cy = h/2;
   const radius = Math.min(w,h)/2 - 40;
   const branchCount = upgradeTreeConfig.length;
-  const branchSpacing = Math.PI / 3; // 60° between branches
+  const branchSpacing = Math.PI / 2; // 90° between branches
   const startAngle = -branchSpacing * (branchCount - 1) / 2;
   upgradeTreeConfig.forEach((branch, bIndex) => {
     const angle = startAngle + branchSpacing * bIndex;
@@ -3019,7 +3019,7 @@ function flapHandler(e){
   }
 }
 canvas.addEventListener('mousedown', flapHandler);
-canvas.addEventListener('touchstart',  flapHandler, {passive:true});
+canvas.addEventListener('touchstart',  e => { e.preventDefault(); flapHandler(e); }, {passive:false});
 document.addEventListener('keydown', e=>{
   if (e.code === 'Space' || e.code === 'ArrowUp') flapHandler(e);
 });
@@ -3112,6 +3112,8 @@ if (state === STATE.BossExplode) {
   drawBoss();
   updateExplosions();
   updateImpactParticles();
+  updateSkinParticles();
+  updateMoneyLeaves();
   bird.draw();
   if (--bossExplosionTimer <= 0) state = STATE.Play;
   return requestAnimationFrame(loop);
