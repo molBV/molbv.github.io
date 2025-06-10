@@ -512,6 +512,10 @@ const rocketOutSprite = new Image();
 rocketOutSprite.src   = 'assets/rocket1.png';
 const rocketInSprite  = new Image();
 rocketInSprite.src    = 'assets/rocket2.png';
+const fireRocketSprite = new Image();
+fireRocketSprite.src  = 'assets/fire_rocket.png';
+const iceRocketSprite  = new Image();
+iceRocketSprite.src   = 'assets/ice_rocket.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
@@ -676,6 +680,7 @@ let altMechaTimer = 0;
 const rocketParticles = [];
 const rocketSmoke = [];
 const rocketFlames = [];
+const rocketSnow = [];
 const skinParticles = [];
 const moneyLeaves = [];
 
@@ -862,18 +867,34 @@ pipes.length     = apples.length = coins.length = 0;
     strongQueue: 0,
     flashTimer: 0,
     pushX: 0,
-    pushY: 0
+    pushY: 0,
+    burnTimer: 0,
+    slowStacks: 0,
+    freezeTimer: 0
   };
   showAchievement('🚀 Boss Incoming!');
 
 }
-    function updateBoss() {
+function updateBoss() {
   // 1) Smoke puffs
   const p = bossObj;
+  const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
+  if (p.freezeTimer > 0) p.freezeTimer--;
+  if (p.burnTimer > 0) {
+    p.burnTimer--;
+    if (frames % 30 === 0) {
+      bossHealth -= 2;
+      if (bossHealth <= 0) endBossFight(true);
+    }
+  }
+  if (p.slowStacks === 5 && p.freezeTimer === 0 && Math.random() < 0.02) {
+    p.freezeTimer = 60;
+    p.slowStacks = 0;
+  }
     // 0) fly in until you're at your fighting X position:
   const targetX = W - 80;
   if (p.x > targetX) {
-    p.x += p.vx;           // moves left by 6px/frame
+    p.x += p.vx * speedFactor;           // moves left by 6px/frame
 //    if (p.pushX) { p.x += p.pushX; p.pushX *= 0.8; }
 //    if (p.pushY) { p.y += p.pushY; p.pushY *= 0.8; }
 //    return;                // skip the rest until you arrive
@@ -903,7 +924,7 @@ if (p.pushX || p.pushY) {
     if (Math.abs(p.pushY) < 0.01) p.pushY = 0;
   }
   // gently move back toward base position
-  p.x += (targetX - p.x) * 0.1;
+  p.x += (targetX - p.x) * 0.1 * speedFactor;
   // 2) Switch mode & auto‐attack faster when damaged
   p.modeTimer++;
   if (p.modeTimer > p.modeDuration) {
@@ -917,8 +938,8 @@ if (p.pushX || p.pushY) {
   // 3) Move boss Y — punish bird in top 10% by drifting down then tossing an upward radial bomb
   if (bird.y < H * 0.1) {
     // 3a) drift the boss down a bit for “looking cool”
-    p.vy += 0.2;                // gravity‐like pull down
-    p.y  += p.vy;
+    p.vy += 0.2 * speedFactor;                // gravity‐like pull down
+    p.y  += p.vy * speedFactor;
     p.vy *= 0.95;
     // clamp so the boss never drifts below its normal floor
     p.y = Math.max(p.r, Math.min(H - p.r, p.y));
@@ -937,11 +958,11 @@ if (p.pushX || p.pushY) {
   else {
     // normal tracking / random drift
     if (p.mode === 'track') {
-      p.vy += (bird.y - p.y) * 0.008;
+      p.vy += (bird.y - p.y) * 0.008 * speedFactor;
     } else {
-      p.vy += (Math.random() - 0.5) * 0.2;
+      p.vy += (Math.random() - 0.5) * 0.2 * speedFactor;
     }
-    p.y  += p.vy;
+    p.y  += p.vy * speedFactor;
     p.vy *= 0.95;
     p.y   = Math.max(p.r, Math.min(H - p.r, p.y));
   }
@@ -1000,6 +1021,8 @@ if (p.strongQueue > 0) {
       p.pushX += (p.x - b.x) / mag * 4;
       p.pushY += (p.y - b.y) / mag * 4;
       p.flashTimer = 6;
+      if (b.type === 'fire') p.burnTimer = 120;
+      if (b.type === 'ice') p.slowStacks = Math.min(p.slowStacks + 1, 5);
       bossHealth -= (b.damage || 10);
       if (bossHealth<=0) endBossFight(true);
     }
@@ -1260,6 +1283,20 @@ radialBombs.forEach(b => {
       -size/2, -size/2,
        size,    size
     );
+    if (p.slowStacks > 0 || p.freezeTimer > 0) {
+      ctx.globalAlpha = 0.3 + 0.1 * p.slowStacks;
+      ctx.fillStyle = 'rgba(100,180,255,0.5)';
+      ctx.beginPath();
+      ctx.arc(0, 0, size/2, 0, Math.PI*2);
+      ctx.fill();
+    }
+    if (p.burnTimer > 0) {
+      ctx.globalAlpha = p.burnTimer / 120 * 0.5;
+      ctx.fillStyle = 'orange';
+      ctx.beginPath();
+      ctx.arc(0, 0, size/2, 0, Math.PI*2);
+      ctx.fill();
+    }
   ctx.restore();
   if (p.flashTimer > 0) p.flashTimer--;
 
@@ -1583,7 +1620,10 @@ function spawnJelly(){
     isShocking: false,
     flashTimer: 0,
     pushX: 0,
-    pushY: 0
+    pushY: 0,
+    burnTimer: 0,
+    slowStacks: 0,
+    freezeTimer: 0
   });
 }
 
@@ -1801,9 +1841,15 @@ function updateRockets() {
     // advance & draw the outgoing rocket
     r.x += r.vx * ts;
     const size = r.size || (r.triple ? 20 : 16);
-    ctx.drawImage(rocketOutSprite, r.x, r.y - size/2, size, size);
+    const img = r.type === 'fire' ? fireRocketSprite
+               : r.type === 'ice' ? iceRocketSprite
+               : rocketOutSprite;
+    ctx.drawImage(img, r.x, r.y - size/2, size, size);
     if (r.flame && frames % 2 === 0) {
       rocketFlames.push({x:r.x, y:r.y, life:10});
+    }
+    if (r.type === 'ice' && frames % 2 === 0) {
+      rocketSnow.push({x:r.x, y:r.y, life:10, vx:(Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5});
     }
     if (r.triple && frames % 2 === 0) {
       rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
@@ -1847,6 +1893,8 @@ function updateRockets() {
         j.pushY += (j.y - r.y) / mag * 6;
         j.flashTimer = 6;
         j.hp = (j.hp || 1) - 1;
+        if (r.type === 'fire') j.burnTimer = 120;
+        if (r.type === 'ice') j.slowStacks = Math.min(j.slowStacks + 1, 5);
         if (j.hp <= 0) {
           jellies.splice(jj, 1);
           runJellies++;
@@ -2068,6 +2116,21 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     if (f.life <= 0) rocketFlames.splice(fi, 1);
   });
 
+  rocketSnow.forEach((s, si) => {
+    s.life--;
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vy += 0.02;
+    ctx.save();
+    ctx.globalAlpha = s.life / 10;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (s.life <= 0) rocketSnow.splice(si, 1);
+  });
+
   updateExplosions();
   updateImpactParticles();
 }
@@ -2076,9 +2139,11 @@ function updateJellies() {
   if (!inMecha || bossActive) return;
   for (let i = jellies.length - 1; i >= 0; i--) {
     const j = jellies[i];
-    j.frame++;
     const ts = slowMoTimer > 0 ? 0.5 : 1;
-    j.x += j.vx * ts;
+    const speedFactor = j.freezeTimer > 0 ? 0 : 1 - j.slowStacks * 0.1;
+    if (j.freezeTimer > 0) j.freezeTimer--;
+    else j.frame++;
+    j.x += j.vx * ts * speedFactor;
     if (j.pushX) { j.x += j.pushX; j.pushX *= 0.8; }
     j.y = j.baseY + Math.sin(j.frame * j.freq) * j.amp + (j.pushY || 0);
     if (j.pushY) j.pushY *= 0.8;
@@ -2101,6 +2166,20 @@ function updateJellies() {
       ctx.filter = 'brightness(2)';
     }
     ctx.drawImage(img, j.x - 32, j.y - 32, 64, 64);
+    if (j.slowStacks > 0 || j.freezeTimer > 0) {
+      ctx.globalAlpha = 0.3 + 0.1 * j.slowStacks;
+      ctx.fillStyle = 'rgba(100,180,255,0.5)';
+      ctx.beginPath();
+      ctx.arc(j.x, j.y, 32, 0, Math.PI*2);
+      ctx.fill();
+    }
+    if (j.burnTimer > 0) {
+      ctx.globalAlpha = j.burnTimer / 120 * 0.5;
+      ctx.fillStyle = 'orange';
+      ctx.beginPath();
+      ctx.arc(j.x, j.y, 32, 0, Math.PI*2);
+      ctx.fill();
+    }
     ctx.restore();
     if (j.flashTimer > 0) j.flashTimer--;
 
@@ -2117,6 +2196,16 @@ function updateJellies() {
       handleHit();
       jellies.splice(i,1);
       continue;
+    }
+
+    if (j.burnTimer > 0) {
+      j.burnTimer--;
+      if (frames % 30 === 0) j.hp--;
+      if (j.hp <= 0) { jellies.splice(i,1); continue; }
+    }
+    if (j.slowStacks === 5 && j.freezeTimer === 0 && Math.random() < 0.02) {
+      j.freezeTimer = 60;
+      j.slowStacks = 0;
     }
 
     if (j.x < -60) jellies.splice(i,1);
@@ -2513,6 +2602,7 @@ function handleHit(){
   jellies.length    = 0;
   rocketSmoke.length = 0;
   rocketFlames.length = 0;
+  rocketSnow.length = 0;
   rocketPowerups.length = 0;
   
   // reset coins _before_ updating the UI
@@ -2999,6 +3089,11 @@ function flapHandler(e){
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
       const shots = tripleShot ? 3 : 1;
+      const isFire = defaultSkin === 'FireSkinBase.png' ||
+                     birdSprite.src.includes('FireSkinMech');
+      const isAqua = defaultSkin === 'AquaSkinBase.png' ||
+                     birdSprite.src.includes('AquaSkinMech');
+      const rocketType = isFire ? 'fire' : isAqua ? 'ice' : 'normal';
       for(let s=0;s<shots;s++){
         const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
         rocketsOut.push({
@@ -3009,7 +3104,8 @@ function flapHandler(e){
           triple: tripleShot,
           money: defaultSkin === 'MoneySkin.png',
           size: baseSize,
-          flame: rocketFlameEnabled
+          flame: rocketFlameEnabled || rocketType==='fire',
+          type: rocketType
         });
         if (defaultSkin === 'MoneySkin.png') {
           spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
