@@ -110,6 +110,30 @@
 
     #gameOverContent { position:relative; height:100%; }
 
+    .previewRocket {
+      width:32px;
+      height:32px;
+      background:url('assets/rocket1.png') no-repeat center/contain;
+      display:inline-block;
+      position:relative;
+      margin-left:6px;
+    }
+    .previewRocket .flame {
+      position:absolute;
+      right:100%;
+      top:50%;
+      width:8px;
+      height:8px;
+      background:radial-gradient(circle,orange,red);
+      border-radius:50%;
+      transform:translateY(-50%);
+      animation:flameAnim .4s linear infinite;
+    }
+    @keyframes flameAnim {
+      from { transform:translateY(-50%) scale(1); opacity:1; }
+      to   { transform:translateY(-50%) scale(0.2); opacity:0; }
+    }
+
   </style>
 
   <!-- ==================== AdSense library loader ==================== -->
@@ -682,6 +706,7 @@ const moneyLeaves = [];
     let rocketDamageMult = 1;
     let rocketFlameEnabled = false;
     let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
+    let equippedSkills   = JSON.parse(localStorage.getItem('equippedSkills') || '[]');
 
     const upgradeTreeConfig = [
       {
@@ -720,14 +745,19 @@ const moneyLeaves = [];
       }
     ];
 
-    function applyPurchasedUpgrades() {
+    function applyEquippedSkills() {
+      coinSpawnBonus   = 0;
+      rocketSizeMult   = 1;
+      rocketDamageMult = 1;
+      rocketFlameEnabled = false;
       upgradeTreeConfig.forEach(branch => {
         branch.upgrades.forEach(upg => {
-          if (purchasedUpgrades.includes(upg.id)) upg.effect();
+          if (equippedSkills.includes(upg.id)) upg.effect();
         });
       });
+      updateUpgradeStats();
     }
-    applyPurchasedUpgrades();
+    applyEquippedSkills();
     updateReviveDisplay();
 
     // tooltip element for upgrade tree
@@ -2720,6 +2750,7 @@ function showShop() {
                `<div style="margin-bottom:10px;">`+
                `<button id="tabSkins" ${section==='skins'?'disabled':''}>Skins</button>`+
                `<button id="tabItems" ${section==='items'?'disabled':''}>Items</button>`+
+               `<button id="tabSkills" ${section==='skills'?'disabled':''}>Skills</button>`+
                `<button id="tabUpgrades" ${section==='upgrades'?'disabled':''}>Upgrades</button>`+
                `</div>`+
                `<div style="display:flex;flex-direction:column;align-items:center;">`;
@@ -2767,6 +2798,23 @@ function showShop() {
         }
         html += `</div>`;
       });
+    } else if(section==='skills') {
+      const skillDefs = [];
+      upgradeTreeConfig.forEach(b=>skillDefs.push(...b.upgrades));
+      const owned = skillDefs.filter(s=>purchasedUpgrades.includes(s.id));
+      owned.forEach(sk=>{
+        html += `<div style="margin:6px;display:flex;align-items:center;">`;
+        html += `${sk.name} `;
+        if(equippedSkills.includes(sk.id)){
+          html += `<button data-unequipskill="${sk.id}">Unequip</button>`;
+          if(sk.id==='mech_rocket_power1'){
+            html += `<span class="previewRocket"><span class="flame"></span></span>`;
+          }
+        } else {
+          html += `<button data-equipskill="${sk.id}">Equip</button>`;
+        }
+        html += `</div>`;
+      });
     } else if(section==='upgrades') {
       html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);display:flex;justify-content:center;align-items:center;">`+
               `<svg id="upgradeTreeSVG" style="width:100%;height:100%;max-width:600px;max-height:600px;"></svg>`+
@@ -2783,6 +2831,7 @@ function showShop() {
 
     ct.querySelectorAll('#tabSkins').forEach(b=>b.onclick=()=>{section='skins';render();});
     ct.querySelectorAll('#tabItems').forEach(b=>b.onclick=()=>{section='items';render();});
+    ct.querySelectorAll('#tabSkills').forEach(b=>b.onclick=()=>{section='skills';render();});
     ct.querySelectorAll('#tabUpgrades').forEach(b=>b.onclick=()=>{section='upgrades';render();});
 
     ct.querySelectorAll('button[data-buy]').forEach(btn => {
@@ -2832,6 +2881,30 @@ function showShop() {
         localStorage.setItem('birdySkin', defaultSkin);
         birdSprite.src = 'assets/' + defaultSkin;
         render();
+      };
+    });
+
+    ct.querySelectorAll('button[data-equipskill]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-equipskill');
+        if(!equippedSkills.includes(id)){
+          equippedSkills.push(id);
+          localStorage.setItem('equippedSkills', JSON.stringify(equippedSkills));
+          applyEquippedSkills();
+          render();
+        }
+      };
+    });
+    ct.querySelectorAll('button[data-unequipskill]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-unequipskill');
+        const idx = equippedSkills.indexOf(id);
+        if(idx>=0){
+          equippedSkills.splice(idx,1);
+          localStorage.setItem('equippedSkills', JSON.stringify(equippedSkills));
+          applyEquippedSkills();
+          render();
+        }
       };
     });
 
@@ -2919,7 +2992,6 @@ function renderUpgradeTree() {
         if (totalCoins >= cost) {
           totalCoins -= cost;
           localStorage.setItem('birdyCoinsEarned', totalCoins);
-          upg.effect();
           purchasedUpgrades.push(upg.id);
           localStorage.setItem('purchasedUpgrades', JSON.stringify(purchasedUpgrades));
           renderUpgradeTree();
