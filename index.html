@@ -303,6 +303,33 @@ let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
       'A fragment of its armor drifts to your talon—proof you bested your first mech incarnation.',
       'Tear off your plating and remember: every victory carries the cost of what you’ve become.'
     ]},
+    // ── NEW SIDE-ARC BEFORE THIRD OWL DEFEAT ──
+    { id:'Jelly_Vanquished', epithet:'Shadows of the deep tremble at your wings…', req:'Defeat 10 Jellyfish', log:[
+      'Your talons rend the jelly’s electric veil, each flicker yielding to your will.',
+      'Ten fallen leviathans lie broken, their shock turns to whispered echoes of fear.',
+      'In victory over the swarm, you glean strength for the trials yet to come.'
+    ]},
+    { id:'Rocket_Rite', epithet:'Flames of metal trace your path…', req:'Use Rocket Power 5 times', log:[
+      'Each rocket launch scorches the sky, crafting arcs of molten promise.',
+      'Five blasts affirm your mastery of borrowed fire, forging resolve in flame.',
+      'This rite of ignition kindles purpose for the battle at the owl’s hollow.'
+    ]},
+    { id:'Coin_Offering', epithet:'Gold falls like rain upon willing talon…', req:'Collect 50 Coins', log:[
+      'Coins cascade in endless spiral, each a token of your past mistakes.',
+      'Fifty gleaned orbs glimmer with memory, fueling hope and haunting doubt.',
+      'Treasury of ambition amassed, yet the true cost awaits beneath iron boughs.'
+    ]},
+    { id:'Pipe_Beyond_Obstacles', epithet:'Beyond iron boughs, your wings find new rhythm…', req:'Break 15 Pipes', log:[
+      'Broken conduits crumble at your touch, barriers yielding to conviction.',
+      'Fifteen fractures resonate with the thunder of your unchained spirit.',
+      'Through shattered paths you glimpse the open sky that beckons beyond.'
+    ]},
+    { id:'Arcane_Harmony', epithet:'Synthesized song of bird and machine reverberates…', req:'Stay in Mecha for 30s', log:[
+      'Mechanized heartbeat aligns with feathered breath, forging living alloy.',
+      'Thirty seconds of perfect symphony echo with promise of total fusion.',
+      'Harmony tempered in isolation, preparing you for the owl’s final test.'
+    ]},
+    // ── back into the Perseverance arc ──
     { id:'Boss1_Perseverance', epithet:'Victory’s echo deepens the resolve…', req:'Beat the Owl three times', log:[
 
       'Three times you faced the Owl again, each rematch harder than the last.',
@@ -1824,6 +1851,7 @@ function updateRockets() {
           jellies.splice(jj, 1);
           runJellies++;
           if (runJellies >= 5) unlockAchievement('kill5');
+          if (runJellies >= 10) triggerStoryEvent('Jelly_Vanquished');
         }
         return;
       }
@@ -2156,6 +2184,7 @@ function updateJellies() {
       }
       if (broke) {
         runPipeBreaks++;
+        if (runPipeBreaks >= 15) triggerStoryEvent('Pipe_Beyond_Obstacles');
         if (runPipeBreaks >= 20) {
           unlockAchievement('break20');
           triggerStoryEvent('Pipe_Breaker');
@@ -2217,6 +2246,7 @@ function updateJellies() {
       updateScore();
       runCoins++;
       if (runCoins >= 10) unlockAchievement('coin10');
+      if (runCoins >= 50) triggerStoryEvent('Coin_Offering');
 
       // ←— trigger Mecha when you hit 10 coins (Adventure only)
       if (coinCount >= 10 && !mechaTriggered && !marathonMode) {
@@ -2261,6 +2291,7 @@ function updateJellies() {
         tripleShot = true;
         runPowerups++;
         unlockAchievement('rocket3');
+        if (runPowerups >= 5) triggerStoryEvent('Rocket_Rite');
       }
     }
     if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
@@ -3075,6 +3106,9 @@ function applyShake() {
     function loop(){
       frames++;
       if (slowMoTimer > 0) slowMoTimer--;
+      if (inMecha && !storyLog['Arcane_Harmony'] && frames - mechaStartFrame >= 1800) {
+        triggerStoryEvent('Arcane_Harmony');
+      }
       if (inMecha && !storyLog['Mecha_Mastery'] && frames - mechaStartFrame >= 3600) {
         triggerStoryEvent('Mecha_Mastery');
       }
