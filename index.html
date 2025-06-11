@@ -735,7 +735,7 @@ const milkParticles = [];
     let rocketFlameEnabled = false;
     let rocketSplash     = false;
     let magnetActive     = false;
-    let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
+    let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]').slice(0,2);
 
     const upgradeTreeConfig = [
       {
@@ -768,15 +768,21 @@ const milkParticles = [];
         upgrades: [
           {
             id: 'mech_rocket_big',
-            name: 'BIG',
-            description: 'Larger rockets with splash damage',
+            name: 'Bigger Rockets',
+            description: 'Larger rockets deal more damage',
             effect: () => {
               rocketSizeMult   *= 1.5;
               rocketDamageMult *= 1.5;
               rocketFlameEnabled = true;
-              rocketSplash     = true;
             },
             costFactor: 1
+          },
+          {
+            id: 'mech_rocket_splash',
+            name: 'Splash',
+            description: 'Rockets cause splash damage',
+            effect: () => { rocketSplash = true; },
+            costFactor: 1.3
           }
         ]
       }
@@ -3325,10 +3331,10 @@ function renderUpgradeTree() {
   const h = rect.height;
   const cx = w/2;
   const cy = h/2;
-  const radius = Math.min(w,h)/2 - 40;
+  const radius = Math.min(w,h)/2 - 20;
   const branchCount = upgradeTreeConfig.length;
-  const branchSpacing = Math.PI / 2; // 90° between branches
-  const startAngle = -branchSpacing * (branchCount - 1) / 2;
+  const branchSpacing = 2 * Math.PI / branchCount;
+  const startAngle = -Math.PI/2 - branchSpacing * (branchCount - 1) / 2;
   upgradeTreeConfig.forEach((branch, bIndex) => {
     const angle = startAngle + branchSpacing * bIndex;
     const line = document.createElementNS(svg.namespaceURI,'line');
@@ -3386,6 +3392,10 @@ function renderUpgradeTree() {
       circ.addEventListener('mouseleave', hideTooltip);
       circ.addEventListener('click', () => {
         if (owned) return;
+        if (purchasedUpgrades.length >= 2) {
+          showTooltip('Only two upgrades allowed');
+          return;
+        }
         if (totalCoins >= cost) {
           totalCoins -= cost;
           localStorage.setItem('birdyCoinsEarned', totalCoins);
