@@ -536,12 +536,14 @@ const armorPiece2   = new Image(); armorPiece2.src = 'assets/mecharmor2.png';
 //const bossFrames = (bossEncounterCount > 1 ? bossFramesS2 : bossFramesS1);
 const bossRockets  = ['boss_rocket1','boss_rocket2'].map(r=>Object.assign(new Image(),{src:`assets/boss_animation/${r}.png`}));
 const bombSprite   = Object.assign(new Image(),{src:'assets/boss_animation/bomb.png'});
+const slicingDiskSprite = Object.assign(new Image(),{src:'assets/slicingdisk.png'});
 const flyingArmor   = [];
 const stage2Bombs = [];  // boss-2 special slow bombs
 // ── jellyfish sprites ──
 const jellyFrames = ['assets/jelly1.png','assets/jelly2.png','assets/jelly3.png'].map(src=>Object.assign(new Image(),{src}));
 const jellyShockFrames = ['assets/jelly.shock1.png','assets/jelly.shock2.png','assets/jelly.shock3.png'].map(src=>Object.assign(new Image(),{src}));
 const jellies = [];
+const slicingDisks = [];
 
 // ── money leaf images ──
 const leafImages = ['assets/bill1.png','assets/biill2.png','assets/bill3.png','assets/bill4.png']
@@ -861,6 +863,7 @@ trackEvent('boss_fight_start');
   // freeze main environment:
 // freeze main environment:
 pipes.length     = apples.length = coins.length = 0;
+  slicingDisks.length = 0;
    inMecha          = false;
   // position bird at left
   //bird.x           = 80;
@@ -893,6 +896,9 @@ pipes.length     = apples.length = coins.length = 0;
   ,sliceStage:0
   ,sliceTimer:0
   ,aggressive:false
+  ,sliceRepeat:0
+  ,oscPhase:0
+  ,baseY:H/2
   };
   showAchievement('🚀 Boss Incoming!');
 
@@ -931,9 +937,12 @@ function updateBoss() {
   }
   if (frames % 5 === 0) {
     p.smoke.push({ x:p.x + Math.sin(p.y*0.04)*30 + p.r, y:p.y, alpha:1, r:4 });
+    if (bossEncounterCount === 3)
+      p.smoke.push({ x:p.x, y:p.y + p.r, alpha:1, r:3, vy:2 });
   }
   for (let i=p.smoke.length-1;i>=0;i--){
     const s=p.smoke[i];
+    s.y += s.vy || 0;
     s.r+=0.3; s.alpha-=0.02;
     if (s.alpha<=0) p.smoke.splice(i,1);
   }
@@ -955,7 +964,9 @@ if (p.pushX || p.pushY) {
   p.modeTimer++;
   if (p.modeTimer > p.modeDuration) {
     p.mode = p.mode==='random'?'track':'random';
-    p.modeDuration = 60 + (bossHealth/bossMaxHealth)*200;
+    p.modeDuration = bossEncounterCount === 3
+      ? 40 + (bossHealth/bossMaxHealth)*120
+      : 60 + (bossHealth/bossMaxHealth)*200;
     p.modeTimer = 0;
     if (p.mode==='track') triggerBossAttack();
   }
@@ -966,8 +977,9 @@ if (p.pushX || p.pushY) {
     p.firePipeCooldown = 300;
   }
 
-  if (bossEncounterCount === 3 && !p.isCharging && !p.isSlicing && p.sliceCooldown <= 0 && Math.random() < 0.02) {
+  if (bossEncounterCount === 3 && !p.isCharging && !p.isSlicing && p.sliceCooldown <= 0 && Math.random() < 0.05) {
     p.isSlicing = true;
+    p.sliceRepeat = 2;
     p.sliceStage = 0;
     p.sliceTimer = 0;
     p.sliceCooldown = 240;
@@ -976,15 +988,16 @@ if (p.pushX || p.pushY) {
 
   // 3) Move boss Y — punish bird in top 10% by drifting down then tossing an upward radial bomb
   if (bird.y < H * 0.1) {
-    // 3a) drift the boss down a bit for “looking cool”
-    p.vy += 0.2 * speedFactor;                // gravity‐like pull down
+    p.vy += 0.2 * speedFactor;
     p.y  += p.vy * speedFactor;
     p.vy *= 0.95;
-    // clamp so the boss never drifts below its normal floor
     p.y = Math.max(p.r, Math.min(H - p.r, p.y));
-
-    // 3b) once per second, toss a bomb straight upward
-    if (frames % 60 === 0) {
+    if (bossEncounterCount === 3 && !p.isSlicing) {
+      p.sliceRepeat = 3;
+      p.isSlicing = true;
+      p.sliceStage = 0;
+      p.sliceTimer = 0;
+    } else if (bossEncounterCount !== 3 && frames % 60 === 0) {
       tossBombs.push({
         x:   p.x + Math.sin(p.y * 0.04) * 30,
         y:   p.y,
@@ -1001,6 +1014,9 @@ if (p.pushX || p.pushY) {
     } else {
       p.vy += (Math.random() - 0.5) * 0.2 * speedFactor;
     }
+    if (bossEncounterCount === 3) {
+      p.vy += Math.sin(frames*0.05) * 0.1;
+    }
     p.y  += p.vy * speedFactor;
     p.vy *= 0.95;
     p.y   = Math.max(p.r, Math.min(H - p.r, p.y));
@@ -1014,9 +1030,10 @@ if (p.pushX || p.pushY) {
     if (p.chargeTimer>=p.chargeDuration){
       const offs = bossEncounterCount===3 && p.tripleFire ? [-12,0,12] : [0];
       offs.forEach(o=>{
+        const yOff = bossEncounterCount===3 ? (Math.random()-0.5)*40 : 0;
         rocketsIn.push({
           x: p.x + Math.sin(p.y*0.04)*30 - p.r,
-          y: p.y + o,
+          y: p.y + o + yOff,
           vx:-6,
           isBossShot:true,
           architect: bossEncounterCount===3,
@@ -1057,9 +1074,15 @@ if (p.strongQueue > 0) {
         isSlice: true,
         coinLoss: 1
       });
-      p.isSlicing = false;
-      p.sliceTimer = 0;
-      p.sliceStage = 0;
+      if (p.sliceRepeat && --p.sliceRepeat > 0) {
+        p.y -= 20;
+        p.sliceTimer = 0;
+        p.sliceStage = 0;
+      } else {
+        p.isSlicing = false;
+        p.sliceTimer = 0;
+        p.sliceStage = 0;
+      }
     }
   }
 
@@ -1716,7 +1739,16 @@ function spawnJelly(){
     pushY: 0,
     burnTimer: 0,
     slowStacks: 0,
-    freezeTimer: 0
+  freezeTimer: 0
+  });
+}
+
+function spawnSliceDisk(){
+  slicingDisks.push({
+    x: W + 40,
+    y: Math.random() * (H - 80) + 40,
+    vx: -2,
+    rot: 0
   });
 }
 
@@ -2330,6 +2362,26 @@ function updateJellies() {
   }
 }
 
+function updateSliceDisks() {
+  if (!inMecha || bossActive) return;
+  for (let i = slicingDisks.length - 1; i >= 0; i--) {
+    const d = slicingDisks[i];
+    d.x += d.vx;
+    d.rot += 0.2;
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    ctx.drawImage(slicingDiskSprite, -24, -24, 48, 48);
+    ctx.restore();
+    if (Math.hypot(bird.x - d.x, bird.y - d.y) < bird.rad + 24) {
+      handleHit();
+      slicingDisks.splice(i, 1);
+      continue;
+    }
+    if (d.x < -60) slicingDisks.splice(i, 1);
+  }
+}
+
 
   function updatePipes(){
   // only run during normal play
@@ -2739,6 +2791,7 @@ function handleHit(){
   rocketFlames.length = 0;
   rocketSnow.length = 0;
   rocketPowerups.length = 0;
+  slicingDisks.length = 0;
   
   // reset coins _before_ updating the UI
   coinCount         = 0;
@@ -3516,7 +3569,8 @@ if (state === STATE.Play) {
 
   // — spawn bigger, evil rocket waves when in Mecha —
   if (inMecha && frames % 60 === 0) {
-    for (let i = 0; i < 3; i++) {
+    const rCount = bossesDefeated >= 2 ? 2 : 3;
+    for (let i = 0; i < rCount; i++) {
       rocketsIn.push({
         x: W + 20 + i * 60,
         y: Math.random() * (H - 100) + 50,
@@ -3524,6 +3578,7 @@ if (state === STATE.Play) {
       });
       rocketsSpawned++;
     }
+    if (bossesDefeated >= 2) spawnSliceDisk();
 
     if (Math.random() < baseTripleProb / 4) {
       const ry = Math.random() * (H - 80) + 40;
@@ -3562,6 +3617,7 @@ if (state === STATE.Play) {
     if(reviveTimer<=0){
       updateRockets();
       updateJellies();
+      updateSliceDisks();
     }
   }
   bird.update();
