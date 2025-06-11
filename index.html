@@ -677,6 +677,7 @@ let altMechaTimer = 0;
     const rocketsOut = [];
     const rocketsIn  = [];
     const rocketPowerups = [];
+    const rocketSymbols = [];
 const rocketParticles = [];
 const rocketSmoke = [];
 const rocketFlames = [];
@@ -695,6 +696,9 @@ const moneyLeaves = [];
     // more common than apples but not quite as common as coins
     const baseTripleProb = 0.25;
     const rocketPowerR   = 16;
+    const rocketSymbolR  = 12;
+
+    let specialRocket = null;
 
     let personalBest = parseInt(localStorage.getItem('birdyBestScore')) || 0;
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
@@ -791,6 +795,10 @@ const moneyLeaves = [];
     function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=>Math.round(x).toString(16).padStart(2,'0')).join(''); }
     function lerpColor(a,b,t){ const ca=hexToRgb(a), cb=hexToRgb(b); return rgbToHex(ca.r+(cb.r-ca.r)*t, ca.g+(cb.g-ca.g)*t, ca.b+(cb.b-ca.b)*t); }
     function shade(col,amt){ if(col[0]==='#') col=col.slice(1); const num=parseInt(col,16), r=(num>>16)+amt, g=((num>>8)&255)+amt, b=(num&255)+amt; const rr=Math.max(0,Math.min(255,r)), gg=Math.max(0,Math.min(255,g)), bb=Math.max(0,Math.min(255,b)); return '#'+((rr<<16)|(gg<<8)|bb).toString(16).padStart(6,'0'); }
+
+    function isStorySkin(){
+      return defaultSkin === 'story_bird.png' || birdSprite.src.includes('Story_mech');
+    }
 // ── Mecha-transition kick-off ───────────────────────────────
 function startMechaTransition() {
   transitionTimer = 0;
@@ -1015,6 +1023,7 @@ if (p.strongQueue > 0) {
     if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
       spawnExplosion(p.x, p.y);
+      maybeDropCoin(p.x, p.y);
       triggerShake(8);
       spawnImpactParticles(p.x, p.y, p.x - b.x, p.y - b.y);
       const mag = Math.hypot(p.x - b.x, p.y - b.y) || 1;
@@ -1631,6 +1640,10 @@ function spawnExplosion(x, y) {
   explosions.push({ x, y, frame: 0 });
   explosionSfx.currentTime = 0;
   explosionSfx.play().catch(() => {});
+  if (isStorySkin() && Math.random() < 0.05) {
+    const type = Math.random() < 0.5 ? 'fire' : 'ice';
+    rocketSymbols.push({ x, y, type, taken:false });
+  }
 }
 
 function updateExplosions() {
@@ -1754,6 +1767,12 @@ function spawnMoneyLeaf(x, y, vx, vy) {
   });
 }
 
+function maybeDropCoin(x, y){
+  if (isStorySkin() && Math.random() < 0.15) {
+    coins.push({ x, y, taken:false });
+  }
+}
+
 function updateMoneyLeaves(){
   for(let i=moneyLeaves.length-1;i>=0;i--){
     const l = moneyLeaves[i];
@@ -1865,6 +1884,7 @@ function updateRockets() {
         // consume the rocket
         rocketsOut.splice(i, 1);
         spawnExplosion(b.x, b.y);
+        maybeDropCoin(b.x, b.y);
 
         // bump bomb’s hit count
         b.hits = (b.hits || 0) + 1;
@@ -1886,6 +1906,7 @@ function updateRockets() {
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
         rocketsOut.splice(i, 1);
         spawnExplosion(j.x, j.y);
+        maybeDropCoin(j.x, j.y);
         triggerShake(5);
         spawnImpactParticles(j.x, j.y, j.x - r.x, j.y - r.y);
         const mag = Math.hypot(j.x - r.x, j.y - r.y) || 1;
@@ -1913,6 +1934,7 @@ function updateRockets() {
         rocketsOut.splice(i, 1);
         rocketsIn.splice(k, 1);
         spawnExplosion(r.x, r.y);
+        maybeDropCoin(r.x, r.y);
         score++; updateScore();
         bossRocketCount++;
         if (!bossActive && !marathonMode && !bossTriggerActive &&
@@ -1945,6 +1967,7 @@ function updateRockets() {
           && r.y > p.top && r.y < p.top+p.gap) {
         pipes.splice(pi,1);
         rocketsOut.splice(i,1);
+        maybeDropCoin(p.x + pipeW/2, p.top + p.gap/2);
       }
     });
     if (r.x > W+20) rocketsOut.splice(i,1);
@@ -2386,6 +2409,22 @@ function updateJellies() {
     if(p.x + rocketPowerR < 0 || p.taken) rocketPowerups.splice(i,1);
   });
 
+  // ── story rocket symbol pickup ──
+  rocketSymbols.forEach((s,i)=>{
+    const spd = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
+    s.x -= spd * ts;
+    if(!s.taken){
+      const img = s.type === 'fire' ? fireRocketSprite : iceRocketSprite;
+      ctx.drawImage(img, s.x - 8, s.y - 8, 16, 16);
+      if(Math.hypot(bird.x - s.x, bird.y - s.y) < bird.rad + rocketSymbolR){
+        s.taken = true;
+        specialRocket = s.type;
+        playTone(1200,0.1);
+      }
+    }
+    if(s.x + rocketSymbolR < 0 || s.taken) rocketSymbols.splice(i,1);
+  });
+
   // update & draw rocket powerup particles
   rocketParticles.forEach((pa, idx) => {
     pa.x += pa.vx;
@@ -2562,6 +2601,7 @@ function handleHit(){
   if (revivePromptActive || reviveTimer > 0) return;
   if (bossActive) bossHitless = false;
   tripleShot = false;
+  specialRocket = null;
   bird.flashTimer = 8;
   if (coinCount > 0) {
     coinCount--;
@@ -3093,7 +3133,7 @@ function flapHandler(e){
                      birdSprite.src.includes('FireSkinMech');
       const isAqua = defaultSkin === 'AquaSkinBase.png' ||
                      birdSprite.src.includes('AquaSkinMech');
-      const rocketType = isFire ? 'fire' : isAqua ? 'ice' : 'normal';
+      const rocketType = specialRocket || (isFire ? 'fire' : isAqua ? 'ice' : 'normal');
       for(let s=0;s<shots;s++){
         const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
         rocketsOut.push({
