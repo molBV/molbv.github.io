@@ -494,8 +494,12 @@ let marathonMoving = false;
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
-  const bossFramesS2 = ['boss_S2_0','boss_S2_1','boss_S2_2', 'boss_S2_3']
+const bossFramesS2 = ['boss_S2_0','boss_S2_1','boss_S2_2', 'boss_S2_3']
+  .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
+
+  const bossFramesS3 = ['null_architect','null_charge','null_slice1','null_slice2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
+  const sliceSprite = Object.assign(new Image(), { src:'assets/boss_animation/SliceAttach.png' });
 
   // charging‐rocket “attach” sprite for phase 2
   //const bossRocketAttachS2 = new Image();
@@ -838,14 +842,16 @@ bossEncounterCount++;
   else if (bossEncounterCount === 3) triggerStoryEvent('Architect_Appeared');
   else if (bossEncounterCount === 4) triggerStoryEvent('Prime_Appeared');
   // …and pick the right art for this fight:
-  bossFrames = bossEncounterCount > 1
-    ? bossFramesS2
-    : bossFramesS1;
+  bossFrames = bossEncounterCount === 1
+    ? bossFramesS1
+    : bossEncounterCount === 2
+      ? bossFramesS2
+      : bossFramesS3;
 trackEvent('boss_fight_start'); 
     bgMusic.pause();
   bossActive       = true;
   state            = STATE.Boss;
-  bossMaxHealth    = bossEncounterCount > 1 ? 750 : 500;
+  bossMaxHealth    = bossEncounterCount === 1 ? 500 : bossEncounterCount === 2 ? 750 : 1500;
   bossHealth       = bossMaxHealth;
   bossTriggerActive = false;
   bossTriggerMisses = 0;
@@ -878,7 +884,15 @@ pipes.length     = apples.length = coins.length = 0;
     pushY: 0,
     burnTimer: 0,
     slowStacks: 0,
-    freezeTimer: 0
+  freezeTimer: 0
+  ,chargeCooldown:0
+  ,sliceCooldown:180
+  ,firePipeCooldown:180
+  ,tripleFire:false
+  ,isSlicing:false
+  ,sliceStage:0
+  ,sliceTimer:0
+  ,aggressive:false
   };
   showAchievement('🚀 Boss Incoming!');
 
@@ -888,6 +902,10 @@ function updateBoss() {
   const p = bossObj;
   const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
   if (p.freezeTimer > 0) p.freezeTimer--;
+  if (p.chargeCooldown > 0) p.chargeCooldown--;
+  if (p.sliceCooldown > 0) p.sliceCooldown--;
+  if (p.firePipeCooldown > 0) p.firePipeCooldown--;
+  if (bossHealth <= bossMaxHealth/2) p.aggressive = true;
   if (p.burnTimer > 0) {
     p.burnTimer--;
     if (frames % 30 === 0) {
@@ -942,6 +960,19 @@ if (p.pushX || p.pushY) {
     if (p.mode==='track') triggerBossAttack();
   }
 
+  if (bossEncounterCount === 3 && p.aggressive && p.firePipeCooldown <= 0) {
+    spawnFirePipe();
+    spawnFirePipe();
+    p.firePipeCooldown = 300;
+  }
+
+  if (bossEncounterCount === 3 && !p.isCharging && !p.isSlicing && p.sliceCooldown <= 0 && Math.random() < 0.02) {
+    p.isSlicing = true;
+    p.sliceStage = 0;
+    p.sliceTimer = 0;
+    p.sliceCooldown = 240;
+  }
+
 
   // 3) Move boss Y — punish bird in top 10% by drifting down then tossing an upward radial bomb
   if (bird.y < H * 0.1) {
@@ -978,14 +1009,27 @@ if (p.pushX || p.pushY) {
 
   // 4) Charging & firing
   if (p.isCharging) {
+    triggerShake(p.shakeMag);
     p.chargeTimer++;
     if (p.chargeTimer>=p.chargeDuration){
-      rocketsIn.push({
-        x: p.x + Math.sin(p.y*0.04)*30 - p.r,
-        y: p.y, vx:-6, isBossShot:true
+      const offs = bossEncounterCount===3 && p.tripleFire ? [-12,0,12] : [0];
+      offs.forEach(o=>{
+        rocketsIn.push({
+          x: p.x + Math.sin(p.y*0.04)*30 - p.r,
+          y: p.y + o,
+          vx:-6,
+          isBossShot:true,
+          architect: bossEncounterCount===3,
+          coinLoss: p.tripleFire ? 3 : 1
+        });
       });
-      p.isCharging=false; p.shakeMag=0; p.justFired=true;
-            // ── STRONG ATTACK: three radial bomb tosses in a row ──
+      p.isCharging=false; p.shakeMag=0; p.justFired=true; p.tripleFire=false;
+      if (bossEncounterCount === 3 && p.aggressive && p.firePipeCooldown <= 0) {
+        spawnFirePipe();
+        spawnFirePipe();
+        p.firePipeCooldown = 300;
+      }
+      // ── STRONG ATTACK: three radial bomb tosses in a row ──
 if (p.strongQueue > 0) {
   // spawn exactly p.strongQueue bombs
   for (let i = 0; i < p.strongQueue; i++) {
@@ -995,9 +1039,27 @@ if (p.strongQueue > 0) {
       vy: -12, r:12, exploded:false
     });
   }
-  p.strongQueue = 0;
+    p.strongQueue = 0;
 }
 
+    }
+  }
+
+  if (p.isSlicing) {
+    p.sliceTimer++;
+    if (p.sliceStage === 0 && p.sliceTimer > 15) p.sliceStage = 1;
+    if (p.sliceStage === 1 && p.sliceTimer > 25) {
+      rocketsIn.push({
+        x: p.x - p.r,
+        y: p.y,
+        vx: -8,
+        isBossShot: true,
+        isSlice: true,
+        coinLoss: 1
+      });
+      p.isSlicing = false;
+      p.sliceTimer = 0;
+      p.sliceStage = 0;
     }
   }
 
@@ -1007,8 +1069,9 @@ if (p.strongQueue > 0) {
   if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
     rocketsIn.splice(i,1);
     tripleShot = false;
-    if (coinCount > 0) {
-      coinCount--;
+    const loss = r.coinLoss || 1;
+    if (coinCount >= loss) {
+      coinCount -= loss;
       updateScore();
       playTone(1000, 0.2);
     } else {
@@ -1032,7 +1095,20 @@ if (p.strongQueue > 0) {
       p.flashTimer = 6;
       if (b.type === 'fire') p.burnTimer = 120;
       if (b.type === 'ice') p.slowStacks = Math.min(p.slowStacks + 1, 5);
-      bossHealth -= (b.damage || 10);
+      let dmg = (b.damage || 10);
+      if (bossEncounterCount === 3) {
+        if (defaultSkin === 'FireSkinBase.png') dmg *= 0.5;
+        if (defaultSkin === 'AquaSkinBase.png') dmg *= 2;
+      }
+      bossHealth -= dmg;
+      if (bossEncounterCount === 3 && p.chargeCooldown <= 0) {
+        p.tripleFire = true;
+        p.isCharging = true;
+        p.chargeTimer = 0;
+        p.chargeDuration = 30;
+        p.shakeMag = p.aggressive ? 12 : 8;
+        p.chargeCooldown = 180;
+      }
       if (bossHealth<=0) endBossFight(true);
     }
   });
@@ -1095,11 +1171,10 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  p.chargeDuration = 20 + (bossHealth/bossMaxHealth)*40;
-  p.shakeMag     = 5
-  
-    // only in second encounter, randomly choose:
-  if (bossEncounterCount > 1 && Math.random() < 0.5) {
+  p.chargeDuration = bossEncounterCount === 3 ? 30 : 20 + (bossHealth/bossMaxHealth)*40;
+  p.shakeMag     = bossEncounterCount === 3 && p.aggressive ? 10 : 5;
+
+  if (bossEncounterCount === 2 && Math.random() < 0.5) {
     // spawn a slow bomb at the boss’s mouth
     stage2Bombs.push({
       x: p.x + Math.sin(p.y*0.04)*30 - 8,
@@ -1108,8 +1183,7 @@ function triggerBossAttack(){
       hits: 0       // count of times the player hit it
     });
   } else {
-    // the old p.strongQueue logic, or normal rocket
-    if (bossHealth <= bossMaxHealth * 0.8) p.strongQueue = 3;
+    if (bossEncounterCount === 1 && bossHealth <= bossMaxHealth * 0.8) p.strongQueue = 3;
   }
 }
   
@@ -1261,15 +1335,18 @@ radialBombs.forEach(b => {
   bird.draw();  // reuse your bird.draw()
 
     // c) draw boss frames flipped (with 1.5× scale on encounter #2)
-    let frame;
-  if (bossEncounterCount > 1) {
-    if      (p.isHomingAttack) frame = 3;            // new homing‐bomb pose
-    else if (p.justFired)      frame = 2;            // rocket‐fire pose
-    else if (p.isCharging)     frame = 1;            // rocket‐charge pose
-    else                        frame = 0;            // idle pose
-  } else {
-    // first encounter still only has 3 frames
+  let frame;
+  if (bossEncounterCount === 1) {
     frame = p.justFired ? 2 : (p.isCharging ? 1 : 0);
+  } else if (bossEncounterCount === 2) {
+    if      (p.isHomingAttack) frame = 3;
+    else if (p.justFired)      frame = 2;
+    else if (p.isCharging)     frame = 1;
+    else                       frame = 0;
+  } else {
+    if (p.isSlicing)           frame = p.sliceStage === 0 ? 2 : 3;
+    else if (p.isCharging)     frame = 1;
+    else                       frame = 0;
   }
 
   // determine bossScale: 1.0 for fight #1, 1.5 for fight #2+
@@ -1614,6 +1691,13 @@ function spawnPipe(){
   }
 }
 
+function spawnFirePipe(){
+  spawnPipe();
+  const p = pipes[pipes.length-1];
+  p.color = '#FF5722';
+  p.fireGlow = true;
+}
+
 function spawnJelly(){
   jellies.push({
     x: W + 40,
@@ -1842,12 +1926,22 @@ function updateDoubleEffect() {
 
     function drawPipes(){
       pipes.forEach(p=>{
-        ctx.fillStyle=p.color;
+        ctx.fillStyle=p.fireGlow ? '#FF5722' : p.color;
         ctx.fillRect(p.x,0,pipeW,p.top);
         ctx.fillRect(p.x,p.top+p.gap,pipeW,H-p.top-p.gap);
-        ctx.fillStyle=shade(p.color,-20);
-        ctx.fillRect(p.x-2,p.top-8,pipeW+4,8);
-        ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
+        if(p.fireGlow){
+          ctx.save();
+          ctx.fillStyle='rgba(255,80,0,0.6)';
+          ctx.shadowColor='rgba(255,80,0,0.8)';
+          ctx.shadowBlur=15;
+          ctx.fillRect(p.x-2,p.top-8,pipeW+4,8);
+          ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
+          ctx.restore();
+        }else{
+          ctx.fillStyle=shade(p.color,-20);
+          ctx.fillRect(p.x-2,p.top-8,pipeW+4,8);
+          ctx.fillRect(p.x-2,p.top+p.gap,pipeW+4,8);
+        }
       });
     }
 function updateRockets() {
@@ -2034,7 +2128,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     r.y += (r.vy || 0) * ts;
 
    // 3) draw incoming rocket, rotated when homing
-   const rocketSize = r.isBossTrigger ? 96 : 48;
+   const rocketSize = r.isBossTrigger ? 96 : r.isSlice ? 64 : 48;
    ctx.save();
    if (r.isHoming) {
      // point sprite along its velocity vector
@@ -2043,17 +2137,17 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
      ctx.rotate(angle);
       ctx.scale(r.vx < 0 ? 1 : -1, 1);
     ctx.drawImage(
-      rocketInSprite,
+      r.isSlice ? sliceSprite : (r.architect ? fireRocketSprite : rocketInSprite),
       -rocketSize/2,
       -rocketSize/2,
       rocketSize, rocketSize
     );
-  } else if (r.isBossShot || r.isBossTrigger) {
+  } else if (r.isBossShot || r.isBossTrigger || r.isSlice) {
      // unchanged boss shot / trigger
      ctx.translate(r.x, r.y);
      ctx.scale(-1, 1);
      ctx.drawImage(
-       rocketInSprite,
+       r.isSlice ? sliceSprite : (r.architect ? fireRocketSprite : rocketInSprite),
        -rocketSize/2, -rocketSize/2,
        rocketSize, rocketSize
      );
@@ -2078,8 +2172,9 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
       if (!r.isBossTrigger) {
         tripleShot = false;
-        if (coinCount > 0) {
-          coinCount--; updateScore(); playTone(1000, 0.2);
+        const loss = r.coinLoss || 1;
+        if (coinCount >= loss) {
+          coinCount -= loss; updateScore(); playTone(1000, 0.2);
         } else {
           inMecha = false;
           mechaTriggered = false;
