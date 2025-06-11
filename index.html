@@ -726,12 +726,15 @@ const milkParticles = [];
     let doubleActive  = false;
     const doubleRings = [];
     let doublePulse   = 0;
+    const magnetParticles = [];
 
     // ── Upgrade state ──
     let coinSpawnBonus   = 0;
     let rocketSizeMult   = 1;
     let rocketDamageMult = 1;
     let rocketFlameEnabled = false;
+    let rocketSplash     = false;
+    let magnetActive     = false;
     let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
 
     const upgradeTreeConfig = [
@@ -743,10 +746,17 @@ const milkParticles = [];
         upgrades: [
           {
             id: 'natural_coin10',
-            name: '+10% Coin Spawn',
-            description: 'Increase coin spawn rate by 10%',
+            name: '+10% Coin Luck',
+            description: 'Coins appear 10% more often',
             effect: () => { coinSpawnBonus += 0.10; },
             costFactor: 1
+          },
+          {
+            id: 'natural_magnet',
+            name: '🧲 Magnetism',
+            description: 'Coins are drawn to you',
+            effect: () => { magnetActive = true; },
+            costFactor: 1.2
           }
         ]
       },
@@ -757,13 +767,14 @@ const milkParticles = [];
         costBase: 100,
         upgrades: [
           {
-            id: 'mech_rocket_power1',
-            name: 'Rocket Power I',
-            description: 'Rocket size & damage ×1.5; emit flame particles',
+            id: 'mech_rocket_big',
+            name: 'BIG',
+            description: 'Larger rockets with splash damage',
             effect: () => {
               rocketSizeMult   *= 1.5;
               rocketDamageMult *= 1.5;
               rocketFlameEnabled = true;
+              rocketSplash     = true;
             },
             costFactor: 1
           }
@@ -909,16 +920,18 @@ pipes.length     = apples.length = coins.length = 0;
   ,sliceTimer:0
   ,aggressive:false
   ,sliceRepeat:0
-  ,oscPhase:0
-  ,baseY:H/2
-  };
+    ,oscPhase:0
+    ,baseY:H/2
+    ,stunTimer:0
+    };
   showAchievement('🚀 Boss Incoming!');
 
 }
-function updateBoss() {
-  // 1) Smoke puffs
-  const p = bossObj;
-  const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
+  function updateBoss() {
+    // 1) Smoke puffs
+    const p = bossObj;
+    if(p.stunTimer>0){ p.stunTimer--; return; }
+    const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
   if (p.freezeTimer > 0) p.freezeTimer--;
   if (p.chargeCooldown > 0) p.chargeCooldown--;
   if (p.sliceCooldown > 0) p.sliceCooldown--;
@@ -1120,11 +1133,11 @@ if (p.strongQueue > 0) {
   rocketsOut.forEach((b,i)=>{
     if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
-      spawnExplosion(p.x, p.y);
-      if (b.type === 'cow') spawnMilkSplash(p.x, p.y);
-      maybeDropCoin(p.x, p.y);
-      triggerShake(8);
-      spawnImpactParticles(p.x, p.y, p.x - b.x, p.y - b.y);
+        spawnExplosion(p.x, p.y, true);
+        if (b.type === 'cow') spawnMilkSplash(p.x, p.y);
+        maybeDropCoin(p.x, p.y);
+        triggerShake(8);
+        spawnImpactParticles(p.x, p.y, p.x - b.x, p.y - b.y);
       const mag = Math.hypot(p.x - b.x, p.y - b.y) || 1;
       p.pushX += (p.x - b.x) / mag * 4;
       p.pushY += (p.y - b.y) / mag * 4;
@@ -1136,8 +1149,13 @@ if (p.strongQueue > 0) {
         if (defaultSkin === 'FireSkinBase.png') dmg *= 0.5;
         if (defaultSkin === 'AquaSkinBase.png') dmg *= 2;
       }
-      bossHealth -= dmg;
-      if (bossEncounterCount === 3 && p.chargeCooldown <= 0) {
+        bossHealth -= dmg;
+        if(Math.random() < 0.1){
+          p.stunTimer = 60;
+          if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false});
+          else rocketPowerups.push({x:p.x,y:p.y,taken:false});
+        }
+        if (bossEncounterCount === 3 && p.chargeCooldown <= 0) {
         p.tripleFire = true;
         p.isCharging = true;
         p.chargeTimer = 0;
@@ -1765,14 +1783,23 @@ function spawnSliceDisk(){
     x: W + 40,
     y: Math.random() * (H - 80) + 40,
     vx: -2,
-    rot: 0
+    vy: 0,
+    rot: 0,
+    hp: 3,
+    enemy: true
   });
 }
 
-function spawnExplosion(x, y) {
+function spawnExplosion(x, y, fromRocket = false) {
   explosions.push({ x, y, frame: 0 });
   explosionSfx.currentTime = 0;
   explosionSfx.play().catch(() => {});
+  if (fromRocket && rocketSplash) {
+    for(let a=0;a<8;a++){
+      const ang = a * Math.PI/4;
+      slicingDisks.push({ x, y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3, rot:0, hp:1, enemy:false });
+    }
+  }
   if (isStorySkin() && Math.random() < 0.05) {
     const type = Math.random() < 0.5 ? 'fire' : 'ice';
     rocketSymbols.push({ x, y, type, taken:false });
@@ -1981,8 +2008,8 @@ function updateReviveEffect() {
   ctx.restore();
 }
 
-function updateDoubleEffect() {
-  if (!doubleActive) return;
+  function updateDoubleEffect() {
+    if (!doubleActive) return;
   if (frames % 15 === 0 || (doublePulse > 0 && frames % 5 === 0)) {
     doubleRings.push({ r: bird.rad, alpha: 0.4 });
   }
@@ -2001,8 +2028,28 @@ function updateDoubleEffect() {
     ctx.restore();
     if (ring.alpha <= 0) doubleRings.splice(i, 1);
   }
-  if (doublePulse > 0) doublePulse--;
-}
+    if (doublePulse > 0) doublePulse--;
+  }
+
+  function spawnMagnetParticle(x, y){
+    magnetParticles.push({x, y, life:10});
+  }
+
+  function updateMagnetEffect(){
+    if(!magnetActive) return;
+    for(let i=magnetParticles.length-1;i>=0;i--){
+      const p = magnetParticles[i];
+      p.life--;
+      ctx.save();
+      ctx.globalAlpha = p.life/10;
+      ctx.fillStyle = '#0ff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+      if(p.life<=0) magnetParticles.splice(i,1);
+    }
+  }
 
     function drawPipes(){
       pipes.forEach(p=>{
@@ -2068,7 +2115,7 @@ function updateRockets() {
       if (Math.hypot(r.x - b.x, r.y - b.y) < 12) {
         // consume the rocket
         rocketsOut.splice(i, 1);
-        spawnExplosion(b.x, b.y);
+        spawnExplosion(b.x, b.y, true);
         if (r.type === 'cow') spawnMilkSplash(b.x, b.y);
         maybeDropCoin(b.x, b.y);
 
@@ -2090,8 +2137,8 @@ function updateRockets() {
     for (let jj = jellies.length - 1; jj >= 0; jj--) {
       const j = jellies[jj];
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
-        rocketsOut.splice(i, 1);
-        spawnExplosion(j.x, j.y);
+          rocketsOut.splice(i, 1);
+          spawnExplosion(j.x, j.y, true);
         if (r.type === 'cow') spawnMilkSplash(j.x, j.y);
         maybeDropCoin(j.x, j.y);
         triggerShake(5);
@@ -2119,8 +2166,8 @@ function updateRockets() {
       if (rin.isBossShot) continue;
       if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
         rocketsOut.splice(i, 1);
-        rocketsIn.splice(k, 1);
-        spawnExplosion(r.x, r.y);
+          rocketsIn.splice(k, 1);
+          spawnExplosion(r.x, r.y, true);
         if (r.type === 'cow') spawnMilkSplash(r.x, r.y);
         maybeDropCoin(r.x, r.y);
         score++; updateScore();
@@ -2427,22 +2474,56 @@ function updateJellies() {
 }
 
 function updateSliceDisks() {
-  if (!inMecha || bossActive) return;
   for (let i = slicingDisks.length - 1; i >= 0; i--) {
     const d = slicingDisks[i];
     d.x += d.vx;
+    d.y += d.vy || 0;
     d.rot += 0.2;
     ctx.save();
     ctx.translate(d.x, d.y);
     ctx.rotate(d.rot);
     ctx.drawImage(slicingDiskSprite, -24, -24, 48, 48);
     ctx.restore();
-    if (Math.hypot(bird.x - d.x, bird.y - d.y) < bird.rad + 24) {
-      handleHit();
-      slicingDisks.splice(i, 1);
-      continue;
+    if(d.enemy){
+      if (Math.hypot(bird.x - d.x, bird.y - d.y) < bird.rad + 24) {
+        handleHit();
+        d.hp = 0;
+      }
+      for(let j=rocketsOut.length-1;j>=0;j--){
+        const r=rocketsOut[j];
+        if(Math.hypot(r.x-d.x,r.y-d.y)<24){
+          rocketsOut.splice(j,1);
+          d.hp--;
+          spawnExplosion(d.x,d.y);
+          break;
+        }
+      }
+    } else {
+      for(let jj=jellies.length-1;jj>=0;jj--){
+        const j=jellies[jj];
+        if(Math.hypot(d.x-j.x,d.y-j.y)<24){
+          spawnExplosion(j.x,j.y);
+          j.hp=(j.hp||1)-1;
+          j.flashTimer=6;
+          if(j.hp<=0){ jellies.splice(jj,1); runJellies++; if(runJellies>=5) unlockAchievement('kill5'); }
+          d.hp=0;
+          break;
+        }
+      }
+      for(let k=rocketsIn.length-1;k>=0;k--){
+        const rin=rocketsIn[k];
+        if(rin.isBossShot) continue;
+        if(Math.hypot(d.x-rin.x,d.y-rin.y)<24){
+          rocketsIn.splice(k,1);
+          spawnExplosion(d.x,d.y);
+          score++; updateScore();
+          d.hp=0;
+          break;
+        }
+      }
     }
-    if (d.x < -60) slicingDisks.splice(i, 1);
+    if (d.hp!==undefined && d.hp<=0) { slicingDisks.splice(i,1); continue; }
+    if (d.x < -60 || d.x>W+60 || d.y<-60 || d.y>H+60) slicingDisks.splice(i,1);
   }
 }
 
@@ -2536,11 +2617,21 @@ function updateSliceDisks() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-  const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
-  c.x -= coinSpeed * ts;
+    const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
+    c.x -= coinSpeed * ts;
 
-  if (!c.taken) {
-    // draw spinning coin…
+    if (!c.taken) {
+      if(magnetActive){
+        const dx = bird.x - c.x;
+        const dy = bird.y - c.y;
+        const dist = Math.hypot(dx, dy);
+        if(dist < 80){
+          c.x += dx * 0.1;
+          c.y += dy * 0.1;
+          if(frames % 4 === 0) spawnMagnetParticle(c.x, c.y);
+        }
+      }
+      // draw spinning coin…
     ctx.save();
     ctx.translate(c.x, c.y);
     const angle = frames * 0.1;
@@ -2703,6 +2794,9 @@ function updateUpgradeStats(){
   });
   if(rocketNames.length){
     html += `<div>Rocket Upgrades: ${rocketNames.join(', ')}</div>`;
+  }
+  if(magnetActive){
+    html += `<div>Magnetism On</div>`;
   }
   el.innerHTML = html;
   const coinEl = document.getElementById('coinCount');
@@ -3151,10 +3245,11 @@ function showShop() {
 
     html += `</div><button id="shopClose">Close</button>`;
     ct.innerHTML = html;
-    if(section==='upgrades') {
-      renderUpgradeTree();
-      updateUpgradeStats();
-    }
+      if(section==='upgrades') {
+        renderUpgradeTree();
+        updateUpgradeStats();
+        setupTreeDrag();
+      }
 
     ct.querySelectorAll('#tabSkins').forEach(b=>b.onclick=()=>{section='skins';render();});
     ct.querySelectorAll('#tabItems').forEach(b=>b.onclick=()=>{section='items';render();});
@@ -3274,14 +3369,14 @@ function renderUpgradeTree() {
       txt.textContent = owned ? '✓' : cost;
       svg.appendChild(txt);
 
-      if(upg.id.includes('coin') || upg.id.includes('rocket')){
+      if(upg.id.includes('coin') || upg.id.includes('rocket') || upg.id.includes('magnet')){
         const icon = document.createElementNS(svg.namespaceURI,'text');
         icon.setAttribute('x', nx);
         icon.setAttribute('y', ny - 30);
         icon.setAttribute('text-anchor','middle');
         icon.setAttribute('font-size','16');
         icon.setAttribute('class','iconBounce');
-        icon.textContent = upg.id.includes('coin') ? '🪙' : '🚀';
+        icon.textContent = upg.id.includes('coin') ? '🪙' : upg.id.includes('rocket') ? '🚀' : '🧲';
         svg.appendChild(icon);
       }
 
@@ -3305,6 +3400,22 @@ function renderUpgradeTree() {
       });
     });
   });
+}
+
+let treeOffsetX = 0, treeOffsetY = 0;
+function setupTreeDrag(){
+  const wrap = document.getElementById('upgradeTreeWrap');
+  const svg  = document.getElementById('upgradeTreeSVG');
+  let dragging = false, lx=0, ly=0;
+  wrap.onpointerdown = e => { dragging=true; lx=e.clientX; ly=e.clientY; };
+  window.onpointermove = e => {
+    if(!dragging) return;
+    treeOffsetX += e.clientX - lx;
+    treeOffsetY += e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    svg.style.transform = `translate(${treeOffsetX}px,${treeOffsetY}px)`;
+  };
+  window.onpointerup = () => { dragging=false; };
 }
 
 // click outside panel to restart
@@ -3632,10 +3743,11 @@ if (state === STATE.Play) {
   }
 
   // — normal draw/update —
-  bird.draw();
-  updateReviveEffect();
-  updateDoubleEffect();
-  drawPipes();
+    bird.draw();
+    updateReviveEffect();
+    updateDoubleEffect();
+    updateMagnetEffect();
+    drawPipes();
   updatePipes();
 
   // — spawn bigger, evil rocket waves when in Mecha —
@@ -3649,7 +3761,7 @@ if (state === STATE.Play) {
       });
       rocketsSpawned++;
     }
-    if (bossesDefeated >= 2) spawnSliceDisk();
+      if (bossesDefeated >= 2 && frames % 180 === 0) spawnSliceDisk();
 
     if (Math.random() < baseTripleProb / 4) {
       const ry = Math.random() * (H - 80) + 40;
@@ -3684,14 +3796,14 @@ if (state === STATE.Play) {
   
 
 
-  if (inMecha) {
-    if(reviveTimer<=0){
-      updateRockets();
-      updateJellies();
-      updateSliceDisks();
+    if (inMecha) {
+      if(reviveTimer<=0){
+        updateRockets();
+        updateJellies();
+      }
     }
-  }
-  bird.update();
+    updateSliceDisks();
+    bird.update();
 
 } else {
   // Start or Over screen
