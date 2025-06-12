@@ -735,6 +735,9 @@ const milkParticles = [];
     const doubleRings = [];
     let doublePulse   = 0;
     const magnetParticles = [];
+    let electricTimer = 0;
+    let tripleElectric = false;
+    const electricRings = [];
 
     // ── Upgrade state ──
     let coinSpawnBonus   = 0;
@@ -1139,6 +1142,8 @@ if (p.strongQueue > 0) {
   if (Math.hypot(bird.x-r.x, bird.y-r.y) < 24) {
     rocketsIn.splice(i,1);
     tripleShot = false;
+    tripleElectric = false;
+    electricTimer = 0;
     const loss = r.coinLoss || 1;
     if (coinCount >= loss) {
       coinCount -= loss;
@@ -1155,7 +1160,7 @@ if (p.strongQueue > 0) {
   rocketsOut.forEach((b,i)=>{
     if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
-        spawnExplosion(p.x, p.y, true);
+        spawnExplosion(p.x, p.y, true, b.electric);
         if (b.type === 'cow') spawnMilkSplash(p.x, p.y);
         maybeDropCoin(p.x, p.y);
         triggerShake(8);
@@ -1691,6 +1696,8 @@ if (inMecha) {
     if (frames > mechaSafeExpiry) {
       inMecha = false;
       tripleShot = false;
+      tripleElectric = false;
+      electricTimer = 0;
       birdSprite.src = 'assets/' + defaultSkin;
     }
   }
@@ -1825,7 +1832,7 @@ function spawnSliceDisk(){
   });
 }
 
-function spawnExplosion(x, y, fromRocket = false) {
+function spawnExplosion(x, y, fromRocket = false, electric = false) {
   explosions.push({ x, y, frame: 0 });
   explosionSfx.currentTime = 0;
   explosionSfx.play().catch(() => {});
@@ -1833,6 +1840,28 @@ function spawnExplosion(x, y, fromRocket = false) {
     for(let a=0;a<8;a++){
       const ang = a * Math.PI/4;
       slicingDisks.push({ x, y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3, rot:0, hp:1, enemy:false });
+    }
+  }
+  if (electric) {
+    triggerShake(8);
+    electricRings.push({ x, y, r: 20, alpha: 0.6, color: 'cyan' });
+    electricRings.push({ x, y, r: 20, alpha: 0.6, color: 'magenta' });
+    for(let jj=jellies.length-1;jj>=0;jj--){
+      const j=jellies[jj];
+      if(Math.hypot(j.x-x,j.y-y)<40){
+        spawnImpactParticles(j.x, j.y, j.x - x, j.y - y);
+        const mag=Math.hypot(j.x - x, j.y - y)||1;
+        j.pushX += (j.x - x)/mag * 6;
+        j.pushY += (j.y - y)/mag * 6;
+        j.flashTimer = 6;
+        j.hp = (j.hp||1) - 1;
+        if(j.hp<=0){
+          jellies.splice(jj,1);
+          runJellies++;
+          if(runJellies>=5) unlockAchievement('kill5');
+          if(runJellies>=10) triggerStoryEvent('Jelly_Vanquished');
+        }
+      }
     }
   }
   if (isStorySkin() && Math.random() < 0.05) {
@@ -2119,6 +2148,35 @@ function updateReviveEffect() {
     }
   }
 
+  function updateElectricEffect(){
+    if(electricTimer<=0) return;
+    if(frames % 6 === 0){
+      electricRings.push({
+        x: bird.x,
+        y: bird.y,
+        r: bird.rad,
+        alpha: 0.6,
+        color: Math.random() < 0.5 ? 'cyan' : 'magenta'
+      });
+    }
+    for(let i=electricRings.length-1;i>=0;i--){
+      const r = electricRings[i];
+      r.r += 3;
+      r.alpha -= 0.03;
+      ctx.save();
+      const c = r.color==='cyan'? '0,255,255' : '255,0,255';
+      ctx.strokeStyle = `rgba(${c},${r.alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+      if(r.alpha<=0) electricRings.splice(i,1);
+    }
+    electricTimer--;
+    if(electricTimer<=0) tripleElectric = false;
+  }
+
     function drawPipes(){
       pipes.forEach(p=>{
         const img = p.img;
@@ -2180,6 +2238,15 @@ function updateRockets() {
     if (r.triple && frames % 2 === 0) {
       rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
     }
+    if (r.electric && frames % 4 === 0) {
+      electricRings.push({
+        x: r.x + size/2,
+        y: r.y,
+        r: 4,
+        alpha: 0.5,
+        color: Math.random() < 0.5 ? 'cyan' : 'magenta'
+      });
+    }
     if (r.money && frames % 3 === 0) {
       spawnMoneyLeaf(r.x, r.y, -1+(Math.random()-0.5)*0.5, 0.5+Math.random()*0.5);
     }
@@ -2190,7 +2257,7 @@ function updateRockets() {
       if (Math.hypot(r.x - b.x, r.y - b.y) < 12) {
         // consume the rocket
         rocketsOut.splice(i, 1);
-        spawnExplosion(b.x, b.y, true);
+        spawnExplosion(b.x, b.y, true, r.electric);
         if (r.type === 'cow') spawnMilkSplash(b.x, b.y);
         maybeDropCoin(b.x, b.y);
 
@@ -2213,7 +2280,7 @@ function updateRockets() {
       const j = jellies[jj];
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
           rocketsOut.splice(i, 1);
-          spawnExplosion(j.x, j.y, true);
+          spawnExplosion(j.x, j.y, true, r.electric);
         if (r.type === 'cow') spawnMilkSplash(j.x, j.y);
         maybeDropCoin(j.x, j.y);
         triggerShake(5);
@@ -2242,7 +2309,7 @@ function updateRockets() {
       if (Math.hypot(r.x - rin.x, r.y - rin.y) < 24) {
         rocketsOut.splice(i, 1);
           rocketsIn.splice(k, 1);
-          spawnExplosion(r.x, r.y, true);
+          spawnExplosion(r.x, r.y, true, r.electric);
         if (r.type === 'cow') spawnMilkSplash(r.x, r.y);
         maybeDropCoin(r.x, r.y);
         score++; updateScore();
@@ -2389,6 +2456,8 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     if (Math.hypot(bird.x - r.x, bird.y - r.y) < 24) {
       if (!r.isBossTrigger) {
         tripleShot = false;
+        tripleElectric = false;
+        electricTimer = 0;
         const loss = r.coinLoss || 1;
         if (coinCount >= loss) {
           coinCount -= loss; updateScore(); playTone(1000, 0.2);
@@ -2778,6 +2847,10 @@ function updateSliceDisks() {
 
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
+        if(tripleShot){
+          tripleElectric = true;
+          electricTimer = 180;
+        }
         tripleShot = true;
         runPowerups++;
         unlockAchievement('rocket3');
@@ -2982,6 +3055,8 @@ function handleHit(){
   if (revivePromptActive || reviveTimer > 0) return;
   if (bossActive) bossHitless = false;
   tripleShot = false;
+  tripleElectric = false;
+  electricTimer = 0;
   specialRocket = null;
   bird.flashTimer = 8;
   if (coinCount > 0) {
@@ -3061,6 +3136,9 @@ function handleHit(){
   // (optionally also reset mechaSafeExpiry:)
   mechaSafeExpiry  = 0;
   tripleShot       = false;
+  tripleElectric   = false;
+  electricTimer    = 0;
+  electricRings.length = 0;
   birdSprite.src   = 'assets/' + defaultSkin;
   mechSpeed        = baseSpeed;
 
@@ -3550,6 +3628,7 @@ function flapHandler(e){
           vx: 4,
           damage: (tripleShot ? 20 : 10) * rocketDamageMult,
           triple: tripleShot,
+          electric: tripleElectric,
           money: defaultSkin === 'MoneySkin.png',
           size: baseSize,
           flame: rocketFlameEnabled || rocketType==='fire',
@@ -3691,6 +3770,7 @@ if (state === STATE.BossExplode) {
   updateExplosions();
   updateImpactParticles();
   updateMilkParticles();
+  updateElectricEffect();
   updateSkinParticles();
   updateColumnFlames();
   updateColumnSnow();
@@ -3805,6 +3885,7 @@ applyShake();
 
 drawBackground();
  updateSkinParticles();
+ updateElectricEffect();
  updateColumnFlames();
  updateColumnSnow();
  updateMoneyLeaves();
@@ -3833,6 +3914,7 @@ if (state === STATE.Play) {
     bird.draw();
     updateReviveEffect();
     updateDoubleEffect();
+    updateElectricEffect();
     updateMagnetEffect();
     drawPipes();
   updatePipes();
