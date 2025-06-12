@@ -1627,28 +1627,34 @@ function drawBackground(){
         if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png' || defaultSkin === 'story_bird.png') {
           const type = defaultSkin === 'FireSkinBase.png' ? 'fire'
                       : defaultSkin === 'AquaSkinBase.png' ? 'bubble' : 'page';
-          for (let i=0;i<6;i++) {
-            skinParticles.push({
-              x:this.x-20,
-              y:this.y,
-              vx:(Math.random()-0.5)*3,
-              vy:(Math.random()-0.5)*3,
-              size:4+Math.random()*3,
-              life:20,
-              max:20,
+          const life = type === 'page' ? 80 : 20;
+          for (let i = 0; i < 6; i++) {
+            const p = {
+              x: this.x - 20,
+              y: this.y,
+              vx: (Math.random() - 0.5) * 3,
+              vy: (Math.random() - 0.5) * 3,
+              size: 4 + Math.random() * 3,
+              life,
+              max: life,
               type,
-              shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
-            });
+              shape: ['circle', 'triangle', 'square'][Math.floor(Math.random() * 3)]
+            };
+            if (type === 'page') {
+              p.rot  = Math.random() * Math.PI * 2;
+              p.vrot = (Math.random() - 0.5) * 0.05;
+            }
+            skinParticles.push(p);
             if (type === 'fire' && Math.random() < 0.5) {
               skinParticles.push({
-                x:this.x-20,
-                y:this.y,
-                vx:(Math.random()-0.5)*4,
-                vy:(Math.random()-0.5)*4,
-                size:4+Math.random()*4,
-                life:25,
-                max:25,
-                type:'smoke'
+                x: this.x - 20,
+                y: this.y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                size: 4 + Math.random() * 4,
+                life: 25,
+                max: 25,
+                type: 'smoke'
               });
             }
           }
@@ -1672,9 +1678,8 @@ function drawBackground(){
           } else {
             this.vel += this.gravity; this.y += this.vel;
           }
-          if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png' || defaultSkin === 'story_bird.png') {
-            const type = defaultSkin === 'FireSkinBase.png' ? 'fire'
-                        : defaultSkin === 'AquaSkinBase.png' ? 'bubble' : 'page';
+          if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
+            const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
             for (let i=0;i<2;i++) {
               skinParticles.push({
                 x:this.x-20,
@@ -1964,21 +1969,30 @@ function updateSkinParticles() {
     const p = skinParticles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.vx *= 0.96;
-    p.vy *= 0.96;
+    if (p.type === 'page') {
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      p.vy += 0.05;
+      if (p.rot === undefined) p.rot = Math.random() * Math.PI * 2;
+      if (p.vrot === undefined) p.vrot = (Math.random() - 0.5) * 0.05;
+      p.rot += p.vrot;
+    } else {
+      p.vx *= 0.96;
+      p.vy *= 0.96;
+    }
     p.life--;
     ctx.save();
-    ctx.globalAlpha = (p.life / p.max) * 0.7;
+    ctx.globalAlpha = p.type === 'page' ? 1 : (p.life / p.max) * 0.7;
     if (p.type === 'page') {
-      ctx.globalAlpha = 1;
-      p.vy += 0.1;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.moveTo(p.x - p.size, p.y - p.size);
-      ctx.lineTo(p.x + p.size, p.y - p.size);
-      ctx.quadraticCurveTo(p.x + p.size * 1.2, p.y, p.x + p.size, p.y + p.size);
-      ctx.lineTo(p.x - p.size, p.y + p.size);
-      ctx.quadraticCurveTo(p.x - p.size * 1.2, p.y, p.x - p.size, p.y - p.size);
+      ctx.moveTo(-p.size, -p.size);
+      ctx.lineTo(p.size, -p.size);
+      ctx.quadraticCurveTo(p.size * 1.2, 0, p.size, p.size);
+      ctx.lineTo(-p.size, p.size);
+      ctx.quadraticCurveTo(-p.size * 1.2, 0, -p.size, -p.size);
       ctx.fill();
     } else if (p.type === 'fire') {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
@@ -2020,7 +2034,9 @@ function updateSkinParticles() {
       ctx.stroke();
     }
     ctx.restore();
-    if (p.life <= 0) skinParticles.splice(i, 1);
+    if ((p.type === 'page' && (p.y > H + 40 || p.x < -40 || p.x > W + 40)) || p.life <= 0) {
+      skinParticles.splice(i, 1);
+    }
   }
 }
 
@@ -3694,12 +3710,14 @@ function flapHandler(e){
         skinParticles.push({
           x: bird.x,
           y: bird.y,
-          vx:(Math.random()-0.5)*4,
-          vy:(Math.random()-0.5)*4,
-          size:3+Math.random()*3,
-          life:20,
-          max:20,
-          type:'page'
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          size: 3 + Math.random() * 3,
+          life: 80,
+          max: 80,
+          type: 'page',
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.05
         });
       }
     }
@@ -3820,22 +3838,28 @@ if (state === STATE.MechaTransit) {
     if (altMecha) {
       for (let i = 0; i < 8; i++) {
         if (altMecha === 'money') {
-          spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
+          spawnMoneyLeaf(bird.x, bird.y, (Math.random() - 0.5) * 0.5, 1 + Math.random());
         } else {
           const type = altMecha === 'fire' ? 'fire'
                       : (altMecha === 'aqua' || altMecha === 'cow') ? 'bubble'
                       : 'page';
-          skinParticles.push({
+          const life = type === 'page' ? 80 : 20;
+          const p = {
             x: bird.x,
             y: bird.y,
             vx: (Math.random() - 0.5) * 4,
             vy: (Math.random() - 0.5) * 4,
             size: 4 + Math.random() * 3,
-            life: 20,
-            max: 20,
+            life,
+            max: life,
             type,
-            shape:['circle','triangle','square'][Math.floor(Math.random()*3)]
-          });
+            shape: ['circle', 'triangle', 'square'][Math.floor(Math.random() * 3)]
+          };
+          if (type === 'page') {
+            p.rot  = Math.random() * Math.PI * 2;
+            p.vrot = (Math.random() - 0.5) * 0.05;
+          }
+          skinParticles.push(p);
           if (altMecha === 'fire' && Math.random() < 0.5) {
             skinParticles.push({
               x: bird.x,
