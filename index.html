@@ -1746,8 +1746,9 @@ function spawnPipe(){
   } else if (isAquaSkin()) {
     p.img = iceColumnImg;
     p.snowFX = true;
+  // keep normal pipes for the Story skin
   } else if (isStorySkin()) {
-    p.img = storyColumnImg;
+    // no custom column image
   } else if (defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech')) {
     p.img = cowPipeImg;
   }
