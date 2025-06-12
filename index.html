@@ -956,7 +956,16 @@ pipes.length     = apples.length = coins.length = 0;
   function updateBoss() {
     // 1) Smoke puffs
     const p = bossObj;
-    if(p.stunTimer>0){ p.stunTimer--; return; }
+    if(p.stunTimer>0){
+      p.stunTimer--;
+      if(p.stunTimer===0) p.isCharging=false;
+      if(frames % 4 === 0){
+        spawnImpactParticles(p.x + (Math.random()-0.5)*p.r, p.y + (Math.random()-0.5)*p.r, 0,0);
+        p.smoke.push({ x:p.x + (Math.random()-0.5)*p.r, y:p.y + (Math.random()-0.5)*p.r, alpha:1, r:4 });
+      }
+      triggerShake(1);
+      return;
+    }
     const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
   if (p.freezeTimer > 0) p.freezeTimer--;
   if (p.chargeCooldown > 0) p.chargeCooldown--;
@@ -1180,8 +1189,12 @@ if (p.strongQueue > 0) {
         bossHealth -= dmg;
         if(Math.random() < 0.1){
           p.stunTimer = 60;
-          if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false});
-          else rocketPowerups.push({x:p.x,y:p.y,taken:false});
+          p.isCharging = true;
+          triggerShake(2);
+          spawnImpactParticles(p.x, p.y, 0, 0);
+          p.smoke.push({ x:p.x, y:p.y, alpha:1, r:4 });
+          if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false,homing:true});
+          else rocketPowerups.push({x:p.x,y:p.y,taken:false,homing:true});
         }
         if (bossEncounterCount === 3 && p.chargeCooldown <= 0) {
         p.tripleFire = true;
@@ -2763,7 +2776,15 @@ function updateSliceDisks() {
   coins.forEach((c, i) => {
   // move
     const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
-    c.x -= coinSpeed * ts;
+    if(c.homing){
+      const dx = bird.x - c.x;
+      const dy = bird.y - c.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      c.x += (dx/dist) * 4;
+      c.y += (dy/dist) * 4;
+    } else {
+      c.x -= coinSpeed * ts;
+    }
 
     if (!c.taken) {
       if(magnetActive){
@@ -2823,7 +2844,15 @@ function updateSliceDisks() {
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
     const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
-    p.x -= powerSpeed * ts;
+    if(p.homing){
+      const dx = bird.x - p.x;
+      const dy = bird.y - p.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      p.x += (dx/dist) * 4;
+      p.y += (dy/dist) * 4;
+    } else {
+      p.x -= powerSpeed * ts;
+    }
     if(!p.taken){
       ctx.save();
       ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
@@ -2850,7 +2879,7 @@ function updateSliceDisks() {
         p.taken = true;
         if(tripleShot){
           tripleElectric = true;
-          electricTimer = 180;
+          electricTimer = 540;
         }
         tripleShot = true;
         runPowerups++;
