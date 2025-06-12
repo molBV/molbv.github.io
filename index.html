@@ -724,6 +724,7 @@ const milkParticles = [];
     let specialRocket = null;
 
     let personalBest = parseInt(localStorage.getItem('birdyBestScore')) || 0;
+    let lastPlayerName = localStorage.getItem('birdyName') || '';
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
       if (totalCoins >= 500) unlockAchievement('coins500');
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
@@ -2986,6 +2987,7 @@ let revivePromptActive = false;
 
 function finalizeGameOver(){
   trackEvent('game_over', { score });
+  trackEvent('score_recorded', { name: lastPlayerName || 'Anon', score });
   state = STATE.Over;
   hasSubmittedScore  = false;
   overlayTop10Lock   = false;
@@ -3175,12 +3177,14 @@ function handleHit(){
       <h2>Game Over!</h2>
       <p>Your score: ${score}</p>
       <label>Enter your name:</label><br/>
-      <input id="nameInput" type="text" maxlength="10" /><br/>
+      <input id="nameInput" type="text" maxlength="10" value="${lastPlayerName}" /><br/>
       <button id="saveBtn">Save Score</button>
     `;
 
     document.getElementById('saveBtn').onclick = async () => {
       const name = document.getElementById('nameInput').value.trim() || 'Anon';
+      localStorage.setItem('birdyName', name);
+      lastPlayerName = name;
       await saveGlobalScore(name, score, marathonMode);
       trackEvent('submit_score', { score });
       hasSubmittedScore = true;
@@ -3675,6 +3679,7 @@ function flapHandler(e){
 canvas.addEventListener('mousedown', flapHandler);
 canvas.addEventListener('touchstart',  e => { e.preventDefault(); flapHandler(e); }, {passive:false});
 document.addEventListener('keydown', e=>{
+  if (document.activeElement.tagName === 'INPUT') return;
   if (e.code === 'Space' || e.code === 'ArrowUp') flapHandler(e);
 });
         function drawUI(){
