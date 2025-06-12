@@ -284,155 +284,136 @@ let bossHitless       = false; // true if current boss fight had no hits
   ];
 let achievements = JSON.parse(localStorage.getItem('achievements')||'{}');
 
-  const storyEntries = [
-    { id:'Suit_Assembled', epithet:'Steel awakens beneath living feather…', req:'Collect 10 coins', log:[
-
-      'You hit 10 coins—suddenly plating erupts around your wings, fusing metal to bone.',
-      'This Mecha suit turns fragile feathers into weapons, letting you fire rockets for the first time.',
-      'Accepting this power marks your first step away from the free sky… and into obligation.'
+const storyEntries = [
+  { id: 'Suit_Assembled', epithet: 'Feathersteel Oath', req: 'Collect 10 coins', log: [
+      'As the tenth coin falls, a whisper of steel threads through your feathers.',
+      'Plates burst forth, melding metal to bone, and your wings thunder with newfound might.',
+      'Bound by this oath, the free sky feels thinner—your flight now guided by iron command.'
     ]},
-    { id:'Boss1_Appeared', epithet:'A great owl of gears stirs in shadowed wood…', req:'Encounter the Owl boss', log:[
-
-      'From the mechanical canopy descends the Forest Warden—your own mech‐self in owl form.',
-      'It challenges you to prove that this borrowed power belongs to you.',
-      'Defeat it, or remain a prisoner of your own creation.'
+  { id: 'Boss1_Appeared', epithet: 'Owl’s Gilded Vigil', req: 'Encounter the Owl boss', log: [
+      'Shadows stir as the Owl’s watch begins—a sentinel of gears perched on ancient boughs.',
+      'Its glowing eyes demand proof: the Mecha suit you wear, do you command it or merely bear it?',
+      'Stand your ground, for failure here means caged by your own invention.'
     ]},
-    { id:'Boss1_Defeated', epithet:"The owl’s gear-heart shatters into silence…", req:'Defeat the Owl', log:[
-
-      'Your rockets strike true; the Warden’s core explodes in a ring of sparks.',
-      'A fragment of its armor drifts to your talon—proof you bested your first mech incarnation.',
-      'Tear off your plating and remember: every victory carries the cost of what you’ve become.'
+  { id: 'Boss1_Defeated', epithet: 'Shattered Gear-Heart’s Silence', req: 'Defeat the Owl', log: [
+      'Your rockets rent the night—each blast a drumbeat of defiance against the Forest Warden.',
+      'When its gear-heart gives way in a cascade of sparks, a fragment drifts into your grasp.',
+      'Armor in hand, you feel the weight of triumph—and the chill of what you’ve forsaken.'
     ]},
-    // ── NEW SIDE-ARC BEFORE THIRD OWL DEFEAT ──
-    { id:'Jelly_Vanquished', epithet:'Shadows of the deep tremble at your wings…', req:'Defeat 10 Jellyfish', log:[
-      'Your talons rend the jelly’s electric veil, each flicker yielding to your will.',
-      'Ten fallen leviathans lie broken, their shock turns to whispered echoes of fear.',
-      'In victory over the swarm, you glean strength for the trials yet to come.'
+  // ── NEW SIDE-ARC BEFORE THIRD OWL DEFEAT ──
+  { id: 'Jelly_Vanquished', epithet: 'Echoes of the Electric Deep', req: 'Defeat 10 Jellyfish', log: [
+      'Beneath waves of blue lightning, each flicker tests the steel coursing through your veins.',
+      'With ten swift strikes, you rend the electric veil and silence the deep’s whispered currents.',
+      'In their quiet aftermath, you harvest the strength for the trials yet to unfold.'
     ]},
-    { id:'Rocket_Rite', epithet:'Flames of metal trace your path…', req:'Use Rocket Power 5 times', log:[
-      'Each rocket launch scorches the sky, crafting arcs of molten promise.',
-      'Five blasts affirm your mastery of borrowed fire, forging resolve in flame.',
-      'This rite of ignition kindles purpose for the battle at the owl’s hollow.'
+  { id: 'Rocket_Rite', epithet: 'Ember-Spiral Covenant', req: 'Use Rocket Power 5 times', log: [
+      'Your talons tremble as the first flare ignites—metal and feather conspire to rend the dawn itself.',
+      'Five thunderous eruptions carve ribbons of embers across the sky’s silent canvas.',
+      'Smoke coalesces in your wake—an ember-bound vow fueling the Owl’s Gilded Vigil.'
     ]},
-    { id:'Coin_Offering', epithet:'Gold falls like rain upon willing talon…', req:'Collect 50 Coins', log:[
-      'Coins cascade in endless spiral, each a token of your past mistakes.',
-      'Fifty gleaned orbs glimmer with memory, fueling hope and haunting doubt.',
-      'Treasury of ambition amassed, yet the true cost awaits beneath iron boughs.'
+  { id: 'Coin_Offering', epithet: 'Toll of Golden Remembrance', req: 'Collect 50 Coins', log: [
+      'Fifty coins tumble like molten suns, each clinking with the echo of memories lost.',
+      'Their warmth pulses against your feathers, whispering of promises both kept and broken.',
+      'With this hoard in hand, the iron boughs loom ever closer—your ambition’s true cost.'
     ]},
-    { id:'Pipe_Beyond_Obstacles', epithet:'Beyond iron boughs, your wings find new rhythm…', req:'Break 15 Pipes', log:[
-      'Broken conduits crumble at your touch, barriers yielding to conviction.',
-      'Fifteen fractures resonate with the thunder of your unchained spirit.',
-      'Through shattered paths you glimpse the open sky that beckons beyond.'
+  { id: 'Pipe_Beyond_Obstacles', epithet: 'Threshold of Iron Boughs', req: 'Break 15 Pipes', log: [
+      'Fifteen ruptured conduits collapse beneath your charge, each fracture a note in your ascent.',
+      'Through the wreckage, you glimpse the sky’s yearning call beyond these iron limbs.',
+      'The path ahead shimmers with possibility—yet its edges are sharpened by resolve.'
     ]},
-    { id:'Arcane_Harmony', epithet:'Synthesized song of bird and machine reverberates…', req:'Stay in Mecha for 30s', log:[
-      'Mechanized heartbeat aligns with feathered breath, forging living alloy.',
-      'Thirty seconds of perfect symphony echo with promise of total fusion.',
-      'Harmony tempered in isolation, preparing you for the owl’s final test.'
+  { id: 'Arcane_Harmony', epithet: 'Aria of Alloy and Feather', req: 'Stay in Mecha for 30s', log: [
+      'For thirty heartbeats, mech pulses align with your breath—a song of living alloy emerges.',
+      'Steam and wing-beats weave in tandem, forging a harmony unbroken by doubt.',
+      'In this crucible of fusion, you steel yourself for the Owl’s final crucible.'
     ]},
-    // ── back into the Perseverance arc ──
-    { id:'Boss1_Perseverance', epithet:'Victory’s echo deepens the resolve…', req:'Beat the Owl three times', log:[
-
-      'Three times you faced the Owl again, each rematch harder than the last.',
-      'With every clash, you temper your skill—iron-sharp but colder in the heart.',
-      'Perseverance earns you confidence… and reminds you why you donned this suit at all.'
+  // ── back into the Perseverance arc ──
+  { id: 'Boss1_Perseverance', epithet: 'Resonance of Resolve', req: 'Beat the Owl three times', log: [
+      'Three rematches carved in sparks—each clash colder, finer than the last.',
+      'Your skill, honed razor-sharp by adversity, cuts with purpose, but chills your heart.',
+      'Perseverance’s echo sings of victory—and of the suit’s growing claim upon your soul.'
     ]},
-    { id:'Pipe_Threshold_Reached', epithet:'Branches of metal part before your flight…', req:'Pass 20 pipes', log:[
-
-      'After passing 20 pipes, you move through them as if each were an open bough.',
-      'Recall your youth, balancing on thin branches—now replaced by these iron conduits.',
-      'Mastery of obstacles binds you tighter to the mech’s unending grind.'
+  { id: 'Pipe_Threshold_Reached', epithet: 'Hall of Iron Boughs', req: 'Pass 20 pipes', log: [
+      'After twenty passages, you move through iron branches as an echo through time.',
+      'Memories of free perches stir—yet these conduits now bear you skyward.',
+      'Mastery entwines you deeper with metal’s unending demand.'
     ]},
-    { id:'Mecha_Mastery', epithet:'A steady hum of engines beats in your chest…', req:'Stay in Mecha for 60s', log:[
-
-      'Surviving 60 seconds in Mecha, you and the suit have become one.',
-      'Each engine pulse echoes a heartbeat, reminding you how deeply you depend on it.',
-      'This bond grants power—and a fear of what you lose if it fails.'
+  { id: 'Mecha_Mastery', epithet: 'Pulse of Living Alloy', req: 'Stay in Mecha for 60s', log: [
+      'Sixty seconds entwined with mech’s pulse—you and steel breathe as one.',
+      'Engine’s thrum reverberates like a heartbeat, reminding you of reliance.',
+      'In this bond lies immense power—and the dread of its possible silence.'
     ]},
-    { id:'Boss2_Appeared', epithet:'From the forge’s flame, a stag of iron emerges…', req:'Encounter the Forge Titan', log:[
-
-      'The Forge Titan strides in molten majesty—your second mech self reborn as a stag.',
-      'Its red-hot core glows with the fire you once commanded in the forge of your mind.',
-      'To defeat it is to confront your own ambition untempered by restraint.'
+  { id: 'Boss2_Appeared', epithet: 'Forge Titan’s Emberstride', req: 'Encounter the Forge Titan', log: [
+      'From molten forges emerges a stag of iron—each step scorched with ambition.',
+      'Its molten core burns with the fire you once commanded within.',
+      'To stand against it is to confront your own fervor untempered by restraint.'
     ]},
-    { id:'Boss2_Defeated', epithet:"The Titan’s furnace heart cools to ash…", req:'Defeat the Forge Titan', log:[
-
-      'A final blast quells its blazing core; molten metal scalds the ground at your feet.',
-      'You pluck a cooling ember of armor—proof that you survived your own fervor.',
-      'But as the heat fades, you taste regret on your tongue.'
+  { id: 'Boss2_Defeated', epithet: 'Ashfall of the Furnace Heart', req: 'Defeat the Forge Titan', log: [
+      'Your final blast douses its blazing core, steam hissing over cooling steel.',
+      'A single ember drops to your palm—a living spark of your own desire.',
+      'As its heat fades, regret flickers at the edges of your triumph.'
     ]},
-    { id:'Boss2_Revive_Drop', epithet:'A crystalline token spins free in fiery dusk…', req:'Forge Titan drops Revive', log:[
-
-      'From the Titan’s ashes falls a translucent gem—your one chance at revival.',
-      'Hold it if you dare: it cheats death once, but leaves scars on memory.',
-      'Use it wisely, for not every defeat begs forgiveness.'
+  { id: 'Boss2_Revive_Drop', epithet: 'Dawnthief’s Crystal', req: 'Forge Titan drops Revive', log: [
+      'From the Titan’s ashes, a crystalline dawn trembles in your grasp.',
+      'Its glow promises life once more—for a price no soul escapes untouched.',
+      'May you spend this gift wisely, for death’s debt is ever patient.'
     ]},
-    { id:'Revive_Used', epithet:"Death’s whisper turned into a second heartbeat…", req:'Use the Revive token', log:[
-
-      'Your vision dims—then the token’s glow floods your veins with stolen life.',
-      'You rise again, chest heaving, a reminder that even fate can be bargained with.',
-      'But borrowed time tastes bittersweet, and each revival deepens your obsession.'
+  { id: 'Revive_Used', epithet: 'Second Heartbeat’s Whisper', req: 'Use the Revive token', log: [
+      'Darkness nearly claims you—then light floods your veins as life is reclaimed.',
+      'Chest heaving, you stand again—a testament to fate’s fragile bargain.',
+      'Yet each heartbeat now tastes of obsession, each breath a borrowed gift.'
     ]},
-    { id:'Pipe_Breaker', epithet:'Barriers shatter beneath sharpened resolve…', req:'Break 20 pipes', log:[
-
-      'Breaking 20 pipes with super-charged flaps, you feel raw power in your talons.',
-      'These metal barriers crumble under your will—yet every fracture demands a toll.',
-      'In destruction you glimpse creation: what new path will you forge now?'
+  { id: 'Pipe_Breaker', epithet: 'Relentless Shatter', req: 'Break 20 pipes', log: [
+      'Twenty shattered pipes fall in thunderous revolt beneath your charge.',
+      'Metal splinters like silent vows—each fracture leaves its mark on the wind.',
+      'In this destruction, you glimpse paths uncharted—roads forged by will alone.'
     ]},
-    { id:'Coin_Threshold', epithet:'Golden orbs spin in a ring of remembrance…', req:'Collect 100 total coins', log:[
-
-      'Collecting 100 coins, you clutch each as if it were a memory long forgotten.',
-      'They glimmer with warmth you once felt beneath the sunrise.',
-      'Yet hoarding them chains you to a cycle of endless striving.'
+  { id: 'Coin_Threshold', epithet: 'Ring of Remembered Suns', req: 'Collect 100 total coins', log: [
+      'One hundred coins whirl in a golden ring—their warmth tinged with nostalgia.',
+      'Each orb holds a memory of dawns past, bright and fleeting.',
+      'Yet in clutching them, you bind yourself to endless yearning.'
     ]},
-    { id:'Gauntlet_Cleared', epithet:'Tunnels of code fracture beneath your wings…', req:'Clear the Glitch Gauntlet', log:[
-
-      'Passing the glitching gauntlet, pipes pulse with digital static.',
-      'You sense the Architect’s blueprint etched into every corridor.',
-      'Surviving here means navigating the labyrinth of your own mind.'
+  { id: 'Gauntlet_Cleared', epithet: 'Glitch Gauntlet’s Passage', req: 'Clear the Glitch Gauntlet', log: [
+      'Static crackles as you breach the gauntlet—pipes flicker in digital flux.',
+      'Blueprints of the Architect reveal themselves in fractured code.',
+      'Navigating here is to chart the contours of your own fractured mind.'
     ]},
-    { id:'Architect_Appeared', epithet:'A shattered mirror beckons from the void…', req:'Encounter the Null Architect', log:[
-
-      'In the heart of the maze stands the Null Architect—your reflection spun to chaos.',
-      'Its voice crackles: “I am all you feared you might become.”',
-      'To defeat it is to reclaim the shards of your lost identity.'
+  { id: 'Architect_Appeared', epithet: 'Null Architect’s Reflection', req: 'Encounter the Null Architect', log: [
+      'In the maze’s core, a mirror forms—the Architect’s gaze twisted by void.',
+      'Its voice slices the air: “I embody the fear you dare not name.”',
+      'Confront it, and reclaim each shard of your fractured identity.'
     ]},
-    { id:'Architect_Defeated', epithet:'Shards of self dissolve in pixelated hush…', req:'Defeat the Null Architect', log:[
-
-      'Your final strike scatters neon fragments like fallen stars.',
-      'One shard drifts to rest in your palm, etched with a single word: “Avius.”',
-      'You glimpse your name—yet the mirror remains half-shattered.'
+  { id: 'Architect_Defeated', epithet: 'Echoed Shardfall', req: 'Defeat the Null Architect', log: [
+      'Your strike scatters shards of neon—each a fragment of self.',
+      'One shard drifts to rest in your palm, etched with the name “Avius.”',
+      'Yet half the mirror remains fractured—a story not yet whole.'
     ]},
-    { id:'Self_Glimpse', epithet:'Mirror cracks reveal half-wing, half-gear…', req:'Glimpse your true self', log:[
-
-      'A flash of pure clarity shows you: organic feather fused with living steel.',
-      'Your name resounds in the echoing void—Avius, Stormbird of the Celestial Grove.',
-      'Still, one final form awaits to test your harmony.'
+  { id: 'Self_Glimpse', epithet: 'Revelation of Feather and Steel', req: 'Glimpse your true self', log: [
+      'A breath catches as you glimpse true form—feather and steel in living meld.',
+      'Your name resonates: Avius, Stormbird of the Celestial Grove.',
+      'Still, the final form waits—to test your unity of soul and machine.'
     ]},
-    { id:'Prime_Appeared', epithet:'A perfect fusion steps from shadow and light…', req:'Encounter Avius Prime', log:[
-
-      'Avius Prime lands—half-feather, half-plating, chest orb blazing amber and cyan.',
-      'This ultimate self wields every power you’ve claimed—and every regret you bear.',
-      'Its challenge: reconcile bird and machine in a single soul.'
+  { id: 'Prime_Appeared', epithet: 'Shadowed Dawn of Prime', req: 'Encounter Avius Prime', log: [
+      'From twilight’s edge, Avius Prime steps forth—light and steel intertwined.',
+      'Every power you’ve claimed, every regret you’ve borne, glows within its chest orb.',
+      'Its gaze commands: reconcile bird and machine, or fade into legend.'
     ]},
-    { id:'Prime_Titan_Defeated', epithet:'A hulking form collapses in thunderous silence…', req:'Defeat Prime Titan phase', log:[
-
-      'The heavy Titan phase topples with a roar, leaving sparks in its wake.',
-      'You tear away the bulky armor, shedding the last weight of your past.',
-      'Now stands the true test: can you embrace what remains?'
+  { id: 'Prime_Titan_Defeated', epithet: 'Echo of Cast-Off Weight', req: 'Defeat Prime Titan phase', log: [
+      'The Titan’s titan-phase falls—sparks shower like silent benedictions.',
+      'You peel away the gaunt armor—a shedding of burdens long carried.',
+      'Now the true crucible awaits: to embrace what endures beyond metal.'
     ]},
-    { id:'Prime_Ascendant', epithet:'Feather-blades shimmer in transcendent flight…', req:'Reach Prime Ascendant', log:[
-
-      'Armor refines into feather-shaped blades of living light.',
-      'You dart and spin with joyous grace, every flap a hymn of reclamation.',
-      'Machine and bird merge at last in perfect symphony.'
+  { id: 'Prime_Ascendant', epithet: 'Ascendance of Featherblade', req: 'Reach Prime Ascendant', log: [
+      'Feathers refine into blades of living light—each flap a stroke of rebirth.',
+      'You dance through the sky with joyous grace, a hymn woven in motion.',
+      'In this flight, bird and machine finally sing as one.'
     ]},
-    { id:'Prime_Final_Defeated', epithet:'Harmony resonates as all shards converge…', req:'Defeat Avius Prime', log:[
-
-      'With a final pulse, Avius Prime dissolves into dawn’s gentle glow.',
-      'Feathers and metal hum together—no longer adversaries, but kin.',
-      'Free from obsession’s cycle, you return to the pipes—this time as master of your own story.'
+  { id: 'Prime_Final_Defeated', epithet: 'Dawn’s Wholeness Resonance', req: 'Defeat Avius Prime', log: [
+      'With final pulse, Avius Prime dissolves into dawn’s gentle lumen.',
+      'Feather and metal hum together—kin stitched by triumph and insight.',
+      'Free from cycles of obsession, you return to the pipes—master of your own story.'
     ]}
-  ];
+];
+
   let storyLog = JSON.parse(localStorage.getItem('storyLog')||'{}');
   function checkStoryAchievements() {
     const count = Object.keys(storyLog).length;
