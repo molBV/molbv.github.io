@@ -534,12 +534,6 @@ const cowUpSprite     = new Image();
 cowUpSprite.src       = 'assets/cow_up.png';
 const cowDownSprite   = new Image();
 cowDownSprite.src     = 'assets/cow_down.png';
-const farmImg  = new Image();
-farmImg.src  = 'assets/farm.png';
-const baleImg  = new Image();
-baleImg.src  = 'assets/bail.png';
-const fenceImg = new Image();
-fenceImg.src = 'assets/fence.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
@@ -700,8 +694,6 @@ let altMechaTimer = 0;
     const pipeMoveAmplitude = 15;   // max up/down movement in pixels
     const pipeMoveSpeed = 0.04;     // radians per frame
     const clouds=[], trees=[];
-    const farmDecor = [];
-    const farmMountains = [];
     const rocketsOut = [];
     const rocketsIn  = [];
     const rocketPowerups = [];
@@ -839,11 +831,7 @@ const milkParticles = [];
 
     for(let i=0;i<7;i++){
       clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
-      if(isCowSkin()) spawnFarmDecor(Math.random()*W);
-      else trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
-    }
-    if(isCowSkin()){
-      for(let m=0;m<2;m++) spawnMountain(Math.random()*W);
+      trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
     }
 
     // ── Utility functions (from V6.8) :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
@@ -863,11 +851,6 @@ const milkParticles = [];
     function isStorySkin(){
       return defaultSkin === 'story_bird.png' || birdSprite.src.includes('Story_mech');
     }
-
-    function isCowSkin(){
-      return defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech');
-    }
-
 // ── Mecha-transition kick-off ───────────────────────────────
 function startMechaTransition() {
   transitionTimer = 0;
@@ -1188,7 +1171,7 @@ if (p.strongQueue > 0) {
     if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
         spawnExplosion(p.x, p.y, true, b.electric);
-        if (b.type === 'cow') spawnMilkSplash(p.x, p.y, true);
+        if (b.type === 'cow') spawnMilkSplash(p.x, p.y);
         maybeDropCoin(p.x, p.y);
         triggerShake(8);
         spawnImpactParticles(p.x, p.y, p.x - b.x, p.y - b.y);
@@ -1524,31 +1507,6 @@ radialBombs.forEach(b => {
     // ── Background drawing ──
     function drawCloud(x,y,s){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.fillStyle='rgba(255,255,255,0.8)'; [0,30,60].forEach(px=>{ ctx.beginPath(); ctx.arc(px,0,20,0,2*Math.PI); ctx.fill(); }); ctx.restore(); }
     function drawTree(x,base,h){ ctx.fillStyle='#8D6E63'; ctx.fillRect(x,base-h,10,h); ctx.fillStyle='#388E3C'; ctx.beginPath(); ctx.moveTo(x-15,base-h+20); ctx.lineTo(x+5,base-h-20); ctx.lineTo(x+25,base-h+20); ctx.closePath(); ctx.fill(); }
-function drawHill(off){
-function spawnFarmDecor(x){
-  const r=Math.random();
-  if(r<0.1){
-    farmDecor.push({x,type:"farm"});
-  }else if(r<0.3){
-    farmDecor.push({x,type:"bale"});
-  }else{
-    farmDecor.push({x,type:"fence",count:2+Math.floor(Math.random()*2)});
-  }
-}
-function spawnMountain(x){
-  farmMountains.push({x,h:40+Math.random()*30});
-}
-  ctx.fillStyle = "#4caf50";
-  ctx.beginPath();
-  ctx.moveTo(0,H);
-  for(let x=-20;x<=W+20;x+=20){
-    const y=H-40-Math.sin((x+off)/60)*20;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(W,H);
-  ctx.closePath();
-  ctx.fill();
-}
 function drawBackground(){
   // normalized time: 0→1 over cycleLength frames
   const tC = (frames % cycleLength) / cycleLength;
@@ -1597,55 +1555,25 @@ function drawBackground(){
     ctx.fillStyle   = '#fff';
     stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
   }
+  // restore
   ctx.globalAlpha = 1;
-  // 4) clouds & landscape
+
+  // 4) clouds & trees (unchanged)
   clouds.forEach(c=>{
     c.x -= 0.3;
     if (c.x < -80) c.x = W + 80;
     drawCloud(c.x, c.y, c.s);
   });
-  if (isCowSkin()) {
-    farmMountains.forEach(m=>{
-      m.x -= 0.4;
-      if(m.x < -60){ m.x = W + Math.random()*300; m.h = 40+Math.random()*30; }
-      const base=H-40-Math.sin((m.x+frames)/60)*20;
-      ctx.fillStyle='#556B2F';
-      ctx.beginPath();
-      ctx.moveTo(m.x-20, base);
-      ctx.lineTo(m.x, base - m.h);
-      ctx.lineTo(m.x+20, base);
-      ctx.fill();
-    });
-    drawHill(frames);
-    const fences=[];
-    for(let i=farmDecor.length-1;i>=0;i--){
-      const d=farmDecor[i];
-      d.x -= 1;
-      const y=H-40-Math.sin((d.x+frames)/60)*20;
-      if(d.type==='fence'){ fences.push({d,y}); } else {
-        const img=d.type==='farm'?farmImg:baleImg;
-        const sz=d.type==='farm'?32:20;
-        ctx.drawImage(img,d.x - sz/2,y - sz,sz,sz);
-      }
-      if(d.x + (d.count||1)*16 < -40){ farmDecor.splice(i,1); spawnFarmDecor(W+Math.random()*80); }
-    }
-    fences.forEach(f=>{
-      ctx.save();
-      ctx.shadowColor='rgba(0,0,0,0.3)';
-      ctx.shadowBlur=4;
-      for(let j=0;j<f.d.count;j++){
-        const fx=f.d.x + j*16;
-        ctx.drawImage(fenceImg, fx-8, f.y-16, 16,16);
-      }
-      ctx.restore();
-    });
-  } else {
-    trees.forEach(t=>{
-      t.x -= 1;
-      if (t.x < -20) t.x = W + 20;
-      drawTree(t.x, H, t.h);
-    });
-  }
+  trees.forEach(t=>{
+    t.x -= 1;
+    if (t.x < -20) t.x = W + 20;
+    drawTree(t.x, H, t.h);
+  });
+}
+    // ── Bird object ──
+    const bird = {
+      x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
+      flashTimer:0,
       draw(){
         if(shieldCount>0){
           ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
@@ -2005,16 +1933,15 @@ function updateImpactParticles() {
   }
 }
 
-function spawnMilkSplash(x, y, big=false) {
-  const count = big ? 16 : 8;
-  for (let i = 0; i < count; i++) {
+function spawnMilkSplash(x, y) {
+  for (let i = 0; i < 8; i++) {
     milkParticles.push({
       x,
       y,
-      vx: (Math.random() - 0.5) * 3 * (big ? 1.5 : 1),
-      vy: (Math.random() - 0.5) * 3 * (big ? 1.5 : 1),
-      life: big ? 30 : 20,
-      size: (big ? 3 : 2) + Math.random() * (big ? 4 : 3)
+      vx: (Math.random() - 0.5) * 3,
+      vy: (Math.random() - 0.5) * 3,
+      life: 20,
+      size: 2 + Math.random() * 3
     });
   }
 }
@@ -2382,7 +2309,7 @@ function updateRockets() {
         // consume the rocket
         rocketsOut.splice(i, 1);
         spawnExplosion(b.x, b.y, true, r.electric);
-        if (r.type === 'cow') spawnMilkSplash(b.x, b.y, true);
+        if (r.type === 'cow') spawnMilkSplash(b.x, b.y);
         maybeDropCoin(b.x, b.y);
 
         // bump bomb’s hit count
@@ -2405,7 +2332,7 @@ function updateRockets() {
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
           rocketsOut.splice(i, 1);
           spawnExplosion(j.x, j.y, true, r.electric);
-        if (r.type === 'cow') spawnMilkSplash(j.x, j.y, true);
+        if (r.type === 'cow') spawnMilkSplash(j.x, j.y);
         maybeDropCoin(j.x, j.y);
         triggerShake(5);
         spawnImpactParticles(j.x, j.y, j.x - r.x, j.y - r.y);
@@ -2434,7 +2361,7 @@ function updateRockets() {
         rocketsOut.splice(i, 1);
           rocketsIn.splice(k, 1);
           spawnExplosion(r.x, r.y, true, r.electric);
-        if (r.type === 'cow') spawnMilkSplash(r.x, r.y, true);
+        if (r.type === 'cow') spawnMilkSplash(r.x, r.y);
         maybeDropCoin(r.x, r.y);
         score++; updateScore();
         bossRocketCount++;
@@ -2468,7 +2395,7 @@ function updateRockets() {
           && r.y > p.top && r.y < p.top+p.gap) {
         pipes.splice(pi,1);
         rocketsOut.splice(i,1);
-        if (r.type === 'cow') spawnMilkSplash(p.x + pipeW/2, p.top + p.gap/2, true);
+        if (r.type === 'cow') spawnMilkSplash(p.x + pipeW/2, p.top + p.gap/2);
         maybeDropCoin(p.x + pipeW/2, p.top + p.gap/2);
       }
     });
@@ -3496,7 +3423,7 @@ function showShop() {
         {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
         {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10},
         {key:'MoneySkin.png', name:'Money Bags', cost:500, owned:ownedSkins['MoneySkin.png']},
-        {key:'cow_down.png', name:'Milk Master', cost:420, owned:ownedSkins['cow_down.png']}
+        {key:'cow_down.png', name:'Cow', cost:420, owned:ownedSkins['cow_down.png']}
       ];
 
     const items = [
@@ -3755,7 +3682,7 @@ function flapHandler(e){
   } else if (state === STATE.Play || state === STATE.Boss) {
     bird.flap();
     // always allow shooting in Boss fight (regardless of inMecha)
-      const shots = tripleShot ? 3 : isCow ? 2 : 1;
+      const shots = tripleShot ? 3 : 1;
       const isFire = defaultSkin === 'FireSkinBase.png' ||
                      birdSprite.src.includes('FireSkinMech');
       const isAqua = defaultSkin === 'AquaSkinBase.png' ||
