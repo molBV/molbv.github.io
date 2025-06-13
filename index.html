@@ -2003,6 +2003,20 @@ function spawnPipe(){
     p.img = cowPipeImg;
   }
 
+  if (bossesDefeated >= 3 && Math.random() < 0.25) {
+    const d = {
+      x: p.x + pipeW / 2,
+      y: topH + gap / 2,
+      vy: 1.5,
+      rot: 0,
+      hp: 3,
+      enemy: true,
+      pipe: p
+    };
+    slicingDisks.push(d);
+    p.disk = d;
+  }
+
   // — apples —
   if (Math.random() < appP) {
     const ax = W + pipeW/2;
@@ -2562,7 +2576,7 @@ function updateRockets() {
     // 1) check hits on stage-2 bombs
     for (let j = stage2Bombs.length - 1; j >= 0; j--) {
       const b = stage2Bombs[j];
-      if (Math.hypot(r.x - b.x, r.y - b.y) < 12) {
+      if (Math.hypot(r.x - b.x, r.y - b.y) < 18) {
         // consume the rocket
         rocketsOut.splice(i, 1);
         spawnExplosion(b.x, b.y, true, r.electric);
@@ -2650,6 +2664,10 @@ function updateRockets() {
     pipes.forEach((p, pi) => {
       if (r.x > p.x && r.x < p.x+pipeW
           && r.y > p.top && r.y < p.top+p.gap) {
+        if (p.disk) {
+          const di = slicingDisks.indexOf(p.disk);
+          if (di >= 0) slicingDisks.splice(di, 1);
+        }
         pipes.splice(pi,1);
         rocketsOut.splice(i,1);
         if (r.type === 'cow') spawnMilkSplash(p.x + pipeW/2, p.top + p.gap/2);
@@ -2707,12 +2725,16 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
   rocketsIn.forEach((r, i) => {
     // 1) homing-steer if flagged
     if (r.isHoming) {
-      const dx = bird.x - r.x;
-      const dy = bird.y - r.y;
-      r.vx += dx * 0.001;
-      r.vy += dy * 0.001;
-      r.vx *= 0.98;
-      r.vy *= 0.98;
+      if (r.x < bird.x) {
+        r.isHoming = false;
+      } else {
+        const dx = bird.x - r.x;
+        const dy = bird.y - r.y;
+        r.vx += dx * 0.001;
+        r.vy += dy * 0.001;
+        r.vx *= 0.98;
+        r.vy *= 0.98;
+      }
     }
 
     // 2) advance
@@ -2936,8 +2958,16 @@ function updateJellies() {
 function updateSliceDisks() {
   for (let i = slicingDisks.length - 1; i >= 0; i--) {
     const d = slicingDisks[i];
-    d.x += d.vx;
-    d.y += d.vy || 0;
+    if (d.pipe) {
+      d.x = d.pipe.x + pipeW / 2;
+      d.y += d.vy;
+      if (d.y < d.pipe.top + 24 || d.y > d.pipe.top + d.pipe.gap - 24) {
+        d.vy *= -1;
+      }
+    } else {
+      d.x += d.vx;
+      d.y += d.vy || 0;
+    }
     d.rot += 0.2;
     ctx.save();
     ctx.translate(d.x, d.y);
@@ -3039,6 +3069,10 @@ function updateSliceDisks() {
       let broke = false;
       if (superTimer > 0) {
         // you’re “super” (apple), break pipe as before
+        if (p.disk) {
+          const di = slicingDisks.indexOf(p.disk);
+          if (di >= 0) slicingDisks.splice(di, 1);
+        }
         pipes.splice(i, 1);
         score++;
         updateScore();
@@ -3048,6 +3082,10 @@ function updateSliceDisks() {
         if (coinCount > 0) broke = true;
         handleHit();
         // remove the pipe so you don’t get stuck
+        if (p.disk) {
+          const di = slicingDisks.indexOf(p.disk);
+          if (di >= 0) slicingDisks.splice(di, 1);
+        }
         pipes.splice(i, 1);
       }
       if (broke) {
@@ -3061,7 +3099,13 @@ function updateSliceDisks() {
     }
 
     // cleanup off-screen
-    if (p.x + pipeW < 0) pipes.splice(i, 1);
+    if (p.x + pipeW < 0) {
+      if (p.disk) {
+        const di = slicingDisks.indexOf(p.disk);
+        if (di >= 0) slicingDisks.splice(di, 1);
+      }
+      pipes.splice(i, 1);
+    }
   });
 
   // ── apple pickup (unchanged) ──
