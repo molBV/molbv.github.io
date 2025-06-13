@@ -1116,7 +1116,7 @@ pipes.length     = apples.length = coins.length = 0;
         electricRings.push({x:p.x,y:p.y,r:30,alpha:0.4,color:'gray'});
       }
       if(frames % 2 === 0) spawnStaggerSpark(p.x, p.y);
-      return;
+      // continue updating so the boss doesn't freeze
     }
     const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
   if (p.freezeTimer > 0) p.freezeTimer--;
