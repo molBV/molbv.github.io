@@ -109,6 +109,10 @@
     .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
 
     #gameOverContent { position:relative; height:100%; }
+    #upgradeTree { display:flex; justify-content:center; gap:40px; }
+    .branchCol { display:flex; flex-direction:column; align-items:center; }
+    .upgradeNode { width:40px; height:40px; border-radius:50%; margin:10px 0; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; }
+
 
   </style>
 
@@ -3039,10 +3043,11 @@ function updateSliceDisks() {
 
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
-        if(tripleShot && rocketPulseUpgrade){
+        if(rocketPulseUpgrade){
           if(tripleElectric && electricTimer>0) discModeTimer = 300;
           tripleElectric = true;
           electricTimer = 540;
+          // apply electric pulse and advance disc mode if active
         }
         tripleShot = true;
         runPowerups++;
@@ -3589,8 +3594,9 @@ function showShop() {
         html += `</div>`;
       });
     } else if(section==='upgrades') {
-      html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);display:flex;justify-content:center;align-items:center;">`+
-              `<svg id="upgradeTreeSVG" style="width:100%;height:100%;"></svg>`+
+      html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);display:flex;justify-content:center;">`+
+              `<div id="upgradeTree"></div></div>`+
+
               `<div id="upgradeStats" style="position:absolute;text-align:center;font-size:14px;"></div>`+
               `</div>`;
     }
@@ -3600,7 +3606,6 @@ function showShop() {
       if(section==='upgrades') {
         renderUpgradeTree();
         updateUpgradeStats();
-        setupTreeDrag();
       }
 
     ct.querySelectorAll('#tabSkins').forEach(b=>b.onclick=()=>{section='skins';render();});
@@ -3669,126 +3674,69 @@ function showShop() {
 }
 
 function renderUpgradeTree() {
-  const svg = document.getElementById('upgradeTreeSVG');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-  const rect = svg.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
-  const cx = w/2;
-  const cy = h/2;
-  const radius = Math.min(w,h)/2 - 20;
-  const branchCount = upgradeTreeConfig.length;
-  const branchSpacing = 2 * Math.PI / branchCount;
-  const startAngle = -Math.PI/2 - branchSpacing * (branchCount - 1) / 2;
-  upgradeTreeConfig.forEach((branch, bIndex) => {
-    const angle = startAngle + branchSpacing * bIndex;
-    const line = document.createElementNS(svg.namespaceURI,'line');
-    const lx = cx + Math.cos(angle)*radius;
-    const ly = cy + Math.sin(angle)*radius;
-    line.setAttribute('x1',cx);
-    line.setAttribute('y1',cy);
-    line.setAttribute('x2',lx);
-    line.setAttribute('y2',ly);
-    line.setAttribute('stroke',branch.color);
-    line.setAttribute('stroke-width','4');
-    svg.appendChild(line);
-
+  const tree = document.getElementById("upgradeTree");
+  tree.innerHTML = "";
+  upgradeTreeConfig.forEach(branch => {
+    const col = document.createElement("div");
+    col.className = "branchCol";
+    tree.appendChild(col);
     branch.upgrades.forEach((upg, idx) => {
-      const step = radius/branch.upgrades.length;
-      const r = step*(idx+1);
-      const nx = cx + Math.cos(angle)*r;
-      const ny = cy + Math.sin(angle)*r;
       const cost = branch.costBase * Math.pow(upg.costFactor, idx);
       const owned = ownedUpgrades.includes(upg.id);
       const equipped = equippedUpgrades.includes(upg.id);
-
-      const circ = document.createElementNS(svg.namespaceURI,'circle');
-      circ.setAttribute('cx',nx);
-      circ.setAttribute('cy',ny);
-      circ.setAttribute('r',20);
-      circ.setAttribute('fill', equipped ? '#fff' : owned ? branch.color : '#333');
-      circ.setAttribute('stroke',branch.color);
-      circ.setAttribute('stroke-width','2');
-      circ.style.cursor = owned ? 'default' : 'pointer';
-      svg.appendChild(circ);
-
-      const txt = document.createElementNS(svg.namespaceURI,'text');
-      txt.setAttribute('x',nx);
-      txt.setAttribute('y',ny+5);
-      txt.setAttribute('text-anchor','middle');
-      txt.setAttribute('fill','#fff');
-      txt.setAttribute('font-size','10');
-      txt.textContent = owned ? (equipped ? '★' : '✓') : cost;
-      svg.appendChild(txt);
-
-      if(upg.id.includes('coin') || upg.id.includes('rocket') || upg.id.includes('magnet')){
-        const icon = document.createElementNS(svg.namespaceURI,'text');
-        icon.setAttribute('x', nx);
-        icon.setAttribute('y', ny - 30);
-        icon.setAttribute('text-anchor','middle');
-        icon.setAttribute('font-size','16');
-        icon.setAttribute('class','iconBounce');
-        icon.textContent = upg.id.includes('coin') ? '🪙' : upg.id.includes('rocket') ? '🚀' : '🧲';
-        svg.appendChild(icon);
+      const node = document.createElement("div");
+      node.className = "upgradeNode";
+      node.style.borderColor = branch.color;
+      node.style.background = equipped ? "#fff" : owned ? branch.color : "#333";
+      node.textContent = owned ? (equipped ? "★" : "✓") : cost;
+      if(upg.id.includes("coin") || upg.id.includes("rocket") || upg.id.includes("magnet")){
+        const icon = document.createElement("div");
+        icon.className = "iconBounce";
+        icon.style.fontSize = "16px";
+        icon.textContent = upg.id.includes("coin") ? "🪙" : upg.id.includes("rocket") ? "🚀" : "🧲";
+        node.prepend(icon);
       }
-
-      circ.addEventListener('mouseenter', e => {
-        showTooltip(upg.name+': '+upg.description);
-      });
-      circ.addEventListener('mouseleave', hideTooltip);
-      circ.addEventListener('click', () => {
+      if(!owned) node.style.cursor = "pointer";
+      node.addEventListener("mouseenter", () => { showTooltip(upg.name+": "+upg.description); });
+      node.addEventListener("mouseleave", hideTooltip);
+      node.addEventListener("click", () => {
         if (!owned) {
           if (totalCoins >= cost) {
             totalCoins -= cost;
-            localStorage.setItem('birdyCoinsEarned', totalCoins);
+            localStorage.setItem("birdyCoinsEarned", totalCoins);
             ownedUpgrades.push(upg.id);
-            localStorage.setItem('ownedUpgrades', JSON.stringify(ownedUpgrades));
+            localStorage.setItem("ownedUpgrades", JSON.stringify(ownedUpgrades));
             if (equippedUpgrades.length < equipSlots) equippedUpgrades.push(upg.id);
-            localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+            localStorage.setItem("equippedUpgrades", JSON.stringify(equippedUpgrades));
             applyEquippedUpgrades();
             renderUpgradeTree();
             updateUpgradeStats();
           } else {
-            showTooltip('Need '+cost+' coins');
+            showTooltip("Need " + cost + " coins");
           }
         } else if (equipped) {
           equippedUpgrades = equippedUpgrades.filter(id => id !== upg.id);
-          localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+          localStorage.setItem("equippedUpgrades", JSON.stringify(equippedUpgrades));
           applyEquippedUpgrades();
           renderUpgradeTree();
           updateUpgradeStats();
         } else {
           if (equippedUpgrades.length >= equipSlots) {
-            showTooltip('No empty slots');
+            showTooltip("No empty slots");
             return;
           }
           equippedUpgrades.push(upg.id);
-          localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+          localStorage.setItem("equippedUpgrades", JSON.stringify(equippedUpgrades));
           applyEquippedUpgrades();
           renderUpgradeTree();
           updateUpgradeStats();
         }
       });
+      col.appendChild(node);
     });
   });
 }
 
-let treeOffsetX = 0, treeOffsetY = 0;
-function setupTreeDrag(){
-  const wrap = document.getElementById('upgradeTreeWrap');
-  const svg  = document.getElementById('upgradeTreeSVG');
-  let dragging = false, lx=0, ly=0;
-  wrap.onpointerdown = e => { dragging=true; lx=e.clientX; ly=e.clientY; };
-  window.onpointermove = e => {
-    if(!dragging) return;
-    treeOffsetX += e.clientX - lx;
-    treeOffsetY += e.clientY - ly;
-    lx = e.clientX; ly = e.clientY;
-    svg.style.transform = `translate(${treeOffsetX}px,${treeOffsetY}px)`;
-  };
-  window.onpointerup = () => { dragging=false; };
-}
 
 // click outside panel to restart
 document.getElementById('overlay').addEventListener('click', e => {
