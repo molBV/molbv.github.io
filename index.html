@@ -3715,7 +3715,9 @@ function renderUpgradeTree() {
     col.className = "branchCol";
     tree.appendChild(col);
     branch.upgrades.forEach((upg, idx) => {
-      const cost = branch.costBase * Math.pow(upg.costFactor, idx);
+      const cost = Math.round(
+        (branch.costBase * Math.pow(upg.costFactor, idx)) / 5
+      ) * 5;
       const owned = ownedUpgrades.includes(upg.id);
       const equipped = equippedUpgrades.includes(upg.id);
       const node = document.createElement("div");
