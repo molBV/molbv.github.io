@@ -276,6 +276,8 @@
     const ownedSkins = JSON.parse(localStorage.getItem('birdyOwnedSkins')||'{}');
     let defaultSkin = localStorage.getItem('birdySkin') || 'birdieV2.png';
     birdSprite.src = 'assets/' + defaultSkin;
+    const DEFAULT_BIRD_FRAMES = ['assets/birdieV2.png', 'assets/birdieflap.png']
+      .map(src => Object.assign(new Image(), { src }));
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -1823,7 +1825,9 @@ function drawBackground(){
           ctx.filter = 'brightness(2)';
         }
         let img = birdSprite;
-        if (defaultSkin === 'cow_down.png' && !birdSprite.src.includes('cow_mech')) {
+        if (defaultSkin === 'birdieV2.png' && birdSprite.src.includes('birdieV2.png')) {
+          img = DEFAULT_BIRD_FRAMES[Math.floor(frames / 6) % DEFAULT_BIRD_FRAMES.length];
+        } else if (defaultSkin === 'cow_down.png' && !birdSprite.src.includes('cow_mech')) {
           img = this.vel < 0 ? cowUpSprite : cowDownSprite;
         }
         ctx.drawImage(img, -32, -32, 64, 64);
