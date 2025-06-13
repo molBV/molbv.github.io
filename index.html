@@ -114,6 +114,31 @@
     .upgradeNode { position:absolute; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; transform:translate(-50%,-50%); }
     .lineGlow { filter: drop-shadow(0 0 4px currentColor); }
 
+    #btnSettings {
+      position:absolute;
+      bottom:10px;
+      right:10px;
+      font-size:24px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#fff;
+      text-shadow:2px 2px 4px #000;
+      z-index:15;
+    }
+
+    #settingsPanel {
+      display:none;
+      position:absolute;
+      bottom:60px;
+      right:10px;
+      background:rgba(0,0,0,0.7);
+      padding:8px;
+      border-radius:6px;
+      color:#fff;
+      z-index:30;
+    }
+
 
   </style>
 
@@ -160,6 +185,10 @@
   </div>
   <div id="achievementPopup"></div>
   <div id="storyPopup"></div>
+  <button id="btnSettings">⚙️</button>
+  <div id="settingsPanel">
+    <input id="volumeSlider" type="range" min="0" max="1" step="0.01">
+  </div>
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
   <script type="module">
@@ -588,7 +617,10 @@ const tossBombs   = [];   // upward‐toss bombs
     // dummy chord function (no-op)
 function playChord(/* chordType, startTime */) {}
 const bgMusic = document.getElementById('bgMusic');
-bgMusic.volume = 0.5;
+let globalVolume = parseFloat(localStorage.getItem('birdyVolume') || '0.5');
+bgMusic.volume = globalVolume;
+mechaMusic.volume = globalVolume;
+explosionSfx.volume = 0.4 * globalVolume;
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -637,6 +669,47 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     // ── Canvas & State (from V6.8) :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
     const scoreEl = document.getElementById('score');
     const reviveCountEl = document.getElementById('reviveCount');
+    const settingsBtn = document.getElementById('btnSettings');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const volumeSlider = document.getElementById('volumeSlider');
+    volumeSlider.value = globalVolume;
+    function applyVolume() {
+      bgMusic.volume = globalVolume;
+      mechaMusic.volume = globalVolume;
+      explosionSfx.volume = 0.4 * globalVolume;
+    }
+    applyVolume();
+
+    function openSettings() {
+      if (paused) return;
+      paused = true;
+      settingsPanel.style.display = 'block';
+      bgMusic.pause();
+      mechaMusic.pause();
+    }
+
+    function closeSettings() {
+      if (!paused) return;
+      settingsPanel.style.display = 'none';
+      paused = false;
+      if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
+        mechaMusic.play().catch(()=>{});
+      } else {
+        bgMusic.play().catch(()=>{});
+      }
+      loop();
+    }
+
+    settingsBtn.onclick = () => {
+      if (paused) closeSettings();
+      else openSettings();
+    };
+
+    volumeSlider.oninput = e => {
+      globalVolume = parseFloat(e.target.value);
+      localStorage.setItem('birdyVolume', globalVolume);
+      applyVolume();
+    };
 
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
 const STATE = {
@@ -655,6 +728,7 @@ let score      = 0;
 let superTimer = 0;
 let shieldCount= 0;
 let pipeCount  = 0;
+let paused     = false;
 
 // boss fight state
 let bossActive      = false;
@@ -4006,6 +4080,7 @@ function applyShake() {
 }
 
     function loop(){
+      if (paused) return;
       frames++;
       if (slowMoTimer > 0) slowMoTimer--;
       if (inMecha && !storyLog['Arcane_Harmony'] && frames - mechaStartFrame >= 1800) {
