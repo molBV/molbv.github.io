@@ -1536,8 +1536,8 @@ function triggerBossAttack(){
   mechaMusic.pause();
   bgMusic.play();
 
-  // — after boss fight, you lose all coins & suit —
-  coinCount       = 0;
+  // — after boss fight, retain one coin & lose suit —
+  coinCount       = 1;
   inMecha         = false;
   mechaTriggered  = false;
   tripleShot      = false;
@@ -3349,6 +3349,8 @@ function startReviveEffect(){
   reviveTimer = 180;         // 3 second countdown
   reviveRings.length = 0;
   bird.vel = 0;
+  coinCount += 5;
+  updateScore();
   updateReviveDisplay();
   triggerStoryEvent('Revive_Used');
   for(let i=0;i<20;i++){
@@ -3933,6 +3935,8 @@ function renderUpgradeTree() {
 
   requestAnimationFrame(() => {
     const treeRect = tree.getBoundingClientRect();
+    lines.setAttribute('width', treeRect.width);
+    lines.setAttribute('height', treeRect.height);
     Object.values(pos).forEach(({node, upg, branch}) => {
       if (!upg.parent) return;
       const parent = pos[upg.parent];
