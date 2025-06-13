@@ -741,7 +741,12 @@ const staggerSparks = [];
     if(!ownedUpgrades.length){
       const legacy = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
       if(legacy.length){
-        ownedUpgrades = legacy;
+        // legacy data used numeric indices; map them to new upgrade IDs
+        const idMap = [
+          'natural_coin10', 'natural_coin20', 'natural_slots', 'natural_magnet',
+          'mech_rocket_big', 'mech_rocket_splash', 'mech_rocket_pulse'
+        ];
+        ownedUpgrades = legacy.map(v => typeof v === 'number' ? idMap[v] : v);
         localStorage.setItem('ownedUpgrades', JSON.stringify(ownedUpgrades));
       }
     }
