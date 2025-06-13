@@ -224,6 +224,7 @@
     window.saveGlobalScore      = saveGlobalScore;
     window.fetchTopGlobalScores = fetchTopGlobalScores;
 
+    let bgMusic;
 
     // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
@@ -571,13 +572,15 @@ const tossBombs   = [];   // upward‐toss bombs
             
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
-function playChord(/* chordType, startTime */) {}
-const bgMusic = document.getElementById('bgMusic');
-bgMusic.volume = 0.5;
-function updateBgMusicSrc(){
-  bgMusic.src = defaultSkin === 'cow_down.png' ? 'assets/cow_theme.mp3' : 'assets/dream.guitar.mp3';
-}
-updateBgMusicSrc();
+
+    function playChord(/* chordType, startTime */) {}
+    bgMusic = document.getElementById('bgMusic');
+    bgMusic.volume = 0.5;
+    function updateBgMusicSrc() {
+      bgMusic.src = defaultSkin === 'cow_down.png' ? 'assets/cow_theme.mp3' : 'assets/dream.guitar.mp3';
+    }
+    updateBgMusicSrc();
+
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
