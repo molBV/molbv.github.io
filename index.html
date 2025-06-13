@@ -696,6 +696,7 @@ const columnSnow = [];
 const skinParticles = [];
 const moneyLeaves = [];
 const milkParticles = [];
+const staggerSparks = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -836,7 +837,6 @@ const milkParticles = [];
       equipSlots = 2;
       upgradeTreeConfig.forEach(branch => {
         branch.upgrades.forEach(upg => {
-          if (ownedUpgrades.includes(upg.id) && upg.id==='natural_slots') equipSlots += 2;
           if (equippedUpgrades.includes(upg.id)) upg.effect();
           if (ownedUpgrades.includes(upg.id) && upg.id==='mech_rocket_pulse') rocketPulseUpgrade = true;
         });
@@ -1009,7 +1009,7 @@ pipes.length     = apples.length = coins.length = 0;
         p.smoke.push({ x:p.x + (Math.random()-0.5)*p.r, y:p.y + (Math.random()-0.5)*p.r, alpha:1, r:6, dark:true });
         electricRings.push({x:p.x,y:p.y,r:30,alpha:0.4,color:'gray'});
       }
-      triggerShake(1);
+      if(frames % 2 === 0) spawnStaggerSpark(p.x, p.y);
       return;
     }
     const speedFactor = p.freezeTimer > 0 ? 0 : 1 - p.slowStacks * 0.1;
@@ -1248,8 +1248,9 @@ if (p.strongQueue > 0) {
           triggerShake(2);
           spawnImpactParticles(p.x, p.y, 0, 0);
           p.smoke.push({ x:p.x, y:p.y, alpha:1, r:4 });
-          if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false,homing:true});
-          else rocketPowerups.push({x:p.x,y:p.y,taken:false,homing:true});
+          const dropX = Math.min(W - 20, p.x + p.r + 20);
+          if(Math.random() < 0.5) coins.push({x:dropX,y:p.y,taken:false});
+          else rocketPowerups.push({x:dropX,y:p.y,taken:false});
         }
         if (bossEncounterCount === 3 && p.chargeCooldown <= 0) {
         p.tripleFire = true;
@@ -1286,8 +1287,9 @@ if (p.strongQueue > 0) {
         triggerShake(2);
         spawnImpactParticles(p.x, p.y, 0, 0);
         p.smoke.push({ x:p.x, y:p.y, alpha:1, r:4 });
-        if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false,homing:true});
-        else rocketPowerups.push({x:p.x,y:p.y,taken:false,homing:true});
+        const dropX2 = Math.min(W - 20, p.x + p.r + 20);
+        if(Math.random() < 0.5) coins.push({x:dropX2,y:p.y,taken:false});
+        else rocketPowerups.push({x:dropX2,y:p.y,taken:false});
       }
       if (bossHealth<=0) endBossFight(true);
     }
@@ -1542,10 +1544,12 @@ radialBombs.forEach(b => {
   // compute drawing size
   const size = p.r * 2 * bossScale;
 
+  const sx = p.stunTimer > 0 ? (Math.random() - 0.5) * 6 : 0;
+  const sy = p.stunTimer > 0 ? (Math.random() - 0.5) * 6 : 0;
   ctx.save();
     ctx.translate(
-      p.x + Math.sin(p.y * 0.04) * 30,
-      p.y
+      p.x + Math.sin(p.y * 0.04) * 30 + sx,
+      p.y + sy
     );
     ctx.scale(-1, 1);
     if (p.flashTimer > 0 && Math.floor(p.flashTimer/2)%2===0) {
@@ -2047,6 +2051,35 @@ function updateImpactParticles() {
     ctx.fill();
     ctx.restore();
     if (p.life <= 0) impactParticles.splice(i,1);
+  }
+}
+
+function spawnStaggerSpark(x, y) {
+  staggerSparks.push({
+    x,
+    y,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 2,
+    life: 20
+  });
+}
+
+function updateStaggerSparks() {
+  for (let i = staggerSparks.length - 1; i >= 0; i--) {
+    const s = staggerSparks[i];
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vx *= 0.95;
+    s.vy *= 0.95;
+    s.life--;
+    ctx.save();
+    ctx.globalAlpha = s.life / 20;
+    ctx.fillStyle = 'yellow';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if (s.life <= 0) staggerSparks.splice(i,1);
   }
 }
 
@@ -2713,6 +2746,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
 
   updateExplosions();
   updateImpactParticles();
+  updateStaggerSparks();
   updateMilkParticles();
 }
 
@@ -3947,6 +3981,7 @@ if (state === STATE.BossExplode) {
   drawBoss();
   updateExplosions();
   updateImpactParticles();
+  updateStaggerSparks();
   updateMilkParticles();
   updateElectricEffect();
   updateSkinParticles();
