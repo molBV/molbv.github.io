@@ -732,7 +732,22 @@ const milkParticles = [];
     let rocketFlameEnabled = false;
     let rocketSplash     = false;
     let magnetActive     = false;
-    let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]').slice(0,2);
+    let ownedUpgrades = JSON.parse(localStorage.getItem('ownedUpgrades') || '[]');
+    if(!ownedUpgrades.length){
+      const legacy = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]');
+      if(legacy.length){
+        ownedUpgrades = legacy;
+        localStorage.setItem('ownedUpgrades', JSON.stringify(ownedUpgrades));
+      }
+    }
+    let equippedUpgrades = JSON.parse(localStorage.getItem('equippedUpgrades') || '[]');
+    if(!equippedUpgrades.length && ownedUpgrades.length){
+      equippedUpgrades = ownedUpgrades.slice(0,2);
+      localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+    }
+    let equipSlots = 2;
+    let rocketPulseUpgrade = false;
+    let discModeTimer = 0;
 
     const upgradeTreeConfig = [
       {
@@ -747,6 +762,20 @@ const milkParticles = [];
             description: 'Coins appear 10% more often',
             effect: () => { coinSpawnBonus += 0.10; },
             costFactor: 1
+          },
+          {
+            id: 'natural_coin20',
+            name: '+10% More Coins',
+            description: 'Coins appear 10% more often',
+            effect: () => { coinSpawnBonus += 0.10; },
+            costFactor: 1.1
+          },
+          {
+            id: 'natural_slots',
+            name: 'Equip 2 More',
+            description: 'Equip 2 additional abilities',
+            effect: () => { equipSlots += 2; },
+            costFactor: 1.2
           },
           {
             id: 'natural_magnet',
@@ -780,19 +809,37 @@ const milkParticles = [];
             description: 'Rockets cause splash damage',
             effect: () => { rocketSplash = true; },
             costFactor: 1.3
+          },
+          {
+            id: 'mech_rocket_pulse',
+            name: 'Pulse Rockets',
+            description: 'Triple power-up again adds pulsing area damage',
+            effect: () => { rocketPulseUpgrade = true; },
+            costFactor: 1.4
           }
         ]
       }
     ];
 
-    function applyPurchasedUpgrades() {
+    function applyEquippedUpgrades() {
+      coinSpawnBonus   = 0;
+      rocketSizeMult   = 1;
+      rocketDamageMult = 1;
+      rocketFlameEnabled = false;
+      rocketSplash     = false;
+      magnetActive     = false;
+      rocketPulseUpgrade = false;
+      equipSlots = 2;
       upgradeTreeConfig.forEach(branch => {
         branch.upgrades.forEach(upg => {
-          if (purchasedUpgrades.includes(upg.id)) upg.effect();
+          if (ownedUpgrades.includes(upg.id) && upg.id==='natural_slots') equipSlots += 2;
+          if (equippedUpgrades.includes(upg.id)) upg.effect();
+          if (ownedUpgrades.includes(upg.id) && upg.id==='mech_rocket_pulse') rocketPulseUpgrade = true;
         });
       });
+      equippedUpgrades = equippedUpgrades.slice(0, equipSlots);
     }
-    applyPurchasedUpgrades();
+    applyEquippedUpgrades();
     updateReviveDisplay();
 
     // tooltip element for upgrade tree
@@ -953,9 +1000,10 @@ pipes.length     = apples.length = coins.length = 0;
     if(p.stunTimer>0){
       p.stunTimer--;
       if(p.stunTimer===0) p.isCharging=false;
-      if(frames % 4 === 0){
+      if(frames % 3 === 0){
         spawnImpactParticles(p.x + (Math.random()-0.5)*p.r, p.y + (Math.random()-0.5)*p.r, 0,0);
-        p.smoke.push({ x:p.x + (Math.random()-0.5)*p.r, y:p.y + (Math.random()-0.5)*p.r, alpha:1, r:4 });
+        p.smoke.push({ x:p.x + (Math.random()-0.5)*p.r, y:p.y + (Math.random()-0.5)*p.r, alpha:1, r:6, dark:true });
+        electricRings.push({x:p.x,y:p.y,r:30,alpha:0.4,color:'gray'});
       }
       triggerShake(1);
       return;
@@ -1210,6 +1258,36 @@ if (p.strongQueue > 0) {
       if (bossHealth<=0) endBossFight(true);
     }
   });
+  slicingDisks.forEach((d,i)=>{
+    if(d.enemy) return;
+    if (Math.hypot(d.x - p.x, d.y - p.y) < p.r + 24) {
+      slicingDisks.splice(i,1);
+      spawnExplosion(p.x, p.y, true, d.pulse);
+      maybeDropCoin(p.x, p.y);
+      triggerShake(8);
+      spawnImpactParticles(p.x, p.y, p.x - d.x, p.y - d.y);
+      const mag = Math.hypot(p.x - d.x, p.y - d.y) || 1;
+      p.pushX += (p.x - d.x) / mag * 4;
+      p.pushY += (p.y - d.y) / mag * 4;
+      p.flashTimer = 6;
+      let dmg = d.damage || 10;
+      if (bossEncounterCount === 3) {
+        if (defaultSkin === 'FireSkinBase.png') dmg *= 0.5;
+        if (defaultSkin === 'AquaSkinBase.png') dmg *= 2;
+      }
+      bossHealth -= dmg;
+      if(Math.random() < 0.1){
+        p.stunTimer = 60;
+        p.isCharging = true;
+        triggerShake(2);
+        spawnImpactParticles(p.x, p.y, 0, 0);
+        p.smoke.push({ x:p.x, y:p.y, alpha:1, r:4 });
+        if(Math.random() < 0.5) coins.push({x:p.x,y:p.y,taken:false,homing:true});
+        else rocketPowerups.push({x:p.x,y:p.y,taken:false,homing:true});
+      }
+      if (bossHealth<=0) endBossFight(true);
+    }
+  });
       // ── update tossBombs: toss upward then explode into fragments ──
   for (let i = tossBombs.length - 1; i >= 0; i--) {
     const b = tossBombs[i];
@@ -1428,7 +1506,7 @@ radialBombs.forEach(b => {
   p.smoke.forEach(s=>{
     ctx.save();
       ctx.globalAlpha=s.alpha;
-      ctx.fillStyle='grey';
+      ctx.fillStyle=s.dark?'#222':'grey';
       ctx.beginPath();
       ctx.arc(s.x,s.y,s.r,0,2*Math.PI);
       ctx.fill();
@@ -1892,11 +1970,14 @@ function spawnExplosion(x, y, fromRocket = false, electric = false) {
       const ang = a * Math.PI/4;
       slicingDisks.push({ x, y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3, rot:0, hp:1, enemy:false });
     }
+    for(let s=0;s<10;s++){
+      rocketParticles.push({x,y,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,life:20,type:Math.floor(Math.random()*3)});
+    }
   }
   if (electric) {
     triggerShake(8);
-    electricRings.push({ x, y, r: 20, alpha: 0.6, color: 'cyan' });
-    electricRings.push({ x, y, r: 20, alpha: 0.6, color: 'magenta' });
+    electricRings.push({ x, y, r: 20, alpha: 0.8, color: 'cyan' });
+    electricRings.push({ x, y, r: 20, alpha: 0.8, color: 'magenta' });
     for(let jj=jellies.length-1;jj>=0;jj--){
       const j=jellies[jj];
       if(Math.hypot(j.x-x,j.y-y)<40){
@@ -2258,6 +2339,7 @@ function updateReviveEffect() {
     }
     electricTimer--;
     if(electricTimer<=0) tripleElectric = false;
+    if(discModeTimer>0) discModeTimer--;
   }
 
     function drawPipes(){
@@ -2717,6 +2799,10 @@ function updateSliceDisks() {
     ctx.translate(d.x, d.y);
     ctx.rotate(d.rot);
     ctx.drawImage(slicingDiskSprite, -24, -24, 48, 48);
+    if(d.pulse && frames%4===0){
+      electricRings.push({x:d.x,y:d.y,r:10,alpha:0.5,color:'cyan'});
+      electricRings.push({x:d.x,y:d.y,r:10,alpha:0.5,color:'magenta'});
+    }
     ctx.restore();
     if(d.enemy){
       if (Math.hypot(bird.x - d.x, bird.y - d.y) < bird.rad + 24) {
@@ -2736,8 +2822,8 @@ function updateSliceDisks() {
       for(let jj=jellies.length-1;jj>=0;jj--){
         const j=jellies[jj];
         if(Math.hypot(d.x-j.x,d.y-j.y)<24){
-          spawnExplosion(j.x,j.y);
-          j.hp=(j.hp||1)-1;
+        spawnExplosion(j.x,j.y);
+        j.hp=(j.hp||1)-(d.damage||1);
           j.flashTimer=6;
           if(j.hp<=0){ jellies.splice(jj,1); runJellies++; if(runJellies>=5) unlockAchievement('kill5'); }
           d.hp=0;
@@ -2953,7 +3039,8 @@ function updateSliceDisks() {
 
       if(Math.hypot(bird.x - p.x, bird.y - p.y) < bird.rad + rocketPowerR){
         p.taken = true;
-        if(tripleShot){
+        if(tripleShot && rocketPulseUpgrade){
+          if(tripleElectric && electricTimer>0) discModeTimer = 300;
           tripleElectric = true;
           electricTimer = 540;
         }
@@ -3041,7 +3128,7 @@ function updateUpgradeStats(){
   const rocketNames = [];
   upgradeTreeConfig.forEach(b=>{
     b.upgrades.forEach(u=>{
-      if(purchasedUpgrades.includes(u.id) && u.id.includes('rocket')){
+      if(equippedUpgrades.includes(u.id) && u.id.includes('rocket')){
         rocketNames.push(u.name);
       }
     });
@@ -3052,6 +3139,7 @@ function updateUpgradeStats(){
   if(magnetActive){
     html += `<div>Magnetism On</div>`;
   }
+  html += `<div>Slots: ${equippedUpgrades.length}/${equipSlots}</div>`;
   el.innerHTML = html;
   const coinEl = document.getElementById('coinCount');
   if(coinEl){
@@ -3612,13 +3700,14 @@ function renderUpgradeTree() {
       const nx = cx + Math.cos(angle)*r;
       const ny = cy + Math.sin(angle)*r;
       const cost = branch.costBase * Math.pow(upg.costFactor, idx);
-      const owned = purchasedUpgrades.includes(upg.id);
+      const owned = ownedUpgrades.includes(upg.id);
+      const equipped = equippedUpgrades.includes(upg.id);
 
       const circ = document.createElementNS(svg.namespaceURI,'circle');
       circ.setAttribute('cx',nx);
       circ.setAttribute('cy',ny);
       circ.setAttribute('r',20);
-      circ.setAttribute('fill', owned ? branch.color : '#333');
+      circ.setAttribute('fill', equipped ? '#fff' : owned ? branch.color : '#333');
       circ.setAttribute('stroke',branch.color);
       circ.setAttribute('stroke-width','2');
       circ.style.cursor = owned ? 'default' : 'pointer';
@@ -3630,7 +3719,7 @@ function renderUpgradeTree() {
       txt.setAttribute('text-anchor','middle');
       txt.setAttribute('fill','#fff');
       txt.setAttribute('font-size','10');
-      txt.textContent = owned ? '✓' : cost;
+      txt.textContent = owned ? (equipped ? '★' : '✓') : cost;
       svg.appendChild(txt);
 
       if(upg.id.includes('coin') || upg.id.includes('rocket') || upg.id.includes('magnet')){
@@ -3649,21 +3738,36 @@ function renderUpgradeTree() {
       });
       circ.addEventListener('mouseleave', hideTooltip);
       circ.addEventListener('click', () => {
-        if (owned) return;
-        if (purchasedUpgrades.length >= 2) {
-          showTooltip('Only two upgrades allowed');
-          return;
-        }
-        if (totalCoins >= cost) {
-          totalCoins -= cost;
-          localStorage.setItem('birdyCoinsEarned', totalCoins);
-          upg.effect();
-          purchasedUpgrades.push(upg.id);
-          localStorage.setItem('purchasedUpgrades', JSON.stringify(purchasedUpgrades));
+        if (!owned) {
+          if (totalCoins >= cost) {
+            totalCoins -= cost;
+            localStorage.setItem('birdyCoinsEarned', totalCoins);
+            ownedUpgrades.push(upg.id);
+            localStorage.setItem('ownedUpgrades', JSON.stringify(ownedUpgrades));
+            if (equippedUpgrades.length < equipSlots) equippedUpgrades.push(upg.id);
+            localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+            applyEquippedUpgrades();
+            renderUpgradeTree();
+            updateUpgradeStats();
+          } else {
+            showTooltip('Need '+cost+' coins');
+          }
+        } else if (equipped) {
+          equippedUpgrades = equippedUpgrades.filter(id => id !== upg.id);
+          localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+          applyEquippedUpgrades();
           renderUpgradeTree();
           updateUpgradeStats();
         } else {
-          showTooltip('Need '+cost+' coins');
+          if (equippedUpgrades.length >= equipSlots) {
+            showTooltip('No empty slots');
+            return;
+          }
+          equippedUpgrades.push(upg.id);
+          localStorage.setItem('equippedUpgrades', JSON.stringify(equippedUpgrades));
+          applyEquippedUpgrades();
+          renderUpgradeTree();
+          updateUpgradeStats();
         }
       });
     });
@@ -3730,21 +3834,35 @@ function flapHandler(e){
                      birdSprite.src.includes('cow_mech');
       const rocketType = specialRocket || (isFire ? 'fire' : isAqua ? 'ice' : isCow ? 'cow' : 'normal');
       for(let s=0;s<shots;s++){
-        const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
-        rocketsOut.push({
-          x: bird.x + 40,
-          y: bird.y + (s - (shots-1)/2) * 8,
-          vx: 4,
-          damage: (tripleShot ? 20 : 10) * rocketDamageMult,
-          triple: tripleShot,
-          electric: tripleElectric,
-          money: defaultSkin === 'MoneySkin.png',
-          size: baseSize,
-          flame: rocketFlameEnabled || rocketType==='fire',
-          type: rocketType
-        });
-        if (defaultSkin === 'MoneySkin.png') {
-          spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
+        if(discModeTimer>0){
+          slicingDisks.push({
+            x: bird.x + 40,
+            y: bird.y + (s - (shots-1)/2) * 8,
+            vx: 4,
+            vy: 0,
+            rot: 0,
+            hp: 1,
+            enemy: false,
+            damage: 20 * rocketDamageMult,
+            pulse: true
+          });
+        } else {
+          const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
+          rocketsOut.push({
+            x: bird.x + 40,
+            y: bird.y + (s - (shots-1)/2) * 8,
+            vx: 4,
+            damage: (tripleShot ? 20 : 10) * rocketDamageMult,
+            triple: tripleShot,
+            electric: tripleElectric,
+            money: defaultSkin === 'MoneySkin.png',
+            size: baseSize,
+            flame: rocketFlameEnabled || rocketType==='fire',
+            type: rocketType
+          });
+          if (defaultSkin === 'MoneySkin.png') {
+            spawnMoneyLeaf(bird.x, bird.y, (Math.random()-0.5)*0.5, 1+Math.random());
+          }
         }
       }
     const bubbleShot = defaultSkin === 'AquaSkinBase.png' ||
