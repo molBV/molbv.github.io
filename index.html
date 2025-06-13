@@ -133,12 +133,6 @@
   <!-- ────────────────────────────────── -->
 
   <audio id="bgMusic"
-         src="assets/dream.guitar.mp3"
-         loop
-         preload="metadata"></audio>
-  <!-- …the rest of your code… -->
-
-  <audio id="bgMusic"
        src="assets/dream.guitar.mp3"
        loop
        preload="metadata"></audio>
@@ -230,6 +224,7 @@
     window.saveGlobalScore      = saveGlobalScore;
     window.fetchTopGlobalScores = fetchTopGlobalScores;
 
+    let bgMusic;
 
     // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
@@ -242,7 +237,6 @@
     const ownedSkins = JSON.parse(localStorage.getItem('birdyOwnedSkins')||'{}');
     let defaultSkin = localStorage.getItem('birdySkin') || 'birdieV2.png';
     birdSprite.src = 'assets/' + defaultSkin;
-    updateBgMusicSrc();
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -578,12 +572,13 @@ const tossBombs   = [];   // upward‐toss bombs
             
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
-function playChord(/* chordType, startTime */) {}
-const bgMusic = document.getElementById('bgMusic');
-bgMusic.volume = 0.5;
-function updateBgMusicSrc(){
-  bgMusic.src = defaultSkin === 'cow_down.png' ? 'assets/cow_theme.mp3' : 'assets/dream.guitar.mp3';
-}
+    function playChord(/* chordType, startTime */) {}
+    bgMusic = document.getElementById('bgMusic');
+    bgMusic.volume = 0.5;
+    function updateBgMusicSrc() {
+      bgMusic.src = defaultSkin === 'cow_down.png' ? 'assets/cow_theme.mp3' : 'assets/dream.guitar.mp3';
+    }
+    updateBgMusicSrc();
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -732,6 +727,7 @@ const milkParticles = [];
     let rocketDamageMult = 1;
     let rocketFlameEnabled = false;
     let rocketSplash     = false;
+    let rocketPulse      = false;
     let magnetActive     = false;
     let purchasedUpgrades = JSON.parse(localStorage.getItem('purchasedUpgrades') || '[]').slice(0,2);
 
