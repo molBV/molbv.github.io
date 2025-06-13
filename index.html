@@ -109,9 +109,10 @@
     .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
 
     #gameOverContent { position:relative; height:100%; }
-    #upgradeTree { display:flex; justify-content:center; gap:40px; }
-    .branchCol { display:flex; flex-direction:column; align-items:center; }
-    .upgradeNode { width:40px; height:40px; border-radius:50%; margin:10px 0; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; }
+    #upgradeTree { position:relative; width:100%; height:100%; }
+    #upgradeLines { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+    .upgradeNode { position:absolute; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; transform:translate(-50%,-50%); }
+    .lineGlow { filter: drop-shadow(0 0 4px currentColor); }
 
 
   </style>
@@ -762,8 +763,8 @@ const staggerSparks = [];
     const upgradeTreeConfig = [
       {
         id: 'natural',
-        name: 'Natural Self',
-        color: '#7CFC00',
+        name: 'Coin Path',
+        color: '#FFD700',
         costBase: 50,
         upgrades: [
           {
@@ -771,35 +772,50 @@ const staggerSparks = [];
             name: '+10% Coin Luck',
             description: 'Coins appear 10% more often',
             effect: () => { coinSpawnBonus += 0.10; },
-            costFactor: 1
+            costFactor: 1,
+            tier: 0,
+            x: 0,
+            y: 0
           },
           {
             id: 'natural_coin20',
             name: '+10% More Coins',
             description: 'Coins appear 10% more often',
             effect: () => { coinSpawnBonus += 0.10; },
-            costFactor: 1.1
-          },
-          {
-            id: 'natural_slots',
-            name: 'Equip 2 More',
-            description: 'Equip 2 additional abilities',
-            effect: () => { equipSlots += 2; },
-            costFactor: 1.2
+            costFactor: 1.1,
+            tier: 1,
+            parent: 'natural_coin10',
+            x: -1,
+            y: 1
           },
           {
             id: 'natural_magnet',
             name: '🧲 Magnetism',
             description: 'Coins are drawn to you',
             effect: () => { magnetActive = true; },
-            costFactor: 1.2
+            costFactor: 1.2,
+            tier: 1,
+            parent: 'natural_coin10',
+            x: 1,
+            y: 1
+          },
+          {
+            id: 'natural_slots',
+            name: 'Equip 2 More',
+            description: 'Equip 2 additional abilities',
+            effect: () => { equipSlots += 2; },
+            costFactor: 1.2,
+            tier: 2,
+            parent: 'natural_magnet',
+            x: 1,
+            y: 2
           }
         ]
       },
       {
         id: 'mech',
-        name: 'Mech & Rocket',
-        color: '#FFA500',
+        name: 'Rocket Path',
+        color: '#800000',
         costBase: 100,
         upgrades: [
           {
@@ -811,21 +827,32 @@ const staggerSparks = [];
               rocketDamageMult *= 1.5;
               rocketFlameEnabled = true;
             },
-            costFactor: 1
+            costFactor: 1,
+            tier: 0,
+            x: 3,
+            y: 0
           },
           {
             id: 'mech_rocket_splash',
             name: 'Splash',
             description: 'Rockets cause splash damage',
             effect: () => { rocketSplash = true; },
-            costFactor: 1.3
+            costFactor: 1.3,
+            tier: 1,
+            parent: 'mech_rocket_big',
+            x: 3,
+            y: 1
           },
           {
             id: 'mech_rocket_pulse',
             name: 'Pulse Rockets',
             description: 'Triple power-up again adds pulsing area damage',
             effect: () => { rocketPulseUpgrade = true; },
-            costFactor: 1.4
+            costFactor: 1.4,
+            tier: 2,
+            parent: 'mech_rocket_splash',
+            x: 3,
+            y: 2
           }
         ]
       }
@@ -3633,8 +3660,8 @@ function showShop() {
         html += `</div>`;
       });
     } else if(section==='upgrades') {
-      html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);display:flex;justify-content:center;">`+
-              `<div id="upgradeTree"></div></div>`+
+      html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);">`+
+              `<svg id="upgradeLines"></svg><div id="upgradeTree"></div></div>`+
 
               `<div id="upgradeStats" style="position:absolute;text-align:center;font-size:14px;"></div>`+
               `</div>`;
@@ -3713,22 +3740,26 @@ function showShop() {
 }
 
 function renderUpgradeTree() {
-  const tree = document.getElementById("upgradeTree");
+  const tree   = document.getElementById("upgradeTree");
+  const lines  = document.getElementById("upgradeLines");
   tree.innerHTML = "";
+  lines.innerHTML = "";
+  const gridX = 80;
+  const gridY = 80;
+  const center = tree.offsetWidth / 2;
+  const pos = {};
+
   upgradeTreeConfig.forEach(branch => {
-    const col = document.createElement("div");
-    col.className = "branchCol";
-    tree.appendChild(col);
-    branch.upgrades.forEach((upg, idx) => {
-      const cost = Math.round(
-        (branch.costBase * Math.pow(upg.costFactor, idx)) / 5
-      ) * 5;
+    branch.upgrades.forEach(upg => {
+      const cost = Math.round((branch.costBase * Math.pow(upg.costFactor, upg.tier)) / 5) * 5;
       const owned = ownedUpgrades.includes(upg.id);
       const equipped = equippedUpgrades.includes(upg.id);
       const node = document.createElement("div");
       node.className = "upgradeNode";
       node.style.borderColor = branch.color;
       node.style.background = equipped ? "#fff" : owned ? branch.color : "#333";
+      node.style.left = (center + upg.x * gridX) + "px";
+      node.style.top  = (40 + upg.y * gridY) + "px";
       node.textContent = owned ? (equipped ? "★" : "✓") : cost;
       if(upg.id.includes("coin") || upg.id.includes("rocket") || upg.id.includes("magnet")){
         const icon = document.createElement("div");
@@ -3742,6 +3773,10 @@ function renderUpgradeTree() {
       node.addEventListener("mouseleave", hideTooltip);
       node.addEventListener("click", () => {
         if (!owned) {
+          if (upg.parent && !ownedUpgrades.includes(upg.parent)) {
+            showTooltip("Requires previous upgrade");
+            return;
+          }
           if (totalCoins >= cost) {
             totalCoins -= cost;
             localStorage.setItem("birdyCoinsEarned", totalCoins);
@@ -3773,7 +3808,32 @@ function renderUpgradeTree() {
           updateUpgradeStats();
         }
       });
-      col.appendChild(node);
+      tree.appendChild(node);
+      pos[upg.id] = { node, branch, upg };
+    });
+  });
+
+  requestAnimationFrame(() => {
+    const treeRect = tree.getBoundingClientRect();
+    Object.values(pos).forEach(({node, upg, branch}) => {
+      if (!upg.parent) return;
+      const parent = pos[upg.parent];
+      if(!parent) return;
+      const a = parent.node.getBoundingClientRect();
+      const b = node.getBoundingClientRect();
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', a.left - treeRect.left + a.width/2);
+      line.setAttribute('y1', a.top - treeRect.top + a.height/2);
+      line.setAttribute('x2', b.left - treeRect.left + b.width/2);
+      line.setAttribute('y2', b.top - treeRect.top + b.height/2);
+      line.setAttribute('stroke', branch.color);
+      line.setAttribute('stroke-width', 3);
+      if (ownedUpgrades.includes(upg.parent) && ownedUpgrades.includes(upg.id)) {
+        line.classList.add('lineGlow');
+      } else {
+        line.style.opacity = 0.3;
+      }
+      lines.appendChild(line);
     });
   });
 }
