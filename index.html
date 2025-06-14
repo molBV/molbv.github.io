@@ -156,7 +156,16 @@
     .reel:nth-child(2) { left:34%; }
     .reel:nth-child(3) { left:67%; }
     .reel:first-child { left:1%; }
-
+    #prizeText { font-size:32px; font-weight:bold; margin-top:10px; }
+    @keyframes confetti-fall {
+      0% { transform:translateY(-100px) rotate(0); opacity:1; }
+      100% { transform:translateY(300px) rotate(360deg); opacity:0; }
+    }
+    .confetti {
+      position:absolute; width:8px; height:8px; background:var(--c);
+      animation: confetti-fall 1s ease-out forwards;
+      pointer-events:none;
+    }
 
   </style>
 
@@ -190,6 +199,8 @@
        src="assets/dream.guitar.mp3"
        loop
        preload="metadata"></audio>
+  <audio id="spinSound" src="assets/slot_spin.mp3"></audio>
+  <audio id="winSound" src="assets/jackpot.mp3"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
@@ -201,7 +212,9 @@
       <div class="reel"><div></div></div>
       <div class="reel"><div></div></div>
       <div class="reel"><div></div></div>
+    
     </div>
+    <div id="prizeText"></div>
     <div style="margin-top:10px;">
       <button id="take-coins">Take 20 Coins</button>
       <img src="assets/spin_button.png" id="spin-btn" style="width:80px;cursor:pointer;"/>
@@ -217,6 +230,7 @@
     <button id="btnAchievements" class="menu-btn">Achievements</button>
     <button id="btnStory" class="menu-btn">📖 Story Log</button>
     <button id="btnShop" class="menu-btn">Shop</button>
+    <button id="btnDailySpin" class="menu-btn">Daily Spin</button>
   </div>
   <div id="achievementPopup"></div>
   <div id="storyPopup"></div>
@@ -600,6 +614,10 @@ let marathonMoving = false;
     menuEl.style.display = 'none';
     showShop();
   };
+  document.getElementById("btnDailySpin").onclick = () => {
+    menuEl.style.display = "none";
+    showPowerUpSpin(true);
+  };
 
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
@@ -769,6 +787,8 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const settingsPanel = document.getElementById('settingsPanel');
     const volumeSlider = document.getElementById('volumeSlider');
     volumeSlider.value = globalVolume;
+    const spinSound = document.getElementById("spinSound");
+    const winSound = document.getElementById("winSound");
     function applyVolume() {
       bgMusic.volume = globalVolume;
       mechaMusic.volume = globalVolume;
@@ -919,6 +939,7 @@ const staggerSparks = [];
     const magnetParticles = [];
     let electricTimer = 0;
     let tripleElectric = false;
+    let spinReturnToMenu = false;
     const electricRings = [];
 
     const symbols = [
@@ -3541,16 +3562,23 @@ function weightedRandomSymbol() {
   return symbols[symbols.length - 1];
 }
 
-function showPowerUpSpin() {
-  const ov = document.getElementById('spinOverlay');
-  ov.style.display = 'block';
-  document.getElementById('take-coins').disabled = false;
-  document.getElementById('spin-btn').style.pointerEvents = 'auto';
+function showPowerUpSpin(returnToMenu=false) {
+  spinReturnToMenu=returnToMenu;
+  const ov=document.getElementById("spinOverlay");
+  ov.style.display="block";
+  document.getElementById("prizeText").textContent="";
+  document.getElementById("take-coins").disabled=false;
+  document.getElementById("spin-btn").style.pointerEvents="auto";
 }
 
 function closeSpinOverlay() {
-  document.getElementById('spinOverlay').style.display = 'none';
-  showOverlay();
+  document.getElementById("spinOverlay").style.display="none";
+  if(spinReturnToMenu){
+    menuEl.style.display="block";
+  }else{
+    showOverlay();
+  }
+  spinReturnToMenu=false;
 }
 
 const reels = [];
@@ -3561,39 +3589,51 @@ function setSymbol(el, sym) {
   el.appendChild(sym.node.cloneNode(true));
 }
 
-function animateReel(el, target, opts) {
-  const start = performance.now();
-  let next = 0;
-  function step(t) {
-    const e = t - start;
-    if (e >= opts.duration) {
-      setSymbol(el, target);
-      return;
-    }
-    if (t >= next) {
-      setSymbol(el, symbols[Math.floor(Math.random() * symbols.length)]);
-      next = t + 50 + e / 5;
-    }
+function animateReel(el,target,opts){
+  const start=performance.now();
+  let last=start;
+  function swap(sym){
+    const curr=el.firstElementChild;
+    const next=sym.node.cloneNode(true);
+    next.style.transform="translateY(-100%)";
+    next.style.transition="transform 0.15s linear";
+    curr.style.transition="transform 0.15s linear";
+    el.appendChild(next);
+    requestAnimationFrame(()=>{
+      curr.style.transform="translateY(100%)";
+      next.style.transform="translateY(0)";
+    });
+    next.addEventListener("transitionend",()=>{curr.remove();}, {once:true});
+  }
+  function step(t){
+    if(t-start>=opts.duration){swap(target);return;}
+    if(t-last>100){swap(symbols[Math.floor(Math.random()*symbols.length)]);last=t;}
     requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
-
-function startRoulette() {
-  document.getElementById('spin-btn').style.pointerEvents = 'none';
-  document.getElementById('take-coins').disabled = true;
-  const results = [weightedRandomSymbol(), weightedRandomSymbol(), weightedRandomSymbol()];
-  reels.forEach((r, i) => {
-    animateReel(r, results[i], { duration: 3000 + i * 200 });
+function startRoulette(){
+  document.getElementById("spin-btn").style.pointerEvents="none";
+  document.getElementById("take-coins").disabled=true;
+  const results=[weightedRandomSymbol(),weightedRandomSymbol(),weightedRandomSymbol()];
+  const durations=[2000,2600,3300];
+  spinSound.currentTime=0;
+  spinSound.play().catch(()=>{});
+  reels.forEach((r,i)=>{
+    animateReel(r,results[i],{duration:durations[i]});
   });
-  setTimeout(() => applyReward(results), 3600);
+  const total=Math.max(...durations);
+  setTimeout(()=>{spinSound.pause();spinSound.currentTime=0;applyReward(results);},total+200);
 }
-
-function applyReward(results) {
-  const [a, b, c] = results.map(r => r.id);
-  const id = a === b && b === c ? a : results[1].id;
+function applyReward(results){
+  const [a,b,c]=results.map(r=>r.id);
+  const id=(a===b&&b===c)?a:results[1].id;
   deliverReward(id);
-  closeSpinOverlay();
+  const text=id.replace(/([A-Z])/g," $1").trim();
+  document.getElementById("prizeText").textContent="You won "+text+"!";
+  winSound.currentTime=0;winSound.play().catch(()=>{});
+  showConfetti();
+  setTimeout(closeSpinOverlay,1500);
 }
 
 function deliverReward(id) {
@@ -3628,8 +3668,20 @@ function deliverReward(id) {
     localStorage.setItem('birdyCoinsEarned', totalCoins);
     updateScore();
   }
-  showAchievement(`You won: ${id.replace(/([A-Z])/g, ' $1').trim()}`);
 }
+function showConfetti(){
+  const ov=document.getElementById("spinOverlay");
+  for(let i=0;i<20;i++){
+    const d=document.createElement("div");
+    d.className="confetti";
+    d.style.left=Math.random()*100+"%";
+    d.style.background=`hsl(${Math.random()*360},80%,60%)`;
+    d.style.animationDuration=0.8+Math.random()*0.7+"s";
+    ov.appendChild(d);
+    d.addEventListener("animationend",()=>d.remove());
+  }
+}
+
 
 function showRevivePrompt(){
   if (revivePromptActive || usedRevive) return false;
