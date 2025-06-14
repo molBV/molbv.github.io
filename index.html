@@ -287,15 +287,15 @@ const bgLayers = {
   island1:  Object.assign(new Image(), { src: 'assets/background/island1.png' }),
   island2:  Object.assign(new Image(), { src: 'assets/background/island2.png' })
 };
-let bgScale = 1, bgW = 0, bgH = 0;
-let bgPositions = [
-  { img: bgLayers.distant2, x: 0, speed: 0.2 },
-  { img: bgLayers.distant1, x: 0, speed: 0.4 },
-  { img: bgLayers.cloud3,   x: 0, speed: 0.6 },
-  { img: bgLayers.cloud2,   x: 0, speed: 0.8 },
-  { img: bgLayers.cloud1,   x: 0, speed: 1.0 },
-  { img: bgLayers.island2,  x: 0, speed: 1.2 },
-  { img: bgLayers.island1,  x: 0, speed: 1.4 }
+let baseScale = 1;
+const bgPositions = [
+  { img: bgLayers.distant2, x: 0, speed: 0.25, scaleBase: 1, yBottom: true },
+  { img: bgLayers.distant1, x: 0, speed: 0.2,  scaleBase: 1, yBottom: true },
+  { img: bgLayers.island2,  x: 0, speed: 0.15, scaleBase: 0.5, yRange: [0.4, 0.6] },
+  { img: bgLayers.island1,  x: 0, speed: 0.18, scaleBase: 0.5, yRange: [0.45, 0.65] },
+  { img: bgLayers.cloud3,   x: 0, speed: 0.05, scaleBase: 0.66, scaleVar: 0.3, yRange: [0.05, 0.75], alpha: 0.7 },
+  { img: bgLayers.cloud2,   x: 0, speed: 0.05, scaleBase: 0.66, scaleVar: 0.3, yRange: [0.05, 0.75], alpha: 0.7 },
+  { img: bgLayers.cloud1,   x: 0, speed: 0.05, scaleBase: 0.66, scaleVar: 0.3, yRange: [0.05, 0.75], alpha: 0.7 }
 ];
 
 
@@ -648,10 +648,26 @@ explosionSfx.volume = 0.4 * globalVolume;
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// play bgMusic once upon first user interaction
-function initMusic() {
-    bgMusic.load();             // kick off buffering immediately
-  bgMusic.play()
+      baseScale = ORIGINAL_WIDTH / (bgLayers.distant1.width || ORIGINAL_WIDTH);
+      bgPositions.forEach(p => {
+        const bw = (p.img.width  || ORIGINAL_WIDTH)  * baseScale * p.scaleBase;
+        const bh = (p.img.height || ORIGINAL_HEIGHT) * baseScale * p.scaleBase;
+        p.baseW = bw;
+        p.baseH = bh;
+        const varF = p.scaleVar ? 1 - p.scaleVar / 2 + Math.random() * p.scaleVar : 1;
+        p.w = bw * varF;
+        p.h = bh * varF;
+        p.x = 0;
+        if (p.yBottom) {
+          p.y = ORIGINAL_HEIGHT - p.h;
+        } else if (p.yRange) {
+          const minY = ORIGINAL_HEIGHT * p.yRange[0];
+          const maxY = ORIGINAL_HEIGHT * p.yRange[1] - p.h;
+          p.y = minY + Math.random() * (maxY - minY);
+        } else {
+          p.y = 0;
+        }
+      });
     .then(()=>console.log('Music started'))
     .catch(e=>console.error('Play() failed:', e))
   document.removeEventListener('mousedown', initMusic);
@@ -1728,9 +1744,24 @@ radialBombs.forEach(b => {
   // d) draw health bar
   const bx = p.x + Math.sin(p.y*0.04)*30, barW=80;
   ctx.fillStyle='#444';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW,6);
-  ctx.fillStyle='lime';
-  ctx.fillRect(bx-barW/2, p.y-p.r-20, barW*(bossHealth/bossMaxHealth),6);
+    layer.x -= layer.speed;
+    if (layer.x <= -layer.w) {
+      layer.x += layer.w;
+      if (layer.yRange) {
+        const minY = H * layer.yRange[0];
+        const maxY = H * layer.yRange[1] - layer.h;
+        layer.y = minY + Math.random() * (maxY - minY);
+      }
+      if (layer.scaleVar) {
+        const varF = 1 - layer.scaleVar / 2 + Math.random() * layer.scaleVar;
+        layer.w = layer.baseW * varF;
+        layer.h = layer.baseH * varF;
+      }
+    }
+    if (layer.alpha) ctx.globalAlpha = layer.alpha;
+                  layer.x, layer.y, layer.w, layer.h);
+                  layer.x + layer.w, layer.y, layer.w, layer.h);
+    ctx.globalAlpha = 1;
 }
 
 
