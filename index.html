@@ -139,6 +139,24 @@
       z-index:30;
     }
 
+    /* ── Power-Up Spin Overlay ───────────────────────────── */
+    #spinOverlay {
+      display:none; position:absolute; left:0; right:0;
+      top:100px; bottom:80px; background:rgba(0,0,0,0.5);
+      color:#fff; font:18px sans-serif; text-align:center;
+      z-index:20; padding-top:20px;
+    }
+    #rouletteWrap { position:relative; width:200px; margin:10px auto; }
+    #roulette-frame { width:100%; }
+    .reel {
+      position:absolute; top:12%; bottom:12%; width:33%; overflow:hidden;
+    }
+    .reel img, .reel div { position:absolute; width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center; font-size:32px; }
+    .reel:nth-child(2) { left:34%; }
+    .reel:nth-child(3) { left:67%; }
+    .reel:first-child { left:1%; }
+
 
   </style>
 
@@ -176,6 +194,23 @@
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
+  <div id="spinOverlay">
+    <img src="assets/logoslot.png" alt="Power-Up Spin" />
+    <div id="rouletteWrap">
+      <img src="assets/spin_face.png" id="roulette-frame"/>
+      <div class="reel"><div></div></div>
+      <div class="reel"><div></div></div>
+      <div class="reel"><div></div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button id="take-coins">Take 20 Coins</button>
+      <img src="assets/spin_button.png" id="spin-btn" style="width:80px;cursor:pointer;"/>
+    </div>
+    <div style="margin-top:10px;">
+      <img src="assets/mini_logo_slot.png" style="width:100px;"/>
+      <div>Cost: 10 Coins</div>
+    </div>
+  </div>
   <div id="menu">
     <button id="btnAdventure" class="menu-btn">Adventure</button>
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
@@ -515,6 +550,16 @@ let marathonMoving = false;
       localStorage.setItem('birdyDouble', storedDoubles);
       doubleActive = true;
     }
+    if (spinMagnet) {
+      magnetActive = true;
+      spinMagnet = 0;
+      localStorage.removeItem('spinMagnet');
+    }
+    if (spinTriple) {
+      tripleShot = true;
+      spinTriple = 0;
+      localStorage.removeItem('spinTriple');
+    }
     state = STATE.Play;
     trackEvent('game_start');
   }
@@ -526,6 +571,16 @@ let marathonMoving = false;
       storedDoubles--;
       localStorage.setItem('birdyDouble', storedDoubles);
       doubleActive = true;
+    }
+    if (spinMagnet) {
+      magnetActive = true;
+      spinMagnet = 0;
+      localStorage.removeItem('spinMagnet');
+    }
+    if (spinTriple) {
+      tripleShot = true;
+      spinTriple = 0;
+      localStorage.removeItem('spinTriple');
     }
     state = STATE.Play;
     trackEvent('game_start_marathon');
@@ -752,6 +807,24 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       applyVolume();
     };
 
+    document.getElementById('take-coins').onclick = () => {
+      totalCoins += 20;
+      localStorage.setItem('birdyCoinsEarned', totalCoins);
+      updateScore();
+      closeSpinOverlay();
+    };
+
+    document.getElementById('spin-btn').onclick = () => {
+      if (totalCoins < 10) {
+        showAchievement('Not enough coins');
+        return;
+      }
+      totalCoins -= 10;
+      localStorage.setItem('birdyCoinsEarned', totalCoins);
+      updateScore();
+      startRoulette();
+    };
+
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
 const STATE = {
   Start:0,
@@ -835,6 +908,8 @@ const staggerSparks = [];
       if (totalCoins >= 500) unlockAchievement('coins500');
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
     let storedDoubles = parseInt(localStorage.getItem('birdyDouble')||'0');
+    let spinMagnet  = parseInt(localStorage.getItem('spinMagnet')||'0');
+    let spinTriple  = parseInt(localStorage.getItem('spinTriple')||'0');
     let usedRevive    = false;
     let reviveTimer   = 0;
     const reviveRings = [];
@@ -845,6 +920,28 @@ const staggerSparks = [];
     let electricTimer = 0;
     let tripleElectric = false;
     const electricRings = [];
+
+    const symbols = [
+      { id: 'Revive',        icon: 'assets/Revive.png',       weight: 10 },
+      { id: 'DoubleCoins',   icon: 'assets/Double.png',       weight: 10 },
+      { id: 'Magnet',        icon: '🧲',                      weight: 10 },
+      { id: 'TripleRockets', icon: 'assets/rocket1.png',      weight: 10 },
+      { id: 'Coin1',         icon: '1',                       weight: 15 },
+      { id: 'Coin5',         icon: '5',                       weight: 15 },
+      { id: 'Coin10',        icon: '10',                      weight: 5  },
+      { id: 'Coin50',        icon: '50',                      weight: 5  }
+    ];
+    symbols.forEach(s => {
+      if (s.icon.startsWith('assets')) {
+        const img = new Image();
+        img.src = s.icon;
+        s.node = img;
+      } else {
+        const div = document.createElement('div');
+        div.textContent = s.icon;
+        s.node = div;
+      }
+    });
 
     // ── Upgrade state ──
     let coinSpawnBonus   = 0;
@@ -3431,7 +3528,107 @@ function finalizeGameOver(){
   }
 
   playTone(100, 0.3);
+  showPowerUpSpin();
+}
+
+function weightedRandomSymbol() {
+  const total = symbols.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * total;
+  for (const sym of symbols) {
+    r -= sym.weight;
+    if (r <= 0) return sym;
+  }
+  return symbols[symbols.length - 1];
+}
+
+function showPowerUpSpin() {
+  const ov = document.getElementById('spinOverlay');
+  ov.style.display = 'block';
+  document.getElementById('take-coins').disabled = false;
+  document.getElementById('spin-btn').style.pointerEvents = 'auto';
+}
+
+function closeSpinOverlay() {
+  document.getElementById('spinOverlay').style.display = 'none';
   showOverlay();
+}
+
+const reels = [];
+document.querySelectorAll('#spinOverlay .reel').forEach(r => reels.push(r));
+
+function setSymbol(el, sym) {
+  el.innerHTML = '';
+  el.appendChild(sym.node.cloneNode(true));
+}
+
+function animateReel(el, target, opts) {
+  const start = performance.now();
+  let next = 0;
+  function step(t) {
+    const e = t - start;
+    if (e >= opts.duration) {
+      setSymbol(el, target);
+      return;
+    }
+    if (t >= next) {
+      setSymbol(el, symbols[Math.floor(Math.random() * symbols.length)]);
+      next = t + 50 + e / 5;
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function startRoulette() {
+  document.getElementById('spin-btn').style.pointerEvents = 'none';
+  document.getElementById('take-coins').disabled = true;
+  const results = [weightedRandomSymbol(), weightedRandomSymbol(), weightedRandomSymbol()];
+  reels.forEach((r, i) => {
+    animateReel(r, results[i], { duration: 3000 + i * 200 });
+  });
+  setTimeout(() => applyReward(results), 3600);
+}
+
+function applyReward(results) {
+  const [a, b, c] = results.map(r => r.id);
+  const id = a === b && b === c ? a : results[1].id;
+  deliverReward(id);
+  closeSpinOverlay();
+}
+
+function deliverReward(id) {
+  switch (id) {
+    case 'Revive':
+      storedRevives = 1;
+      localStorage.setItem('birdyRevives', storedRevives);
+      updateReviveDisplay();
+      break;
+    case 'DoubleCoins':
+      storedDoubles = 1;
+      localStorage.setItem('birdyDouble', storedDoubles);
+      break;
+    case 'Magnet':
+      spinMagnet = 1;
+      localStorage.setItem('spinMagnet', '1');
+      break;
+    case 'TripleRockets':
+      spinTriple = 1;
+      localStorage.setItem('spinTriple', '1');
+      break;
+    case 'Coin1':
+      totalCoins += 1; break;
+    case 'Coin5':
+      totalCoins += 5; break;
+    case 'Coin10':
+      totalCoins += 10; break;
+    case 'Coin50':
+      totalCoins += 50; break;
+  }
+  if (id.startsWith('Coin')) {
+    localStorage.setItem('birdyCoinsEarned', totalCoins);
+    updateScore();
+  }
+  showAchievement(`You won: ${id.replace(/([A-Z])/g, ' $1').trim()}`);
 }
 
 function showRevivePrompt(){
