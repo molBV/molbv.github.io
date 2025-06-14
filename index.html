@@ -286,17 +286,34 @@ const bgLayers = {
   cloud3:   Object.assign(new Image(), { src: 'assets/background/cloud3.png' }),
   island1:  Object.assign(new Image(), { src: 'assets/background/island1.png' }),
   island2:  Object.assign(new Image(), { src: 'assets/background/island2.png' })
-};
-let bgScale = 1, bgW = 0, bgH = 0;
-let bgPositions = [
-  { img: bgLayers.distant2, x: 0, speed: 0.2 },
-  { img: bgLayers.distant1, x: 0, speed: 0.4 },
-  { img: bgLayers.cloud3,   x: 0, speed: 0.6 },
-  { img: bgLayers.cloud2,   x: 0, speed: 0.8 },
-  { img: bgLayers.cloud1,   x: 0, speed: 1.0 },
-  { img: bgLayers.island2,  x: 0, speed: 1.2 },
-  { img: bgLayers.island1,  x: 0, speed: 1.4 }
+}; 
+
+const bgConfigs = [
+  { img: bgLayers.distant2, scale: 1/3, speed: 0.2, alpha: 1, yMin: () => ORIGINAL_HEIGHT*0.45, yMax: () => ORIGINAL_HEIGHT*0.55 },
+  { img: bgLayers.distant1, scale: 1/3, speed: 0.25, alpha: 1, yMin: () => ORIGINAL_HEIGHT*0.45, yMax: () => ORIGINAL_HEIGHT*0.55 },
+  { img: bgLayers.cloud3,   scale: 0.5, speed: 0.4, alpha: 0.6, yMin: () => 0,              yMax: () => ORIGINAL_HEIGHT*0.4  },
+  { img: bgLayers.cloud2,   scale: 0.5, speed: 0.6, alpha: 0.6, yMin: () => 0,              yMax: () => ORIGINAL_HEIGHT*0.4  },
+  { img: bgLayers.cloud1,   scale: 0.5, speed: 0.8, alpha: 0.6, yMin: () => 0,              yMax: () => ORIGINAL_HEIGHT*0.4  },
+  { img: bgLayers.island2,  scale: 0.5, speed: 1.0, alpha: 1, yMin: () => ORIGINAL_HEIGHT*0.5, yMax: () => ORIGINAL_HEIGHT*0.8 },
+  { img: bgLayers.island1,  scale: 0.5, speed: 1.2, alpha: 1, yMin: () => ORIGINAL_HEIGHT*0.5, yMax: () => ORIGINAL_HEIGHT*0.8 }
 ];
+let bgSprites = [];
+
+function initBackgroundSprites() {
+  bgSprites.length = 0;
+  bgConfigs.forEach(cfg => {
+    const w = (cfg.img.width || ORIGINAL_WIDTH) * cfg.scale;
+    const count = Math.ceil(ORIGINAL_WIDTH / w) + 1;
+    for (let i = 0; i < count; i++) {
+      bgSprites.push({
+        cfg,
+        x: i * w,
+        y: cfg.yMin() + Math.random() * (cfg.yMax() - cfg.yMin())
+      });
+    }
+  });
+}
+Object.values(bgLayers).forEach(img => img.addEventListener('load', initBackgroundSprites));
 
 
     // → New “mecha” states
@@ -673,10 +690,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       canvas.style.height = dispH + 'px';
       canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
       canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
-      bgScale = ORIGINAL_WIDTH / (bgLayers.distant1.width || ORIGINAL_WIDTH);
-      bgW = (bgLayers.distant1.width || ORIGINAL_WIDTH) * bgScale;
-      bgH = (bgLayers.distant1.height || ORIGINAL_HEIGHT) * bgScale;
-      bgPositions.forEach(p => p.x = 0);
+      initBackgroundSprites();
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -1752,13 +1766,22 @@ function drawBackground(){
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,W,H);
 
-  // 2) parallax layers
-  bgPositions.forEach(layer => {
-    layer.x = (layer.x - layer.speed + bgW) % bgW;
-    ctx.drawImage(layer.img, 0, 0, layer.img.width, layer.img.height,
-                  layer.x, 0, bgW, bgH);
-    ctx.drawImage(layer.img, 0, 0, layer.img.width, layer.img.height,
-                  layer.x + bgW, 0, bgW, bgH);
+  // 2) parallax sprites
+  bgSprites.forEach(sp => {
+    const img = sp.cfg.img;
+    const w   = (img.width || ORIGINAL_WIDTH) * sp.cfg.scale;
+    const h   = (img.height || ORIGINAL_HEIGHT) * sp.cfg.scale;
+    sp.x -= sp.cfg.speed;
+    if (sp.x + w < 0) {
+      const same = bgSprites.filter(o => o.cfg === sp.cfg);
+      const maxX = Math.max(...same.map(o => o.x));
+      sp.x = maxX + w + Math.random() * 20;
+      sp.y = sp.cfg.yMin() + Math.random() * (sp.cfg.yMax() - sp.cfg.yMin());
+    }
+    ctx.save();
+    ctx.globalAlpha = sp.cfg.alpha;
+    ctx.drawImage(img, sp.x, sp.y, w, h);
+    ctx.restore();
   });
 
   // 3) sun / moon path
