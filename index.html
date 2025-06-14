@@ -278,20 +278,26 @@
     birdSprite.src = 'assets/' + defaultSkin;
     const DEFAULT_BIRD_FRAMES = ['assets/birdieV2.png', 'assets/birdieflap.png']
       .map(src => Object.assign(new Image(), { src }));
-const farImgs = [
-  Object.assign(new Image(), { src:"assets/background/distantisland1.png" }),
-  Object.assign(new Image(), { src:"assets/background/distantisland2.png" })
+const bgLayers = {
+  distant1: Object.assign(new Image(), { src: 'assets/background/distantisland1.png' }),
+  distant2: Object.assign(new Image(), { src: 'assets/background/distantisland2.png' }),
+  cloud1:   Object.assign(new Image(), { src: 'assets/background/cloud1.png' }),
+  cloud2:   Object.assign(new Image(), { src: 'assets/background/cloud2.png' }),
+  cloud3:   Object.assign(new Image(), { src: 'assets/background/cloud3.png' }),
+  island1:  Object.assign(new Image(), { src: 'assets/background/island1.png' }),
+  island2:  Object.assign(new Image(), { src: 'assets/background/island2.png' })
+};
+let bgScale = 1, bgW = 0, bgH = 0;
+let bgPositions = [
+  { img: bgLayers.distant2, x: 0, speed: 0.2 },
+  { img: bgLayers.distant1, x: 0, speed: 0.4 },
+  { img: bgLayers.cloud3,   x: 0, speed: 0.6 },
+  { img: bgLayers.cloud2,   x: 0, speed: 0.8 },
+  { img: bgLayers.cloud1,   x: 0, speed: 1.0 },
+  { img: bgLayers.island2,  x: 0, speed: 1.2 },
+  { img: bgLayers.island1,  x: 0, speed: 1.4 }
 ];
-const midImgs = [
-  Object.assign(new Image(), { src:"assets/background/island1.png" }),
-  Object.assign(new Image(), { src:"assets/background/island2.png" })
-];
-const cloudImgs = [
-  Object.assign(new Image(), { src:"assets/background/cloud1.png" }),
-  Object.assign(new Image(), { src:"assets/background/cloud2.png" }),
-  Object.assign(new Image(), { src:"assets/background/cloud3.png" })
-];
-const farX = [0, 600], midX = [0, 400], cloudX = [0, 300, 600];
+
 
     // → New “mecha” states
 const mechaStages = [
@@ -667,6 +673,10 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       canvas.style.height = dispH + 'px';
       canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
       canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
+      bgScale = ORIGINAL_WIDTH / (bgLayers.distant1.width || ORIGINAL_WIDTH);
+      bgW = (bgLayers.distant1.width || ORIGINAL_WIDTH) * bgScale;
+      bgH = (bgLayers.distant1.height || ORIGINAL_HEIGHT) * bgScale;
+      bgPositions.forEach(p => p.x = 0);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -1742,7 +1752,16 @@ function drawBackground(){
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,W,H);
 
-  // 2) sun / moon path
+  // 2) parallax layers
+  bgPositions.forEach(layer => {
+    layer.x = (layer.x - layer.speed + bgW) % bgW;
+    ctx.drawImage(layer.img, 0, 0, layer.img.width, layer.img.height,
+                  layer.x, 0, bgW, bgH);
+    ctx.drawImage(layer.img, 0, 0, layer.img.width, layer.img.height,
+                  layer.x + bgW, 0, bgW, bgH);
+  });
+
+  // 3) sun / moon path
   const sunR  = 30, moonR = 25;
   if (tC <= 0.5) {
     // sun: tC [0→0.5] → phaseSun [0→1]
@@ -1767,7 +1786,7 @@ function drawBackground(){
     ctx.fill();
   }
 
-  // 3) stars fade in/out by wN
+  // 4) stars fade in/out by wN
   //    wN = 0 at tC=0 & 1 (day), peaks at tC=0.5 (midnight)
   const starAlpha = Math.max(0, wN) * 0.8;
   if (starAlpha > 0) {
@@ -1778,30 +1797,6 @@ function drawBackground(){
   // restore
   ctx.globalAlpha = 1;
 
-  // FAR BACK: distant islands, very slow
-  farImgs.forEach((img,i)=>{
-    ctx.drawImage(img, farX[i], H-250);
-    ctx.drawImage(img, farX[i] + W, H-250);
-    farX[i] = (farX[i] - currentSpeed*0.2 + W) % W;
-  });
-
-  // MID GROUND: floating islands, moderate speed
-  midImgs.forEach((img,i)=>{
-    const y = H*0.5 + i*20;
-    ctx.drawImage(img, midX[i], y);
-    ctx.drawImage(img, midX[i] + W, y);
-    midX[i] = (midX[i] - currentSpeed*0.5 + W) % W;
-  });
-
-  // FOREGROUND: clouds, full speed
-  cloudImgs.forEach((img,i)=>{
-    const y = H*0.2 + i*30;
-    ctx.globalAlpha = 0.8;
-    ctx.drawImage(img, cloudX[i], y);
-    ctx.drawImage(img, cloudX[i] + W, y);
-    cloudX[i] = (cloudX[i] - currentSpeed*1.0 + W) % W;
-    ctx.globalAlpha = 1;
-  });
 }
     // ── Bird object ──
     const bird = {
