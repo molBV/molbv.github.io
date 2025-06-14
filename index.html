@@ -162,6 +162,7 @@
       font-size:32px; font-weight:bold; margin-top:10px;
       text-shadow:2px 2px 6px #000;
     }
+
     @keyframes confetti-fall {
       0% { transform:translateY(-100px) rotate(0); opacity:1; }
       100% { transform:translateY(300px) rotate(360deg); opacity:0; }
@@ -180,6 +181,7 @@
       background:var(--c); pointer-events:none;
       animation:firework 0.6s ease-out forwards;
     }
+
 
   </style>
 
@@ -953,6 +955,7 @@ const staggerSparks = [];
     let tripleElectric = false;
     let spinReturnToMenu = false;
     let spinOverlayClickable = false;
+
     const electricRings = [];
 
     const symbols = [
@@ -3581,6 +3584,7 @@ function showPowerUpSpin(returnToMenu=false) {
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
   spinOverlayClickable=false;
+
   document.getElementById("spin-btn").style.pointerEvents="auto";
 }
 
@@ -3593,6 +3597,7 @@ function closeSpinOverlay() {
   }
   spinReturnToMenu=false;
   spinOverlayClickable=false;
+
 }
 
 const reels = [];
@@ -3612,6 +3617,7 @@ function animateReel(el,target,opts){
     next.style.transform="translateY(-100%)";
     next.style.transition="transform 0.25s linear";
     curr.style.transition="transform 0.25s linear";
+
     el.appendChild(next);
     requestAnimationFrame(()=>{
       curr.style.transform="translateY(100%)";
@@ -3626,6 +3632,7 @@ function animateReel(el,target,opts){
     if(t-last>delay){
       swap(symbols[Math.floor(Math.random()*symbols.length)]);last=t;
     }
+
     requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
@@ -3634,6 +3641,7 @@ function startRoulette(){
   document.getElementById("spin-btn").style.pointerEvents="none";
   const results=[weightedRandomSymbol(),weightedRandomSymbol(),weightedRandomSymbol()];
   const durations=[4000,6000,8000];
+
   spinSound.currentTime=0;
   spinSound.play().catch(()=>{});
   reels.forEach((r,i)=>{
@@ -3652,6 +3660,7 @@ function applyReward(results){
   showConfetti();
   showFireworks();
   spinOverlayClickable=true;
+
 }
 
 function deliverReward(id) {
@@ -3712,6 +3721,7 @@ function showFireworks(){
     d.addEventListener('animationend',()=>d.remove());
   }
 }
+
 
 
 function showRevivePrompt(){
