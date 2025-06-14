@@ -278,6 +278,21 @@
     birdSprite.src = 'assets/' + defaultSkin;
     const DEFAULT_BIRD_FRAMES = ['assets/birdieV2.png', 'assets/birdieflap.png']
       .map(src => Object.assign(new Image(), { src }));
+const farImgs = [
+  Object.assign(new Image(), { src:"assets/background/distantisland1.png" }),
+  Object.assign(new Image(), { src:"assets/background/distantisland2.png" })
+];
+const midImgs = [
+  Object.assign(new Image(), { src:"assets/background/island1.png" }),
+  Object.assign(new Image(), { src:"assets/background/island2.png" })
+];
+const cloudImgs = [
+  Object.assign(new Image(), { src:"assets/background/cloud1.png" }),
+  Object.assign(new Image(), { src:"assets/background/cloud2.png" }),
+  Object.assign(new Image(), { src:"assets/background/cloud3.png" })
+];
+const farX = [0, 600], midX = [0, 400], cloudX = [0, 300, 600];
+
     // → New “mecha” states
 const mechaStages = [
   'assets/stage1.png',
@@ -1763,16 +1778,29 @@ function drawBackground(){
   // restore
   ctx.globalAlpha = 1;
 
-  // 4) clouds & trees (unchanged)
-  clouds.forEach(c=>{
-    c.x -= 0.3;
-    if (c.x < -80) c.x = W + 80;
-    drawCloud(c.x, c.y, c.s);
+  // FAR BACK: distant islands, very slow
+  farImgs.forEach((img,i)=>{
+    ctx.drawImage(img, farX[i], H-250);
+    ctx.drawImage(img, farX[i] + W, H-250);
+    farX[i] = (farX[i] - currentSpeed*0.2 + W) % W;
   });
-  trees.forEach(t=>{
-    t.x -= 1;
-    if (t.x < -20) t.x = W + 20;
-    drawTree(t.x, H, t.h);
+
+  // MID GROUND: floating islands, moderate speed
+  midImgs.forEach((img,i)=>{
+    const y = H*0.5 + i*20;
+    ctx.drawImage(img, midX[i], y);
+    ctx.drawImage(img, midX[i] + W, y);
+    midX[i] = (midX[i] - currentSpeed*0.5 + W) % W;
+  });
+
+  // FOREGROUND: clouds, full speed
+  cloudImgs.forEach((img,i)=>{
+    const y = H*0.2 + i*30;
+    ctx.globalAlpha = 0.8;
+    ctx.drawImage(img, cloudX[i], y);
+    ctx.drawImage(img, cloudX[i] + W, y);
+    cloudX[i] = (cloudX[i] - currentSpeed*1.0 + W) % W;
+    ctx.globalAlpha = 1;
   });
 }
     // ── Bird object ──
