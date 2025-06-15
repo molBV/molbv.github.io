@@ -350,7 +350,14 @@ const bgLayers = {
   cloud3:   Object.assign(new Image(), { src: 'assets/background/cloud3.png' }),
   island1:  Object.assign(new Image(), { src: 'assets/background/island1.png' }),
   island2:  Object.assign(new Image(), { src: 'assets/background/island2.png' })
-}; 
+};
+
+const islandImages = new Set([
+  bgLayers.distant1,
+  bgLayers.distant2,
+  bgLayers.island1,
+  bgLayers.island2
+]);
 
 const bgConfigs = [
   { img: bgLayers.distant2, scale: 1/6, speed: 0.2, alpha: 1, gap: 2,
@@ -1921,6 +1928,10 @@ function drawBackground(){
     ctx.save();
     ctx.globalAlpha = sp.cfg.alpha;
     ctx.drawImage(img, sp.x, sp.y, w, h);
+    if (islandImages.has(img)) {
+      ctx.fillStyle = `rgba(0,30,60,${wN*0.5})`;
+      ctx.fillRect(sp.x, sp.y, w, h);
+    }
     ctx.restore();
   });
 
