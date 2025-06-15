@@ -1930,7 +1930,9 @@ function drawBackground(){
     ctx.drawImage(img, sp.x, sp.y, w, h);
     if (islandImages.has(img)) {
       ctx.fillStyle = `rgba(0,30,60,${wN*0.5})`;
+      ctx.globalCompositeOperation = 'source-atop';
       ctx.fillRect(sp.x, sp.y, w, h);
+      ctx.globalCompositeOperation = 'source-over';
     }
     ctx.restore();
   });
