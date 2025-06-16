@@ -272,7 +272,7 @@
   <audio id="explosionSound" src="assets/explosion.mp3"></audio>
   <audio id="winSound" src="assets/casino_fun.mp3"></audio>
   <audio id="loseSound" src="assets/losing-horn.mp3"></audio>
-  <audio id="casinoTheme" src="assets/casino_theme.mp3" loop></audio>
+
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
@@ -899,7 +899,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const explosionSound = document.getElementById('explosionSound');
     const winSound = document.getElementById('winSound');
     const loseSound = document.getElementById('loseSound');
-    const casinoTheme = document.getElementById('casinoTheme');
+
     function applyVolume() {
       bgMusic.volume = globalVolume;
       mechaMusic.volume = globalVolume;
@@ -907,7 +907,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       explosionSound.volume = globalVolume;
       winSound.volume = globalVolume;
       loseSound.volume = globalVolume;
-      casinoTheme.volume = globalVolume;
+
     }
     applyVolume();
 
@@ -3696,7 +3696,7 @@ function finalizeGameOver(){
   }
 
   playTone(100, 0.3);
-  showPowerUpSpin();
+  menuEl.style.display = 'block';
 }
 
 const GOOD_PROB = 0.5,
@@ -3781,6 +3781,7 @@ function chooseOutcome(){
   }
 }
 
+
 function buildStrip(finalSym){
   const frag = document.createDocumentFragment();
   for(let i=0;i<ROLLS;i++){
@@ -3838,10 +3839,6 @@ document.querySelectorAll('#spinOverlay .reel').forEach(r => reels.push(r));
 
 function startRoulette(){
   spinBtn.style.pointerEvents = 'none';
-  prevMusic = !bgMusic.paused ? bgMusic : (!mechaMusic.paused ? mechaMusic : null);
-  if(prevMusic) prevMusic.pause();
-  casinoTheme.currentTime = 0;
-  casinoTheme.play().catch(()=>{});
 
   const { result, type } = chooseOutcome();
   document.getElementById('prizeText').textContent = '';
@@ -3849,6 +3846,7 @@ function startRoulette(){
   localStorage.setItem('birdyCoinsEarned', totalCoins);
   updateCoins();
   updateScore();
+
 
   ticking = true;
   requestAnimationFrame(tickScale);
@@ -3883,9 +3881,6 @@ function startRoulette(){
       if(i === reels.length - 1){
         ticking = false;
         reels.forEach(blinkCenter);
-        casinoTheme.pause();
-        casinoTheme.currentTime = 0;
-        if(prevMusic){ prevMusic.play().catch(()=>{}); prevMusic=null; }
 
         if (type === 'bad') {
           loseSound.currentTime = 0;
@@ -3903,6 +3898,7 @@ function startRoulette(){
           document.getElementById('prizeText').textContent = `You got ${label}!`;
           handleReward(sym, label);
         }
+
 
         updateCoins();
         updateScore();
@@ -3980,7 +3976,7 @@ function showFireworks(){
 function showRevivePrompt(){
   if (revivePromptActive || usedRevive) return false;
   const useItem = storedRevives > 0;
-  if (!useItem && totalCoins < 50) return false;
+  const canRevive = useItem || totalCoins >= 50;
   revivePromptActive = true;
   bird.vel = 0;
   let countdown = 10;
@@ -3991,8 +3987,9 @@ function showRevivePrompt(){
       <h2>${useItem ? 'Use Revive?' : 'Continue for 50 coins?'}</h2>
       ${useItem ? '' : `<p>Coins: ${totalCoins}</p>`}
       <p id="reviveClock">${countdown}</p>
-      <button id="revYes">Yes</button>
-      <button id="revNo">No</button>
+      <button id="revBtn" ${canRevive ? '' : 'disabled'}>Revive</button>
+      <button id="casinoBtn">Casino</button>
+      <button id="menuBtn">Menu</button>
     `;
   }
   render();
@@ -4001,13 +3998,13 @@ function showRevivePrompt(){
     countdown--;
     const clk = document.getElementById('reviveClock');
     if (clk) clk.textContent = countdown;
-    if (countdown <= 0) cleanup(false);
+    if (countdown <= 0) cleanup('menu');
   },1000);
-  function cleanup(use){
+  function cleanup(action){
     clearInterval(int);
     ov.style.display = 'none';
     revivePromptActive = false;
-    if(use){
+    if(action === 'revive'){
       if(useItem){
         storedRevives--;
         localStorage.setItem('birdyRevives', storedRevives);
@@ -4019,12 +4016,17 @@ function showRevivePrompt(){
       startReviveEffect();
     } else {
       finalizeGameOver();
+      if(action === 'casino'){
+        menuEl.style.display = 'none';
+        showPowerUpSpin(true);
+      }
     }
     updateReviveDisplay();
   }
   ct.onclick = (e)=>{
-    if(e.target.id==='revYes') cleanup(true);
-    if(e.target.id==='revNo')  cleanup(false);
+    if(e.target.id==='revBtn')    cleanup('revive');
+    if(e.target.id==='casinoBtn') cleanup('casino');
+    if(e.target.id==='menuBtn')   cleanup('menu');
   };
   return true;
 }
