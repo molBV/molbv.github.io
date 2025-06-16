@@ -217,12 +217,6 @@
          src="assets/dream.guitar.mp3"
          loop
          preload="metadata"></audio>
-  <!-- …the rest of your code… -->
-
-  <audio id="bgMusic"
-       src="assets/dream.guitar.mp3"
-       loop
-       preload="metadata"></audio>
   <audio id="spinSound" src="assets/slot_spin.mp3"></audio>
   <audio id="winSound" src="assets/jackpot.mp3"></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
@@ -4168,7 +4162,8 @@ function showShop() {
 
     const items = [
       {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after death</small>'},
-      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''}
+      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''},
+
       {key:"birdieV2.png", name:"5 Birds", cost:50, owned:false, extra:"<small>Extra Adventure Plays</small>"},
     ];
 
