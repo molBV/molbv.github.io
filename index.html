@@ -65,6 +65,14 @@
       background:#fff;
       cursor:pointer;
     }
+    #adventureInfo {
+      text-align:center;
+      color:#fff;
+      text-shadow:2px 2px 4px #000;
+      font:1rem sans-serif;
+    }
+    #adventureTimer { font-size:0.9rem; }
+    #buyBirdBtn { font-size:16px; padding:4px 8px; margin:4px auto; }
     #achievementPopup {
       position:absolute;
       top:20px;
@@ -241,6 +249,11 @@
   </div>
   <div id="menu">
     <button id="btnAdventure" class="menu-btn">Adventure</button>
+    <div id="adventureInfo">
+      <div><img src="assets/birdieV2.png" width="24" height="24"> <span id="adventureCount">5/5</span></div>
+      <div id="adventureTimer" class="flash"></div>
+      <button id="buyBirdBtn" class="menu-btn">Buy Bird - 20 Coins</button>
+    </div>
     <button id="btnMarathon"  class="menu-btn">Marathon</button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
     <button id="btnStory" class="menu-btn">📖 Story Log</button>
@@ -585,6 +598,14 @@ let marathonMoving = false;
 
   function startAdventure(){
     marathonMode = false;
+    if(adventurePlays<=0){
+      showAchievement("No birds left");
+      menuEl.style.display = "block";
+      return;
+    }
+    adventurePlays--;
+    localStorage.setItem("birdyAdventurePlays", adventurePlays);
+    updateAdventureInfo();
     menuEl.style.display = 'none';
     if (storedDoubles > 0) {
       storedDoubles--;
@@ -646,6 +667,18 @@ let marathonMoving = false;
     showPowerUpSpin(true);
   };
 
+  document.getElementById("buyBirdBtn").onclick = () => {
+    if(totalCoins >= 20){
+      totalCoins -= 20;
+      adventurePlays++;
+      localStorage.setItem("birdyCoinsEarned", totalCoins);
+      localStorage.setItem("birdyAdventurePlays", adventurePlays);
+      updateScore();
+      updateAdventureInfo();
+    } else {
+      showAchievement("Not enough coins");
+    }
+  };
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
@@ -967,6 +1000,19 @@ const staggerSparks = [];
     let tripleElectric = false;
     let spinReturnToMenu = false;
     let spinOverlayClickable = false;
+    let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
+    let adventureReset = parseInt(localStorage.getItem("birdyAdventureReset") || Date.now());
+    function resetAdventurePlaysIfNeeded(){
+      const now=Date.now();
+      const day=86400000;
+      if(now - adventureReset >= day){
+        adventureReset = now;
+        adventurePlays = Math.max(adventurePlays, 5);
+        localStorage.setItem("birdyAdventureReset", adventureReset);
+        localStorage.setItem("birdyAdventurePlays", adventurePlays);
+      }
+    }
+    resetAdventurePlaysIfNeeded();
 
     const electricRings = [];
 
@@ -3508,9 +3554,29 @@ function updateScore(){
 function updateReviveDisplay(){
   document.getElementById('reviveCount').textContent = `${storedRevives}/1`;
 }
+function updateAdventureInfo(){
+  document.getElementById("adventureCount").textContent = adventurePlays + "/5";
+}
+function updateAdventureTimer(){
+  const now = Date.now();
+  let diff = adventureReset + 86400000 - now;
+  if(diff <= 0){
+    adventureReset = now;
+    adventurePlays = Math.max(adventurePlays, 5);
+    localStorage.setItem("birdyAdventureReset", adventureReset);
+    localStorage.setItem("birdyAdventurePlays", adventurePlays);
+    diff = 86400000;
+    updateAdventureInfo();
+  }
+  const h = Math.floor(diff/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  document.getElementById("adventureTimer").textContent = `Next 5 in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
 
 function updateUpgradeStats(){
-  const el = document.getElementById('upgradeStats');
+  const el = document.getElementById("upgradeStats");
+
   if(!el) return;
   const rate = ((baseCoinProb + coinSpawnBonus) * 100).toFixed(0);
   let html = `Coin Rate: ${rate}%`;
@@ -4103,6 +4169,7 @@ function showShop() {
     const items = [
       {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after death</small>'},
       {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''}
+      {key:"birdieV2.png", name:"5 Birds", cost:50, owned:false, extra:"<small>Extra Adventure Plays</small>"},
     ];
 
     if(section==='skins'){
@@ -4180,6 +4247,7 @@ function showShop() {
         if (totalCoins >= item.cost && !item.owned) {
           totalCoins -= item.cost;
           localStorage.setItem('birdyCoinsEarned', totalCoins);
+          updateScore();
           if(key==='Revive.png') {
             storedRevives = 1;
             localStorage.setItem('birdyRevives', storedRevives);
@@ -4187,6 +4255,10 @@ function showShop() {
           } else if(key==='Double.png') {
             storedDoubles = 1;
             localStorage.setItem('birdyDouble', storedDoubles);
+          } else if(key=="birdieV2.png") {
+            adventurePlays += 5;
+            localStorage.setItem("birdyAdventurePlays", adventurePlays);
+            updateAdventureInfo();
           }
           trackEvent('shop_item_purchased', { item: key });
           render();
@@ -4775,6 +4847,9 @@ if (state === STATE.Play) {
     }
     updateScore();
     loop();
+    updateAdventureInfo();
+    updateAdventureTimer();
+    setInterval(updateAdventureTimer,1000);
     Promise.all([
       fetchTopGlobalScores(false),
       fetchTopGlobalScores(true)
