@@ -1333,7 +1333,7 @@ trackEvent('boss_fight_start');
       ? 750
       : bossEncounterCount === 3
         ? 1500
-        : 1200;
+        : 2000;
   bossHealth       = bossMaxHealth;
   bossTriggerActive = false;
   bossTriggerMisses = 0;
@@ -1380,7 +1380,9 @@ pipes.length     = apples.length = coins.length = 0;
     ,oscPhase:0
     ,baseY:H/2
     ,stunTimer:0
-    ,bigCharge:false
+  ,bigCharge:false
+  ,phase2:false
+  ,chargeCount:0
     };
   showAchievement('🚀 Boss Incoming!');
 
@@ -1388,6 +1390,12 @@ pipes.length     = apples.length = coins.length = 0;
   function updateBoss() {
     // 1) Smoke puffs
     const p = bossObj;
+    if (bossEncounterCount === 4 && !p.phase2 && bossHealth <= bossMaxHealth/2) {
+      p.phase2 = true;
+      p.modeDuration *= 0.5;
+      showAchievement('Stormbreaker Phase!');
+      triggerShake(15);
+    }
     if(p.stunTimer>0){
       p.stunTimer--;
       if(p.stunTimer===0) p.isCharging=false;
@@ -1539,6 +1547,22 @@ if (p.pushX || p.pushY) {
           coinLoss: p.tripleFire ? 3 : 1
         });
       });
+      electricRings.push({ x:p.x, y:p.y, r:p.r*1.5, alpha:0.8, color:'cyan' });
+      triggerShake(10);
+      spawnImpactParticles(p.x, p.y, 0, 0);
+      if (p.phase2 && ++p.chargeCount % 3 === 0) {
+        for(let a=0;a<8;a++){
+          slicingDisks.push({
+            x:p.x,
+            y:p.y,
+            vx: Math.cos(a*Math.PI/4)*6,
+            vy: Math.sin(a*Math.PI/4)*6,
+            damage:15,
+            enemy:true
+          });
+        }
+        triggerShake(12);
+      }
       p.isCharging=false; p.shakeMag=0; p.justFired=true; p.tripleFire=false;
       if (bossEncounterCount === 3 && p.aggressive && p.firePipeCooldown <= 0) {
         spawnFirePipe();
@@ -1740,12 +1764,12 @@ function triggerBossAttack(){
   const p=bossObj;
   p.isCharging   = true;
   p.chargeTimer  = 0;
-  if (bossEncounterCount === 4 && p.aggressive && Math.random() < 0.5) {
+  if (bossEncounterCount === 4 && p.aggressive && Math.random() < 0.7) {
     p.bigCharge = true;
     p.chargeDuration = 40;
   } else {
     p.bigCharge = false;
-    p.chargeDuration = bossEncounterCount === 3 ? 30 : 20 + (bossHealth/bossMaxHealth)*40;
+    p.chargeDuration = bossEncounterCount === 3 ? 30 : bossEncounterCount === 4 ? 30 : 20 + (bossHealth/bossMaxHealth)*40;
   }
   p.shakeMag     = bossEncounterCount === 3 && p.aggressive ? 10 : bossEncounterCount === 4 ? 6 : 5;
 
@@ -1939,6 +1963,7 @@ radialBombs.forEach(b => {
       p.y + sy
     );
     ctx.scale(-1, 1);
+    if (p.phase2) ctx.filter = 'hue-rotate(180deg) brightness(1.2)';
     if (p.flashTimer > 0 && Math.floor(p.flashTimer/2)%2===0) {
       ctx.filter = 'brightness(2)';
     }
