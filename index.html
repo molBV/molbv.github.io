@@ -149,27 +149,78 @@
 
     /* ── Power-Up Spin Overlay ───────────────────────────── */
     #spinOverlay {
-      display:none; position:absolute; left:0; right:0;
-      top:100px; bottom:80px; background:rgba(0,0,0,0.5);
-      color:#fff; font:18px sans-serif; text-align:center;
-      z-index:20; padding-top:20px;
+      display:none;
+      position:absolute;
+      left:0; right:0;
+      top:100px; bottom:80px;
+      padding:20px;
+      background:rgba(0,0,0,0.5);
+      color:#fff;
+      font:18px sans-serif;
+      text-align:center;
+      z-index:20;
     }
-    #rouletteWrap { position:relative; width:200px; margin:10px auto; }
-    #roulette-frame { width:100%; }
+    #coinDisplay {
+      margin-bottom:8px;
+      font-size:1.2rem;
+    }
+    #rouletteWrap {
+      position:relative;
+      width:260px;
+      height:200px;
+      margin:0 auto;
+      overflow:hidden;
+    }
+    #roulette-frame {
+      position:absolute;
+      top:0; left:0;
+      width:100%;
+      pointer-events:none;
+      z-index:1;
+    }
     .reel {
-      position:absolute; top:12%; bottom:12%; width:33%; overflow:hidden;
+      position:absolute;
+      top:22px;
+      height:140px;
+      width:33.3333%;
+      overflow:hidden;
+      z-index:2;
     }
-    .reel img, .reel div {
-      position:absolute; width:80%; height:80%; left:10%; top:10%;
-      display:flex; align-items:center; justify-content:center; font-size:24px;
+    .reel:nth-child(2) { left:33.3333%; }
+    .reel:nth-child(3) { left:66.6666%; }
+    .strip {
+      position:absolute; top:0; left:0; right:0;
     }
-    .reel:nth-child(1) { left:0%; }
-    .reel:nth-child(2) { left:33%; }
-    .reel:nth-child(3) { left:66%; }
+    .symbol {
+      display:block;
+      width:100%;
+      height:40px;
+      object-fit:contain;
+      transform-origin:center center;
+    }
     #prizeText {
-      font-size:32px; font-weight:bold; margin-top:10px;
-      text-shadow:2px 2px 6px #000;
+      margin-top:12px;
+      height:1.5rem;
+      font-size:1rem;
+      text-shadow:0 0 2px #000;
     }
+    #spin-btn {
+      margin-top:12px;
+      cursor:pointer;
+      user-select:none;
+      width:120px;
+    }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%,60%{transform:translateX(-10px)}
+      40%,80%{transform:translateX(10px)}
+    }
+    .shake { animation:shake 0.5s ease-out; }
+    @keyframes blink {
+      0%,49%{opacity:1}
+      50%,100%{opacity:0}
+    }
+    .blink { animation:blink 1s step-end infinite; }
 
     @keyframes confetti-fall {
       0% { transform:translateY(-100px) rotate(0); opacity:1; }
@@ -218,28 +269,24 @@
          loop
          preload="metadata"></audio>
   <audio id="spinSound" src="assets/slot_spin.mp3"></audio>
-  <audio id="winSound" src="assets/jackpot.mp3"></audio>
+  <audio id="explosionSound" src="assets/explosion.mp3"></audio>
+  <audio id="winSound" src="assets/casino_fun.mp3"></audio>
+  <audio id="loseSound" src="assets/losing-horn.mp3"></audio>
+  <audio id="casinoTheme" src="assets/casino_theme.mp3" loop></audio>
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
   <div id="spinOverlay">
-    <img src="assets/logoslot.png" alt="Power-Up Spin" />
+    <div id="coinDisplay"></div>
     <div id="rouletteWrap">
-      <img src="assets/spin_face.png" id="roulette-frame"/>
-      <div class="reel"><div></div></div>
-      <div class="reel"><div></div></div>
-      <div class="reel"><div></div></div>
-    
+      <img src="assets/spin_face.png" id="roulette-frame" alt=""/>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
     </div>
     <div id="prizeText"></div>
-    <div style="margin-top:10px;">
-      <img src="assets/spin_button.png" id="spin-btn" style="width:80px;cursor:pointer;"/>
-    </div>
-    <div style="margin-top:10px;">
-      <img src="assets/mini_logo_slot.png" style="width:100px;"/>
-      <div>Cost: 10 Coins</div>
-    </div>
+    <img id="spin-btn" src="assets/spin_button.png" alt="Spin">
   </div>
   <div id="menu">
     <button id="btnAdventure" class="menu-btn">Adventure</button>
@@ -780,6 +827,8 @@ const tossBombs   = [];   // upward‐toss bombs
   });
 
   const spinOverlay = document.getElementById('spinOverlay');
+  const coinDisplay = document.getElementById('coinDisplay');
+  const spinBtn = document.getElementById('spin-btn');
   spinOverlay.addEventListener('click', () => {
     if (spinOverlayClickable) closeSpinOverlay();
   });
@@ -846,12 +895,19 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const settingsPanel = document.getElementById('settingsPanel');
     const volumeSlider = document.getElementById('volumeSlider');
     volumeSlider.value = globalVolume;
-    const spinSound = document.getElementById("spinSound");
-    const winSound = document.getElementById("winSound");
+    const spinSound = document.getElementById('spinSound');
+    const explosionSound = document.getElementById('explosionSound');
+    const winSound = document.getElementById('winSound');
+    const loseSound = document.getElementById('loseSound');
+    const casinoTheme = document.getElementById('casinoTheme');
     function applyVolume() {
       bgMusic.volume = globalVolume;
       mechaMusic.volume = globalVolume;
       explosionSfx.volume = 0.4 * globalVolume;
+      explosionSound.volume = globalVolume;
+      winSound.volume = globalVolume;
+      loseSound.volume = globalVolume;
+      casinoTheme.volume = globalVolume;
     }
     applyVolume();
 
@@ -892,9 +948,6 @@ document.addEventListener('keydown',   initMusic, {passive:true});
         showAchievement('Not enough coins');
         return;
       }
-      totalCoins -= 10;
-      localStorage.setItem('birdyCoinsEarned', totalCoins);
-      updateScore();
       startRoulette();
     };
 
@@ -994,6 +1047,7 @@ const staggerSparks = [];
     let tripleElectric = false;
     let spinReturnToMenu = false;
     let spinOverlayClickable = false;
+    let prevMusic = null;
     let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
     let adventureReset = parseInt(localStorage.getItem("birdyAdventureReset") || Date.now());
     function resetAdventurePlaysIfNeeded(){
@@ -3645,14 +3699,109 @@ function finalizeGameOver(){
   showPowerUpSpin();
 }
 
-function weightedRandomSymbol() {
-  const total = symbols.reduce((s, p) => s + p.weight, 0);
-  let r = Math.random() * total;
-  for (const sym of symbols) {
-    r -= sym.weight;
-    if (r <= 0) return sym;
+const GOOD_PROB = 0.5,
+      BAD_PROB = 0.2,
+      NOTHING_PROB = 0.3;
+
+const ROLLS = 20,
+      ROW_H  = 40,
+      DURS   = [2000,3500,5000];
+
+const FIRST9 = [
+  'Revive.png','Double.png','Magnet.png',
+  'rocket1.png','1.png','5.png','10.png','50.png',
+  'birdieV2.png'
+];
+const LOSE_MAP = {
+  'pipe_move.png':'Pipes Move',
+  'ball.png':'Heavy Load',
+  'stinky.png':'Scare Jelly'
+};
+const SYMBOLS = [...FIRST9, ...Object.keys(LOSE_MAP)];
+const GOOD_LABELS = { 'birdieV2.png':'Daily Play' };
+
+const WIN_HEIGHT = 100,
+      PRIZE_TARGET_Y = WIN_HEIGHT/2 - ROW_H/2;
+
+function updateCoins(){
+  coinDisplay.textContent = `Coins: ${totalCoins}`;
+}
+function doShake(){
+  spinOverlay.classList.add('shake');
+  setTimeout(()=>spinOverlay.classList.remove('shake'), 500);
+}
+
+let ticking = false;
+function tickScale(){
+  reels.forEach(reel => {
+    const rect = reel.getBoundingClientRect();
+    const midY = rect.top + rect.height/2;
+    reel.querySelectorAll('.symbol').forEach(img => {
+      const r    = img.getBoundingClientRect();
+      const ic   = r.top + r.height/2;
+      const d    = Math.abs(ic - midY);
+      const maxD = rect.height/2 + r.height;
+      const s    = 1 + Math.max(0,1 - (d/maxD)) * 0.5;
+      img.style.transform = `scale(${s})`;
+    });
+  });
+  if(ticking) requestAnimationFrame(tickScale);
+}
+
+function chooseOutcome(){
+  const r = Math.random();
+  if (r < GOOD_PROB){
+    let sym;
+    if (Math.random() < 0.25) {
+      sym = 'Revive.png';
+    } else {
+      const others = FIRST9.filter(s => s !== 'Revive.png');
+      sym = others[Math.floor(Math.random()*others.length)];
+    }
+    return { result: [sym,sym,sym], type: 'good' };
   }
-  return symbols[symbols.length - 1];
+  else if (r < GOOD_PROB + BAD_PROB){
+    const bads = Object.keys(LOSE_MAP);
+    const mid  = bads[Math.floor(Math.random()*bads.length)];
+    let l, r2;
+    do {
+      l  = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+      r2 = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+    } while(l===mid && r2===mid);
+    return { result: [l, mid, r2], type: 'bad' };
+  }
+  else {
+    let l = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)],
+        m = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)],
+        r2= SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+    while(l===m && m===r2){
+      m = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+    }
+    return { result: [l,m,r2], type: 'none' };
+  }
+}
+
+function buildStrip(finalSym){
+  const frag = document.createDocumentFragment();
+  for(let i=0;i<ROLLS;i++){
+    const img = document.createElement('img');
+    img.src       = `assets/${SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]}`;
+    img.className = 'symbol';
+    frag.appendChild(img);
+  }
+  const prize = document.createElement('img');
+  prize.src       = `assets/${finalSym}`;
+  prize.className = 'symbol';
+  frag.appendChild(prize);
+  const extra = document.createElement('img');
+  extra.src       = `assets/${SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]}`;
+  extra.className = 'symbol';
+  frag.appendChild(extra);
+  return frag;
+}
+
+function blinkCenter(r){
+  r.querySelectorAll('.symbol')[ROLLS].classList.add('blink');
 }
 
 function showPowerUpSpin(returnToMenu=false) {
@@ -3660,6 +3809,7 @@ function showPowerUpSpin(returnToMenu=false) {
   const ov=document.getElementById("spinOverlay");
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
+  document.getElementById('coinDisplay').textContent = `Coins: ${totalCoins}`;
   spinOverlayClickable=false;
 
   document.getElementById("spin-btn").style.pointerEvents="auto";
@@ -3667,6 +3817,12 @@ function showPowerUpSpin(returnToMenu=false) {
 
 function closeSpinOverlay() {
   document.getElementById("spinOverlay").style.display="none";
+  casinoTheme.pause();
+  casinoTheme.currentTime = 0;
+  if(prevMusic) {
+    prevMusic.play().catch(()=>{});
+    prevMusic = null;
+  }
   if(spinReturnToMenu){
     menuEl.style.display="block";
   }else{
@@ -3680,97 +3836,117 @@ function closeSpinOverlay() {
 const reels = [];
 document.querySelectorAll('#spinOverlay .reel').forEach(r => reels.push(r));
 
-function setSymbol(el, sym) {
-  el.innerHTML = '';
-  el.appendChild(sym.node.cloneNode(true));
-}
+function startRoulette(){
+  spinBtn.style.pointerEvents = 'none';
+  prevMusic = !bgMusic.paused ? bgMusic : (!mechaMusic.paused ? mechaMusic : null);
+  if(prevMusic) prevMusic.pause();
+  casinoTheme.currentTime = 0;
+  casinoTheme.play().catch(()=>{});
 
-function animateReel(el,target,opts){
-  const start=performance.now();
-  let last=start;
-  function swap(sym){
-    const curr=el.firstElementChild;
-    const next=sym.node.cloneNode(true);
-    next.style.transform="translateY(-100%)";
-    next.style.transition="transform 0.25s linear";
-    curr.style.transition="transform 0.25s linear";
+  const { result, type } = chooseOutcome();
+  document.getElementById('prizeText').textContent = '';
+  totalCoins -= 10;
+  localStorage.setItem('birdyCoinsEarned', totalCoins);
+  updateCoins();
+  updateScore();
 
-    el.appendChild(next);
-    requestAnimationFrame(()=>{
-      curr.style.transform="translateY(100%)";
-      next.style.transform="translateY(0)";
-    });
-    next.addEventListener("transitionend",()=>{curr.remove();}, {once:true});
-  }
-  function step(t){
-    const elapsed=t-start;
-    if(elapsed>=opts.duration){swap(target);return;}
-    const delay=250+elapsed/6;
-    if(t-last>delay){
-      swap(symbols[Math.floor(Math.random()*symbols.length)]);last=t;
+  ticking = true;
+  requestAnimationFrame(tickScale);
+
+  const finalShift = -(ROW_H * ROLLS - PRIZE_TARGET_Y);
+
+  reels.forEach((reel,i) => {
+    const strip = reel.querySelector('.strip');
+    strip.style.transition = 'none';
+    strip.innerHTML        = '';
+    strip.appendChild(buildStrip(result[i]));
+
+    const initShift = ROW_H * 5;
+    strip.style.transform = `translateY(${initShift}px)`;
+    void strip.offsetWidth;
+
+    if(i===0){
+      spinSound.currentTime = 0;
+      spinSound.play();
     }
 
-    requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-function startRoulette(){
-  document.getElementById("spin-btn").style.pointerEvents="none";
-  const results=[weightedRandomSymbol(),weightedRandomSymbol(),weightedRandomSymbol()];
-  const durations=[4000,6000,8000];
+    strip.style.transition = `transform ${DURS[i]}ms cubic-bezier(.75,0,.25,1)`;
+    strip.style.transform  = `translateY(${finalShift}px)`;
 
-  spinSound.currentTime=0;
-  spinSound.play().catch(()=>{});
-  reels.forEach((r,i)=>{
-    animateReel(r,results[i],{duration:durations[i]});
+    setTimeout(()=>{
+      explosionSound.volume       = 0.5 * globalVolume;
+      explosionSound.playbackRate = 2;
+      explosionSound.currentTime  = 0;
+      explosionSound.play();
+      doShake();
+
+      if(i === reels.length - 1){
+        ticking = false;
+        reels.forEach(blinkCenter);
+        casinoTheme.pause();
+        casinoTheme.currentTime = 0;
+        if(prevMusic){ prevMusic.play().catch(()=>{}); prevMusic=null; }
+
+        if (type === 'bad') {
+          loseSound.currentTime = 0;
+          loseSound.play();
+          document.getElementById('prizeText').textContent = `Oh No: ${LOSE_MAP[result[1]]}`;
+        }
+        else if (type === 'none') {
+          document.getElementById('prizeText').textContent = `Nothing this spin…`;
+        }
+        else {
+          winSound.currentTime = 0;
+          winSound.play();
+          const sym = result[1];
+          const label = GOOD_LABELS[sym] || sym.replace('.png','');
+          document.getElementById('prizeText').textContent = `You got ${label}!`;
+          handleReward(sym, label);
+        }
+
+        updateCoins();
+        updateScore();
+        spinOverlayClickable = true;
+      }
+    }, DURS[i]);
   });
-  const total=Math.max(...durations);
-  setTimeout(()=>{spinSound.pause();spinSound.currentTime=0;applyReward(results);},total+200);
-}
-function applyReward(results){
-  const [a,b,c]=results.map(r=>r.id);
-  const id=(a===b&&b===c)?a:results[1].id;
-  deliverReward(id);
-  const text=id.replace(/([A-Z])/g," $1").trim();
-  document.getElementById("prizeText").textContent="You won "+text+"!";
-  winSound.currentTime=0;winSound.play().catch(()=>{});
-  showConfetti();
-  showFireworks();
-  spinOverlayClickable=true;
-
 }
 
-function deliverReward(id) {
-  switch (id) {
-    case 'Revive':
+function handleReward(sym,label){
+  switch (sym) {
+    case 'Revive.png':
       storedRevives = 1;
       localStorage.setItem('birdyRevives', storedRevives);
       updateReviveDisplay();
       break;
-    case 'DoubleCoins':
+    case 'Double.png':
       storedDoubles = 1;
       localStorage.setItem('birdyDouble', storedDoubles);
       break;
-    case 'Magnet':
+    case 'Magnet.png':
       spinMagnet = 1;
       localStorage.setItem('spinMagnet', '1');
       break;
-    case 'TripleRockets':
+    case 'rocket1.png':
       spinTriple = 1;
       localStorage.setItem('spinTriple', '1');
       break;
-    case 'Coin1':
+    case '1.png':
       totalCoins += 1; break;
-    case 'Coin5':
+    case '5.png':
       totalCoins += 5; break;
-    case 'Coin10':
+    case '10.png':
       totalCoins += 10; break;
-    case 'Coin50':
+    case '50.png':
       totalCoins += 50; break;
+    case 'birdieV2.png':
+      adventurePlays += 1;
+      localStorage.setItem('birdyAdventurePlays', adventurePlays);
+      updateAdventureInfo();
+      break;
   }
-  if (id.startsWith('Coin')) {
+  if(['1.png','5.png','10.png','50.png'].includes(sym)){
     localStorage.setItem('birdyCoinsEarned', totalCoins);
-    updateScore();
   }
 }
 function showConfetti(){
