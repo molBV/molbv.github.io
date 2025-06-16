@@ -57,29 +57,87 @@
 
     #menu {
       position:absolute;
-      top:200px;
+      top:50%;
       left:50%;
-      transform:translateX(-50%);
+      transform:translate(-50%, -50%);
+      width:320px;
+      padding:24px;
+      background:rgba(255,255,255,0.1);
+      backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,0.3);
+      border-radius:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.2);
       text-align:center;
       z-index:15;
     }
-    .menu-btn {
+    #menu h1 {
+      font-size:32px;
+      color:#FFD54F;
+      text-shadow:2px 2px 4px rgba(0,0,0,0.6);
+      margin-bottom:4px;
+    }
+    #menu h2 {
+      font-size:16px;
+      color:#fff;
+      text-shadow:2px 2px 4px rgba(0,0,0,0.6);
+      margin-bottom:16px;
+    }
+    .menu-btn.primary {
       display:block;
-      margin:10px auto;
-      padding:10px 20px;
+      width:100%;
+      margin:8px 0;
+      padding:12px;
       font-size:20px;
-      border:4px solid #000;
-      background:#fff;
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      box-shadow:0 4px 8px rgba(0,0,0,0.2);
       cursor:pointer;
     }
-    #adventureInfo {
-      text-align:center;
-      color:#fff;
-      text-shadow:2px 2px 4px #000;
-      font:1rem sans-serif;
+    .menu-btn.primary.adventure { background:#66BB6A; }
+    .menu-btn.primary.marathon  { background:#42A5F5; }
+    .menu-btn.primary.gauntlet  { background:#EF5350; }
+    .menu-row {
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      margin:16px 0;
     }
-    #adventureTimer { font-size:0.9rem; }
-    #buyBirdBtn { font-size:16px; padding:4px 8px; margin:4px auto; }
+    .menu-btn.secondary {
+      width:64px;
+      height:64px;
+      background:rgba(255,255,255,0.8);
+      border:none;
+      border-radius:12px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.2);
+      color:#333;
+      font-size:12px;
+      display:inline-flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+    }
+    .menu-btn.secondary span {
+      display:block;
+      margin-top:4px;
+    }
+    .stats {
+      display:flex;
+      justify-content:space-between;
+      color:#fff;
+      font-size:16px;
+      text-shadow:1px 1px 3px rgba(0,0,0,0.6);
+      margin-top:16px;
+    }
+    .adventure-info {
+      font-size:14px;
+      color:#fff;
+      margin-bottom:8px;
+    }
+    #adventureTimer.flash {
+      margin-left:8px;
+    }
     #achievementPopup {
       position:absolute;
       top:20px;
@@ -167,7 +225,7 @@
       text-align:center;
       z-index:20;
     }
-    #coinDisplay {
+    #spinCoinDisplay {
       margin-bottom:8px;
       font-size:1.2rem;
     }
@@ -286,7 +344,7 @@
   <div id="effectDisplay"></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
   <div id="spinOverlay">
-    <div id="coinDisplay"></div>
+    <div id="spinCoinDisplay"></div>
     <div id="rouletteWrap">
       <img src="assets/spin_face.png" id="roulette-frame" alt=""/>
       <div class="reel"><div class="strip"></div></div>
@@ -297,18 +355,40 @@
     <img id="spin-btn" src="assets/spin_button.png" alt="Spin">
   </div>
   <div id="menu">
-    <button id="btnAdventure" class="menu-btn">Adventure</button>
-    <div id="adventureInfo">
-      <div><img src="assets/birdieV2.png" width="24" height="24"> <span id="adventureCount">5/5</span></div>
-      <div id="adventureTimer" class="flash"></div>
-      <button id="buyBirdBtn" class="menu-btn">Buy Bird - 20 Coins</button>
+    <h1>AVIAR</h1>
+    <h2>Rocket Birdie</h2>
+
+    <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
+    <div class="adventure-info">
+      <span id="adventureCount">5/5</span>
+      <span id="adventureTimer" class="flash"></span><br/>
+      <button id="buyBirdBtn" class="menu-btn primary" style="font-size:16px; padding:6px 12px; margin-top:8px;">
+        Buy Bird – 20 Coins
+      </button>
     </div>
-    <button id="btnMarathon"  class="menu-btn">Marathon<br/><small>(Pipes Only)</small></button>
-    <button id="btnGauntlet" class="menu-btn">Gauntlet<br/><small>Bosses Only</small></button>
-    <button id="btnAchievements" class="menu-btn">Achievements</button>
-    <button id="btnStory" class="menu-btn">📖 Story Log</button>
-    <button id="btnShop" class="menu-btn">Shop</button>
-    <button id="btnDailySpin" class="menu-btn">Daily Spin</button>
+
+    <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
+    <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
+
+    <div class="menu-row">
+      <button id="btnAchievements" class="menu-btn secondary">
+        🏆<span>Achievements</span>
+      </button>
+      <button id="btnStory" class="menu-btn secondary">
+        <span class="flash">📖</span><span>Story Log</span>
+      </button>
+      <button id="btnShop" class="menu-btn secondary">
+        🛒<span>Shop</span>
+      </button>
+      <button id="btnLeaderboard" class="menu-btn secondary">
+        📊<span>Leaderboard</span>
+      </button>
+    </div>
+
+    <div class="stats">
+      <div>🪙 <span id="coinDisplay">0</span></div>
+      <div>Best <span id="bestScore">0</span></div>
+    </div>
   </div>
   <div id="achievementPopup"></div>
   <div id="storyPopup"></div>
@@ -811,17 +891,16 @@ let marathonMoving = false;
     menuEl.style.display = 'none';
     showShop();
   };
-  document.getElementById("btnDailySpin").onclick = () => {
-    if(adventurePlays<=0){
-      showAchievement("No birds left");
-      menuEl.style.display = "block";
-      return;
-    }
-    adventurePlays--;
-    localStorage.setItem("birdyAdventurePlays", adventurePlays);
-    updateAdventureInfo();
-    menuEl.style.display = "none";
-    showPowerUpSpin(true);
+  document.getElementById('btnLeaderboard').onclick = () => {
+    menuEl.style.display = 'none';
+    Promise.all([
+      fetchTopGlobalScores(false),
+      fetchTopGlobalScores(true)
+    ]).then(([adv, mar]) => {
+      const ov = document.getElementById('overlay');
+      ov.style.display = 'block';
+      showHighScores(adv, mar, true);
+    });
   };
 
   document.getElementById("buyBirdBtn").onclick = () => {
@@ -832,6 +911,7 @@ let marathonMoving = false;
       localStorage.setItem("birdyAdventurePlays", adventurePlays);
       updateScore();
       updateAdventureInfo();
+      updateCoins();
     } else {
       showAchievement("Not enough coins");
     }
@@ -944,6 +1024,7 @@ const tossBombs   = [];   // upward‐toss bombs
 
   const spinOverlay = document.getElementById('spinOverlay');
   const coinDisplay = document.getElementById('coinDisplay');
+  const spinCoinDisplay = document.getElementById('spinCoinDisplay');
   const spinBtn = document.getElementById('spin-btn');
   spinOverlay.addEventListener('click', () => {
     if (spinOverlayClickable) closeSpinOverlay();
@@ -1148,6 +1229,8 @@ const staggerSparks = [];
     let lastPlayerName = localStorage.getItem('birdyName') || '';
     let totalCoins   = parseInt(localStorage.getItem('birdyCoinsEarned')) || 0;
       if (totalCoins >= 500) unlockAchievement('coins500');
+    document.getElementById('coinDisplay').textContent = totalCoins;
+    document.getElementById('bestScore').textContent = personalBest;
     let storedRevives = parseInt(localStorage.getItem('birdyRevives')||'0');
     let storedDoubles = parseInt(localStorage.getItem('birdyDouble')||'0');
     let spinMagnet  = parseInt(localStorage.getItem('spinMagnet')||'0');
@@ -3682,6 +3765,7 @@ function updateSliceDisks() {
       if (totalCoins >= 500) unlockAchievement('coins500');
       playTone(1000, 0.1);//playChord('V', audioCtx.currentTime);
       updateScore();
+      updateCoins();
       runCoins++;
       if (runCoins >= 10) unlockAchievement('coin10');
       if (runCoins >= 50) triggerStoryEvent('Coin_Offering');
@@ -3923,6 +4007,7 @@ function finalizeGameOver(){
   if (score > personalBest) {
     personalBest = score;
     localStorage.setItem('birdyBestScore', personalBest);
+    document.getElementById('bestScore').textContent = personalBest;
   }
 
   playTone(100, 0.3);
@@ -3955,7 +4040,10 @@ const WIN_HEIGHT = 100,
       PRIZE_TARGET_Y = WIN_HEIGHT/2 - ROW_H/2;
 
 function updateCoins(){
-  coinDisplay.textContent = `Coins: ${totalCoins}`;
+  coinDisplay.textContent = totalCoins;
+  if (spinCoinDisplay) {
+    spinCoinDisplay.textContent = `Coins: ${totalCoins}`;
+  }
 }
 function doShake(){
   spinOverlay.classList.add('shake');
@@ -4042,7 +4130,9 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   const ov=document.getElementById("spinOverlay");
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
-  document.getElementById('coinDisplay').textContent = `Coins: ${totalCoins}`;
+  if (spinCoinDisplay) {
+    spinCoinDisplay.textContent = `Coins: ${totalCoins}`;
+  }
   spinOverlayClickable=false;
 
   document.getElementById("spin-btn").style.pointerEvents="auto";
@@ -4216,6 +4306,7 @@ function handleReward(sym,label){
   }
   if(['1.png','5.png','10.png','50.png'].includes(sym)){
     localStorage.setItem('birdyCoinsEarned', totalCoins);
+    updateCoins();
   }
 }
 function showConfetti(){
