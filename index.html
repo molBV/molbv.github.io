@@ -5063,9 +5063,6 @@ document.addEventListener('keydown', e=>{
         const nameY  = Math.max(60, (menuRect.top - canvasRect.top) * scale - 20);
         const questY = (menuRect.bottom - canvasRect.top) * scale + 20;
 
-        ctx.font = '32px sans-serif';
-        ctx.fillText('Aviar - Rocket Birdie', W/2, nameY);
-
         const quest = nextAchievementDesc();
         if (quest) {
           ctx.save();
@@ -5075,9 +5072,6 @@ document.addEventListener('keydown', e=>{
           ctx.restore();
         }
 
-        ctx.font = '18px sans-serif';
-        ctx.fillText(`🟡 Coins Earned: ${totalCoins}`, W/2, H - 70);
-        ctx.fillText(`Personal Best: ${personalBest}`, W/2, H - 40);
       }
     }
     // screen-shake state
