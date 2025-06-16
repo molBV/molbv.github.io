@@ -34,6 +34,13 @@
       z-index:25;                     /* above overlay */
       display:flex; align-items:center;
     }
+    #effectDisplay {
+      position:absolute; bottom:10px; left:50%;
+      transform:translateX(-50%);
+      display:flex; gap:4px;
+      z-index:25;
+    }
+    #effectDisplay img { width:24px; height:24px; }
     #overlay {
       display:none; position:absolute; left:0;
       top:100px; bottom:80px;           /* leave score and coins visible */
@@ -276,6 +283,7 @@
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
+  <div id="effectDisplay"></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
   <div id="spinOverlay">
     <div id="coinDisplay"></div>
@@ -660,11 +668,34 @@ let marathonMoving = false;
       magnetActive = true;
       spinMagnet = 0;
       localStorage.removeItem('spinMagnet');
+      addEffectIcon('magnet','assets/Magnet.png');
     }
     if (spinTriple) {
       tripleShot = true;
       spinTriple = 0;
       localStorage.removeItem('spinTriple');
+      addEffectIcon('triple','assets/rocket1.png');
+    }
+    if (spinHeavy) {
+      heavyLoadActive = true;
+      spinHeavy = 0;
+      localStorage.removeItem('spinHeavy');
+      heavyBall.x = bird.x + 40;
+      heavyBall.y = bird.y + 40;
+      addEffectIcon('heavy','assets/ball.png');
+    }
+    if (spinPipeMove) {
+      marathonMoving = true;
+      pipeMoveActive = true;
+      spinPipeMove = 0;
+      localStorage.removeItem('spinPipeMove');
+      addEffectIcon('pipe','assets/pipe_move.png');
+    }
+    if (spinStinky) {
+      scareJellyActive = true;
+      spinStinky = 0;
+      localStorage.removeItem('spinStinky');
+      addEffectIcon('stinky','assets/stinky.png');
     }
     state = STATE.Play;
     trackEvent('game_start');
@@ -683,11 +714,34 @@ let marathonMoving = false;
       magnetActive = true;
       spinMagnet = 0;
       localStorage.removeItem('spinMagnet');
+      addEffectIcon('magnet','assets/Magnet.png');
     }
     if (spinTriple) {
       tripleShot = true;
       spinTriple = 0;
       localStorage.removeItem('spinTriple');
+      addEffectIcon('triple','assets/rocket1.png');
+    }
+    if (spinHeavy) {
+      heavyLoadActive = true;
+      spinHeavy = 0;
+      localStorage.removeItem('spinHeavy');
+      heavyBall.x = bird.x + 40;
+      heavyBall.y = bird.y + 40;
+      addEffectIcon('heavy','assets/ball.png');
+    }
+    if (spinPipeMove) {
+      marathonMoving = true;
+      pipeMoveActive = true;
+      spinPipeMove = 0;
+      localStorage.removeItem('spinPipeMove');
+      addEffectIcon('pipe','assets/pipe_move.png');
+    }
+    if (spinStinky) {
+      scareJellyActive = true;
+      spinStinky = 0;
+      localStorage.removeItem('spinStinky');
+      addEffectIcon('stinky','assets/stinky.png');
     }
     state = STATE.Play;
     trackEvent('game_start_marathon');
@@ -706,11 +760,34 @@ let marathonMoving = false;
       magnetActive = true;
       spinMagnet = 0;
       localStorage.removeItem('spinMagnet');
+      addEffectIcon('magnet','assets/Magnet.png');
     }
     if (spinTriple) {
       tripleShot = true;
       spinTriple = 0;
       localStorage.removeItem('spinTriple');
+      addEffectIcon('triple','assets/rocket1.png');
+    }
+    if (spinHeavy) {
+      heavyLoadActive = true;
+      spinHeavy = 0;
+      localStorage.removeItem('spinHeavy');
+      heavyBall.x = bird.x + 40;
+      heavyBall.y = bird.y + 40;
+      addEffectIcon('heavy','assets/ball.png');
+    }
+    if (spinPipeMove) {
+      marathonMoving = true;
+      pipeMoveActive = true;
+      spinPipeMove = 0;
+      localStorage.removeItem('spinPipeMove');
+      addEffectIcon('pipe','assets/pipe_move.png');
+    }
+    if (spinStinky) {
+      scareJellyActive = true;
+      spinStinky = 0;
+      localStorage.removeItem('spinStinky');
+      addEffectIcon('stinky','assets/stinky.png');
     }
     coinCount = 10;
     mechaTriggered = true;
@@ -1075,6 +1152,20 @@ const staggerSparks = [];
     let storedDoubles = parseInt(localStorage.getItem('birdyDouble')||'0');
     let spinMagnet  = parseInt(localStorage.getItem('spinMagnet')||'0');
     let spinTriple  = parseInt(localStorage.getItem('spinTriple')||'0');
+    let spinHeavy   = parseInt(localStorage.getItem('spinHeavy')||'0');
+    let spinPipeMove= parseInt(localStorage.getItem('spinPipeMove')||'0');
+    let spinStinky  = parseInt(localStorage.getItem('spinStinky')||'0');
+    let heavyLoadActive = false;
+    let pipeMoveActive  = false;
+    let scareJellyActive= false;
+    const smellParticles = [];
+    const ballImg = Object.assign(new Image(), { src:'assets/ball.png' });
+    const heavyBall = { x:0, y:0, vx:0, vy:0 };
+    if (spinMagnet) addEffectIcon('magnet','assets/Magnet.png');
+    if (spinTriple) addEffectIcon('triple','assets/rocket1.png');
+    if (spinHeavy) addEffectIcon('heavy','assets/ball.png');
+    if (spinPipeMove) addEffectIcon('pipe','assets/pipe_move.png');
+    if (spinStinky) addEffectIcon('stinky','assets/stinky.png');
     let usedRevive    = false;
     let reviveTimer   = 0;
     const reviveRings = [];
@@ -2260,7 +2351,7 @@ function drawBackground(){
                   color: Math.random()<0.5?'cyan':'magenta' });
               }
             } else {
-              this.vel += this.gravity;
+              this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1);
             }
             this.y += this.vel;
           }
@@ -2860,6 +2951,46 @@ function updateReviveEffect() {
     if(discModeTimer>0) discModeTimer--;
   }
 
+  function updateHeavyBall(){
+    if(!heavyLoadActive) return;
+    const dx=bird.x-heavyBall.x, dy=bird.y-heavyBall.y;
+    const dist=Math.hypot(dx,dy)||1;
+    const len=40;
+    heavyBall.vx+= (dx/dist)*(dist-len)*0.1;
+    heavyBall.vy+= (dy/dist)*(dist-len)*0.1 + 0.3;
+    heavyBall.vx*=0.98;
+    heavyBall.vy*=0.98;
+    heavyBall.x+=heavyBall.vx;
+    heavyBall.y+=heavyBall.vy;
+    ctx.save();
+    ctx.strokeStyle='#666';
+    ctx.beginPath();
+    ctx.moveTo(bird.x,bird.y);
+    ctx.lineTo(heavyBall.x,heavyBall.y);
+    ctx.stroke();
+    ctx.drawImage(ballImg, heavyBall.x-16, heavyBall.y-16,32,32);
+    ctx.restore();
+  }
+
+  function updateSmell(){
+    if(!scareJellyActive) return;
+    smellParticles.push({x:bird.x,y:bird.y,life:30});
+    for(let i=smellParticles.length-1;i>=0;i--){
+      const p=smellParticles[i];
+      p.life--;
+      p.x+=(Math.random()-0.5)*1;
+      p.y+=(Math.random()-0.5)*1;
+      ctx.save();
+      ctx.globalAlpha=p.life/30;
+      ctx.fillStyle='green';
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,4,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+      if(p.life<=0) smellParticles.splice(i,1);
+    }
+  }
+
     function drawPipes(){
       pipes.forEach(p=>{
         const img = p.img;
@@ -3243,6 +3374,9 @@ function updateJellies() {
   if (!inMecha || bossActive) return;
   for (let i = jellies.length - 1; i >= 0; i--) {
     const j = jellies[i];
+    if (scareJellyActive && Math.hypot(bird.x - j.x, bird.y - j.y) < 80) {
+      j.vx = Math.abs(j.vx);
+    }
     const ts = slowMoTimer > 0 ? 0.5 : 1;
     const speedFactor = j.freezeTimer > 0 ? 0 : 1 - j.slowStacks * 0.1;
     if (j.freezeTimer > 0) j.freezeTimer--;
@@ -3689,6 +3823,22 @@ function updateAdventureTimer(){
   document.getElementById("adventureTimer").textContent = `Next 5 in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
+function addEffectIcon(key, src){
+  const ed=document.getElementById('effectDisplay');
+  if(document.getElementById('effect-'+key)) return;
+  const img=document.createElement('img');
+  img.id='effect-'+key;
+  img.src=src;
+  ed.appendChild(img);
+}
+function removeEffectIcon(key){
+  const img=document.getElementById('effect-'+key);
+  if(img) img.remove();
+}
+function clearEffectIcons(){
+  document.getElementById('effectDisplay').innerHTML='';
+}
+
 function updateUpgradeStats(){
   const el = document.getElementById("upgradeStats");
 
@@ -4013,10 +4163,12 @@ function handleReward(sym,label){
     case 'Magnet.png':
       spinMagnet = 1;
       localStorage.setItem('spinMagnet', '1');
+      addEffectIcon('magnet','assets/Magnet.png');
       break;
     case 'rocket1.png':
       spinTriple = 1;
       localStorage.setItem('spinTriple', '1');
+      addEffectIcon('triple','assets/rocket1.png');
       break;
     case '1.png':
       totalCoins += 1; break;
@@ -4030,6 +4182,21 @@ function handleReward(sym,label){
       adventurePlays += 1;
       localStorage.setItem('birdyAdventurePlays', adventurePlays);
       updateAdventureInfo();
+      break;
+    case 'ball.png':
+      spinHeavy = 1;
+      localStorage.setItem('spinHeavy','1');
+      addEffectIcon('heavy','assets/ball.png');
+      break;
+    case 'pipe_move.png':
+      spinPipeMove = 1;
+      localStorage.setItem('spinPipeMove','1');
+      addEffectIcon('pipe','assets/pipe_move.png');
+      break;
+    case 'stinky.png':
+      spinStinky = 1;
+      localStorage.setItem('spinStinky','1');
+      addEffectIcon('stinky','assets/stinky.png');
       break;
   }
   if(['1.png','5.png','10.png','50.png'].includes(sym)){
@@ -4221,6 +4388,11 @@ function handleHit(){
   doubleActive = false;
   doubleRings.length = 0;
   doublePulse = 0;
+  heavyLoadActive = false;
+  pipeMoveActive = false;
+  scareJellyActive = false;
+  smellParticles.length = 0;
+  clearEffectIcons();
 }
    // ── 3) GAME OVER / LEADERBOARD ──────────────────────────────
 
@@ -4853,6 +5025,8 @@ if (state === STATE.Boss) {
   updateDoubleEffect();
   updateElectricEffect();
   updateMagnetEffect();
+  updateSmell();
+  updateHeavyBall();
   bird.draw();
 
   // 4) draw the boss on top
@@ -5027,6 +5201,8 @@ if (state === STATE.Play) {
     updateDoubleEffect();
     updateElectricEffect();
     updateMagnetEffect();
+    updateSmell();
+    updateHeavyBall();
     if(!gauntletMode){
       drawPipes();
       updatePipes();
