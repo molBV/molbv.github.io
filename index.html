@@ -295,7 +295,8 @@
       <div id="adventureTimer" class="flash"></div>
       <button id="buyBirdBtn" class="menu-btn">Buy Bird - 20 Coins</button>
     </div>
-    <button id="btnMarathon"  class="menu-btn">Marathon</button>
+    <button id="btnMarathon"  class="menu-btn">Marathon<br/><small>(Pipes Only)</small></button>
+    <button id="btnGauntlet" class="menu-btn">Gauntlet<br/><small>Bosses Only</small></button>
     <button id="btnAchievements" class="menu-btn">Achievements</button>
     <button id="btnStory" class="menu-btn">📖 Story Log</button>
     <button id="btnShop" class="menu-btn">Shop</button>
@@ -633,12 +634,14 @@ const storyEntries = [
   let runPipes=0, runCoins=0, runJellies=0, runPowerups=0, runPipeBreaks=0;
 
 let marathonMode = false;
+let gauntletMode = false;
 let marathonMoving = false;
 
   const menuEl = document.getElementById('menu');
 
   function startAdventure(){
     marathonMode = false;
+    gauntletMode = false;
     if(adventurePlays<=0){
       showAchievement("No birds left");
       menuEl.style.display = "block";
@@ -669,6 +672,7 @@ let marathonMoving = false;
 
   function startMarathon(){
     marathonMode = true;
+    gauntletMode = false;
     menuEl.style.display = 'none';
     if (storedDoubles > 0) {
       storedDoubles--;
@@ -689,8 +693,35 @@ let marathonMoving = false;
     trackEvent('game_start_marathon');
   }
 
+  function startGauntlet(){
+    marathonMode = false;
+    gauntletMode = true;
+    menuEl.style.display = 'none';
+    if (storedDoubles > 0) {
+      storedDoubles--;
+      localStorage.setItem('birdyDouble', storedDoubles);
+      doubleActive = true;
+    }
+    if (spinMagnet) {
+      magnetActive = true;
+      spinMagnet = 0;
+      localStorage.removeItem('spinMagnet');
+    }
+    if (spinTriple) {
+      tripleShot = true;
+      spinTriple = 0;
+      localStorage.removeItem('spinTriple');
+    }
+    coinCount = 10;
+    mechaTriggered = true;
+    state = STATE.MechaTransit;
+    startMechaTransition();
+    trackEvent('game_start_gauntlet');
+  }
+
   document.getElementById('btnAdventure').onclick = startAdventure;
   document.getElementById('btnMarathon').onclick  = startMarathon;
+  document.getElementById('btnGauntlet').onclick  = startGauntlet;
   document.getElementById('btnAchievements').onclick = () => {
     menuEl.style.display = 'none';
     showAchievementsList();
@@ -704,6 +735,14 @@ let marathonMoving = false;
     showShop();
   };
   document.getElementById("btnDailySpin").onclick = () => {
+    if(adventurePlays<=0){
+      showAchievement("No birds left");
+      menuEl.style.display = "block";
+      return;
+    }
+    adventurePlays--;
+    localStorage.setItem("birdyAdventurePlays", adventurePlays);
+    updateAdventureInfo();
     menuEl.style.display = "none";
     showPowerUpSpin(true);
   };
@@ -1046,6 +1085,7 @@ const staggerSparks = [];
     let electricTimer = 0;
     let tripleElectric = false;
     let spinReturnToMenu = false;
+    let spinForRevive = false;
     let spinOverlayClickable = false;
     let prevMusic = null;
     let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
@@ -1838,19 +1878,21 @@ function triggerBossAttack(){
   bossRocketThreshold = 60;
 
   // switch back to normal music
-  mechaMusic.pause();
-  bgMusic.play();
+  if(!gauntletMode){
+    mechaMusic.pause();
+    bgMusic.play();
 
-  // — after boss fight, retain one coin & lose suit —
-  coinCount       = 1;
-  inMecha         = false;
-  mechaTriggered  = false;
-  tripleShot      = false;
-  birdSprite.src  = 'assets/' + defaultSkin;
-  mechSpeed       = baseSpeed;
-  flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
-  flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
-  updateScore();
+    // — after boss fight, retain one coin & lose suit —
+    coinCount       = 1;
+    inMecha         = false;
+    mechaTriggered  = false;
+    tripleShot      = false;
+    birdSprite.src  = 'assets/' + defaultSkin;
+    mechSpeed       = baseSpeed;
+    flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
+    flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
+    updateScore();
+  }
 
   // clear lingering projectiles
   radialBombs.length = 0;
@@ -3830,8 +3872,9 @@ function blinkCenter(r){
   r.querySelectorAll('.symbol')[ROLLS].classList.add('blink');
 }
 
-function showPowerUpSpin(returnToMenu=false) {
+function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   spinReturnToMenu=returnToMenu;
+  spinForRevive=forRevive;
   const ov=document.getElementById("spinOverlay");
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
@@ -3855,6 +3898,7 @@ function closeSpinOverlay() {
     showOverlay();
   }
   spinReturnToMenu=false;
+  spinForRevive=false;
   spinOverlayClickable=false;
 
 }
@@ -3911,9 +3955,19 @@ function startRoulette(){
           loseSound.currentTime = 0;
           loseSound.play();
           document.getElementById('prizeText').textContent = `Oh No: ${LOSE_MAP[result[1]]}`;
+          if(spinForRevive){
+            finalizeGameOver();
+            spinReturnToMenu = true;
+            spinForRevive=false;
+          }
         }
         else if (type === 'none') {
           document.getElementById('prizeText').textContent = `Nothing this spin…`;
+          if(spinForRevive){
+            finalizeGameOver();
+            spinReturnToMenu = true;
+            spinForRevive=false;
+          }
         }
         else {
           winSound.currentTime = 0;
@@ -3921,9 +3975,21 @@ function startRoulette(){
           const sym = result[1];
           const label = GOOD_LABELS[sym] || sym.replace('.png','');
           document.getElementById('prizeText').textContent = `You got ${label}!`;
-          handleReward(sym, label);
+          if(!(spinForRevive && sym === 'Revive.png')){
+            handleReward(sym, label);
+          }
+          if(spinForRevive){
+            if(sym === 'Revive.png'){
+              startReviveEffect();
+              menuEl.style.display = 'none';
+              spinReturnToMenu = false;
+            }else{
+              finalizeGameOver();
+              spinReturnToMenu = true;
+            }
+            spinForRevive=false;
+          }
         }
-
 
         updateCoins();
         updateScore();
@@ -4039,12 +4105,11 @@ function showRevivePrompt(){
         updateScore();
       }
       startReviveEffect();
+    } else if(action === 'casino') {
+      menuEl.style.display = 'none';
+      showPowerUpSpin(false, true);
     } else {
       finalizeGameOver();
-      if(action === 'casino'){
-        menuEl.style.display = 'none';
-        showPowerUpSpin(true);
-      }
     }
     updateReviveDisplay();
   }
@@ -4095,6 +4160,7 @@ function handleHit(){
   shieldCount = 0;
   runPipes = runCoins = runJellies = runPowerups = runPipeBreaks = 0;
   marathonMoving = false;
+  gauntletMode = false;
   menuEl.style.display = 'block';
 
   // clear out any leftover bullets/rockets:
@@ -4961,8 +5027,10 @@ if (state === STATE.Play) {
     updateDoubleEffect();
     updateElectricEffect();
     updateMagnetEffect();
-    drawPipes();
-  updatePipes();
+    if(!gauntletMode){
+      drawPipes();
+      updatePipes();
+    }
 
   // — spawn bigger, evil rocket waves when in Mecha —
   if (inMecha && frames % 60 === 0) {
