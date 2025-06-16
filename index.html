@@ -1454,8 +1454,9 @@ bossEncounterCount++;
       : bossEncounterCount === 3
         ? bossFramesS3
         : bossFramesS4;
-trackEvent('boss_fight_start'); 
-    bgMusic.pause();
+trackEvent('boss_fight_start');
+  bgMusic.pause();
+  mechaMusic.play().catch(() => {});
   bossActive       = true;
   state            = STATE.Boss;
   bossMaxHealth    = bossEncounterCount === 1
@@ -2527,6 +2528,18 @@ function spawnJelly(){
     slowStacks: 0,
   freezeTimer: 0
   });
+}
+
+function spawnRocketWave(){
+  const rCount = bossesDefeated >= 2 ? 2 : 3;
+  for (let i = 0; i < rCount; i++) {
+    rocketsIn.push({
+      x: W + 20 + i * 60,
+      y: Math.random() * (H - 100) + 50,
+      vx: -3
+    });
+    rocketsSpawned++;
+  }
 }
 
 function spawnSliceDisk(){
@@ -3914,6 +3927,7 @@ function finalizeGameOver(){
 
   playTone(100, 0.3);
   menuEl.style.display = 'block';
+  if (gauntletMode) resetGame();
 }
 
 const GOOD_PROB = 0.5,
@@ -4044,6 +4058,7 @@ function closeSpinOverlay() {
   }
   if(spinReturnToMenu){
     menuEl.style.display="block";
+    resetGame();
   }else{
     showOverlay();
   }
@@ -5055,7 +5070,14 @@ if (state === STATE.BossExplode) {
   updateColumnSnow();
   updateMoneyLeaves();
   bird.draw();
-  if (--bossExplosionTimer <= 0) state = STATE.Play;
+  if (--bossExplosionTimer <= 0) {
+    state = STATE.Play;
+    if (gauntletMode) {
+      rocketsSpawned = 0;
+      spawnRocketWave();
+      mechaMusic.play().catch(() => {});
+    }
+  }
   return requestAnimationFrame(loop);
 }
 
