@@ -272,6 +272,7 @@
   <audio id="explosionSound" src="assets/explosion.mp3"></audio>
   <audio id="winSound" src="assets/casino_fun.mp3"></audio>
   <audio id="loseSound" src="assets/losing-horn.mp3"></audio>
+
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
@@ -898,6 +899,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const explosionSound = document.getElementById('explosionSound');
     const winSound = document.getElementById('winSound');
     const loseSound = document.getElementById('loseSound');
+
     function applyVolume() {
       bgMusic.volume = globalVolume;
       mechaMusic.volume = globalVolume;
@@ -905,6 +907,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       explosionSound.volume = globalVolume;
       winSound.volume = globalVolume;
       loseSound.volume = globalVolume;
+
     }
     applyVolume();
 
@@ -1044,6 +1047,7 @@ const staggerSparks = [];
     let tripleElectric = false;
     let spinReturnToMenu = false;
     let spinOverlayClickable = false;
+    let prevMusic = null;
     let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
     let adventureReset = parseInt(localStorage.getItem("birdyAdventureReset") || Date.now());
     function resetAdventurePlaysIfNeeded(){
@@ -3777,6 +3781,7 @@ function chooseOutcome(){
   }
 }
 
+
 function buildStrip(finalSym){
   const frag = document.createDocumentFragment();
   for(let i=0;i<ROLLS;i++){
@@ -3813,6 +3818,12 @@ function showPowerUpSpin(returnToMenu=false) {
 
 function closeSpinOverlay() {
   document.getElementById("spinOverlay").style.display="none";
+  casinoTheme.pause();
+  casinoTheme.currentTime = 0;
+  if(prevMusic) {
+    prevMusic.play().catch(()=>{});
+    prevMusic = null;
+  }
   if(spinReturnToMenu){
     menuEl.style.display="block";
   }else{
@@ -3835,6 +3846,7 @@ function startRoulette(){
   localStorage.setItem('birdyCoinsEarned', totalCoins);
   updateCoins();
   updateScore();
+
 
   ticking = true;
   requestAnimationFrame(tickScale);
@@ -3886,6 +3898,7 @@ function startRoulette(){
           document.getElementById('prizeText').textContent = `You got ${label}!`;
           handleReward(sym, label);
         }
+
 
         updateCoins();
         updateScore();
