@@ -1499,6 +1499,15 @@ const staggerSparks = [];
     function isStorySkin(){
       return defaultSkin === 'story_bird.png' || birdSprite.src.includes('Story_mech');
     }
+
+    function getMechaSprite(){
+      if (isFireSkin()) return 'assets/FireSkinMech.png';
+      if (isAquaSkin()) return 'assets/AquaSkinMech.png';
+      if (defaultSkin === 'cow_down.png') return 'assets/cow_mech.png';
+      if (isStorySkin()) return 'assets/Story_mech.png';
+      if (defaultSkin === 'MoneySkin.png') return 'assets/MoneyMech.png';
+      return 'assets/mecha_suit.png';
+    }
 // ── Mecha-transition kick-off ───────────────────────────────
 function startMechaTransition() {
   transitionTimer = 0;
@@ -4059,7 +4068,11 @@ const WIN_HEIGHT = 100,
 function updateCoins(){
   coinDisplay.textContent = totalCoins;
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    if (spinForRevive) {
+      spinCoinDisplay.textContent = `Spin Cost: 10 Coins`;
+    } else {
+      spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    }
   }
 }
 function doShake(){
@@ -4148,7 +4161,11 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    if (spinForRevive) {
+      spinCoinDisplay.textContent = `Spin Cost: 10 Coins`;
+    } else {
+      spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    }
   }
   spinOverlayClickable=false;
 
@@ -4181,14 +4198,24 @@ document.querySelectorAll('#spinOverlay .reel').forEach(r => reels.push(r));
 function startRoulette(){
   spinBtn.style.pointerEvents = 'none';
 
-  const { result, type } = chooseOutcome();
-  document.getElementById('prizeText').textContent = '';
-  adventurePlays--;
-  localStorage.setItem('birdyAdventurePlays', adventurePlays);
-  recordAdventureDepletion();
-  updateAdventureInfo();
+  if (spinForRevive) {
+    if (totalCoins < 10) {
+      showAchievement('Not enough coins');
+      spinBtn.style.pointerEvents = 'auto';
+      return;
+    }
+    totalCoins -= 10;
+    localStorage.setItem('birdyCoinsEarned', totalCoins);
+  } else {
+    adventurePlays--;
+    localStorage.setItem('birdyAdventurePlays', adventurePlays);
+    recordAdventureDepletion();
+    updateAdventureInfo();
+  }
   updateCoins();
   updateScore();
+
+  const { result, type } = chooseOutcome();
 
 
   ticking = true;
@@ -5142,6 +5169,7 @@ if (state === STATE.Boss) {
   updateBoss();
   updateRockets();
   updatePipes();
+  updateSliceDisks();
 
   // 3) let the bird respond to gravity/flap
   bird.update();
@@ -5180,11 +5208,18 @@ if (state === STATE.BossExplode) {
   updateMoneyLeaves();
   bird.draw();
   if (--bossExplosionTimer <= 0) {
-    state = STATE.Play;
     if (gauntletMode) {
+      coinCount = 10;
+      inMecha = true;
+      mechaTriggered = true;
+      birdSprite.src = getMechaSprite();
       rocketsSpawned = 0;
       spawnRocketWave();
       mechaMusic.play().catch(() => {});
+      updateScore();
+      state = STATE.Play;
+    } else {
+      state = STATE.Play;
     }
   }
   return requestAnimationFrame(loop);
