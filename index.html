@@ -1114,6 +1114,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     };
 
 
+    /*
     document.getElementById('spin-btn').onclick = () => {
       if (adventurePlays <= 0) {
         showAchievement('No birds left');
@@ -1121,6 +1122,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       }
       startRoulette();
     };
+    */
 
     const W = ORIGINAL_WIDTH, H = ORIGINAL_HEIGHT;
 const STATE = {
@@ -4375,12 +4377,20 @@ function showRevivePrompt(){
       ${useItem ? '' : `<p>Coins: ${totalCoins}</p>`}
       <p id="reviveClock">${countdown}</p>
       <button id="revBtn" ${canRevive ? '' : 'disabled'}>Revive</button>
-      <button id="casinoBtn">Casino</button>
+      <!--<button id="casinoBtn">Casino</button>-->
       <button id="menuBtn">Menu</button>
     `;
   }
   render();
   ov.style.display = 'block';
+  overlayTop10Lock = true;
+  const overlayClick = e => {
+    if (e.target === ov) {
+      e.stopPropagation();
+      cleanup('menu');
+    }
+  };
+  ov.addEventListener('click', overlayClick);
   const int = setInterval(()=>{
     countdown--;
     const clk = document.getElementById('reviveClock');
@@ -4389,7 +4399,9 @@ function showRevivePrompt(){
   },1000);
   function cleanup(action){
     clearInterval(int);
+    ov.removeEventListener('click', overlayClick);
     ov.style.display = 'none';
+    overlayTop10Lock = false;
     revivePromptActive = false;
     if(action === 'revive'){
       if(useItem){
@@ -4401,18 +4413,17 @@ function showRevivePrompt(){
         updateScore();
       }
       startReviveEffect();
-    } else if(action === 'casino') {
-      menuEl.style.display = 'none';
-      showPowerUpSpin(false, true);
     } else {
       finalizeGameOver();
     }
     updateReviveDisplay();
   }
   ct.onclick = (e)=>{
-    if(e.target.id==='revBtn')    cleanup('revive');
-    if(e.target.id==='casinoBtn') cleanup('casino');
-    if(e.target.id==='menuBtn')   cleanup('menu');
+    if(e.target.id==='revBtn') {
+      cleanup('revive');
+    } else {
+      cleanup('menu');
+    }
   };
   return true;
 }
