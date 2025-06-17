@@ -359,13 +359,6 @@
     <h2>Rocket Birdie</h2>
 
     <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
-    <div class="adventure-info">
-      <span id="adventureCount">5/5</span>
-      <span id="adventureTimer" class="flash"></span><br/>
-      <button id="buyBirdBtn" class="menu-btn primary" style="font-size:16px; padding:6px 12px; margin-top:8px;">
-        Buy Bird – 20 Coins
-      </button>
-    </div>
 
     <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
     <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
@@ -730,12 +723,7 @@ let marathonMoving = false;
   function startAdventure(){
     marathonMode = false;
     gauntletMode = false;
-    if(adventurePlays<=0){
-      showAchievement("No birds left");
-      menuEl.style.display = "block";
-      return;
-    }
-    consumeAdventureBird();
+    menuEl.style.display = 'none';
     menuEl.style.display = 'none';
     if (storedDoubles > 0) {
       storedDoubles--;
@@ -901,19 +889,6 @@ let marathonMoving = false;
     });
   };
 
-  document.getElementById("buyBirdBtn").onclick = () => {
-    if(totalCoins >= 20){
-      totalCoins -= 20;
-      adventurePlays++;
-      localStorage.setItem("birdyCoinsEarned", totalCoins);
-      localStorage.setItem("birdyAdventurePlays", adventurePlays);
-      updateScore();
-      updateAdventureInfo();
-      updateCoins();
-    } else {
-      showAchievement("Not enough coins");
-    }
-  };
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
@@ -1307,15 +1282,6 @@ const staggerSparks = [];
     }
 
     function consumeAdventureBird(){
-      if(adventurePlays <= 0) return false;
-      adventurePlays--;
-      localStorage.setItem('birdyAdventurePlays', adventurePlays);
-      recordAdventureDepletion();
-      const now = Date.now();
-      const delay = adventureTimers.length === 0 ? 1800000 : 3600000;
-      adventureTimers.push(now + delay);
-      saveAdventureTimers();
-      updateAdventureInfo();
       return true;
     }
 
@@ -3960,29 +3926,12 @@ function updateReviveDisplay(){
   document.getElementById('reviveCount').textContent = `${storedRevives}/1`;
 }
 function updateAdventureInfo(){
-  document.getElementById("adventureCount").textContent = adventurePlays + "/5";
+  const el = document.getElementById('adventureCount');
+  if (el) el.textContent = '';
 }
 function updateAdventureTimer(){
-  checkAdventureTimers();
-  const el = document.getElementById("adventureTimer");
-  const now = Date.now();
-  let diff = 0;
-  if (adventureTimers.length) {
-    diff = adventureTimers[0] - now;
-  } else if (adventureReset) {
-    diff = adventureReset + 86400000 - now;
-  } else {
-    el.textContent = '';
-    return;
-  }
-  if(diff <= 0){
-    el.textContent = '';
-    return;
-  }
-  const h = Math.floor(diff/3600000);
-  const m = Math.floor((diff%3600000)/60000);
-  const s = Math.floor((diff%60000)/1000);
-  el.textContent = `Next Bird in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  const el = document.getElementById('adventureTimer');
+  if (el) el.textContent = '';
 }
 
 function addEffectIcon(key, src){
@@ -4090,8 +4039,7 @@ const ROLLS = 20,
 
 const FIRST9 = [
   'Revive.png','Double.png','Magnet.png',
-  'rocket1.png','1.png','5.png','10.png','50.png',
-  'birdieV2.png'
+  'rocket1.png','1.png','5.png','10.png','50.png'
 ];
 const LOSE_MAP = {
   'pipe_move.png':'Pipes Move',
@@ -4099,7 +4047,7 @@ const LOSE_MAP = {
   'stinky.png':'Scare Jelly'
 };
 const SYMBOLS = [...FIRST9, ...Object.keys(LOSE_MAP)];
-const GOOD_LABELS = { 'birdieV2.png':'Daily Play' };
+const GOOD_LABELS = {};
 
 const WIN_HEIGHT = 100,
       PRIZE_TARGET_Y = WIN_HEIGHT/2 - ROW_H/2;
@@ -4110,7 +4058,7 @@ function updateCoins(){
     if (spinForRevive) {
       spinCoinDisplay.textContent = `Spin Cost: 10 Coins`;
     } else {
-      spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+      spinCoinDisplay.textContent = '';
     }
   }
 }
@@ -4203,7 +4151,7 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
     if (spinForRevive) {
       spinCoinDisplay.textContent = `Spin Cost: 10 Coins`;
     } else {
-      spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+      spinCoinDisplay.textContent = '';
     }
   }
   spinOverlayClickable=false;
@@ -4245,8 +4193,6 @@ function startRoulette(){
     }
     totalCoins -= 10;
     localStorage.setItem('birdyCoinsEarned', totalCoins);
-  } else {
-    consumeAdventureBird();
   }
   updateCoins();
   updateScore();
@@ -4365,11 +4311,6 @@ function handleReward(sym,label){
       totalCoins += 10; break;
     case '50.png':
       totalCoins += 50; break;
-    case 'birdieV2.png':
-      adventurePlays += 1;
-      localStorage.setItem('birdyAdventurePlays', adventurePlays);
-      updateAdventureInfo();
-      break;
     case 'ball.png':
       spinHeavy = 1;
       localStorage.setItem('spinHeavy','1');
@@ -4796,9 +4737,7 @@ function showShop() {
 
     const items = [
       {key:'Revive.png', name:'Revive', cost:25, owned:storedRevives>0, extra:'<small>Continue after death</small>'},
-      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''},
-
-      {key:"birdieV2.png", name:"5 Birds", cost:50, owned:false, extra:"<small>Extra Adventure Plays</small>"},
+      {key:'Double.png', name:'Double Coins', cost:50, owned:storedDoubles>0, extra:''}
     ];
 
     if(section==='skins'){
@@ -4884,10 +4823,6 @@ function showShop() {
           } else if(key==='Double.png') {
             storedDoubles = 1;
             localStorage.setItem('birdyDouble', storedDoubles);
-          } else if(key=="birdieV2.png") {
-            adventurePlays += 5;
-            localStorage.setItem("birdyAdventurePlays", adventurePlays);
-            updateAdventureInfo();
           }
           trackEvent('shop_item_purchased', { item: key });
           render();
@@ -5492,9 +5427,6 @@ if (state === STATE.Play) {
     updateScore();
     loop();
     updateAdventureInfo();
-    checkAdventureTimers();
-    updateAdventureTimer();
-    setInterval(updateAdventureTimer,1000);
     Promise.all([
       fetchTopGlobalScores(false),
       fetchTopGlobalScores(true)
