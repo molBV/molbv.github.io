@@ -4241,7 +4241,8 @@ function startRoulette(){
           if(spinForRevive){
             finalizeGameOver();
             spinReturnToMenu = true;
-            spinForRevive=false;
+            spinForRevive = false;
+            closeSpinOverlay();
           }
         }
         else if (type === 'none') {
@@ -4249,7 +4250,8 @@ function startRoulette(){
           if(spinForRevive){
             finalizeGameOver();
             spinReturnToMenu = true;
-            spinForRevive=false;
+            spinForRevive = false;
+            closeSpinOverlay();
           }
         }
         else {
@@ -4265,12 +4267,21 @@ function startRoulette(){
             if(sym === 'Revive.png'){
               startReviveEffect();
               menuEl.style.display = 'none';
+              document.getElementById('spinOverlay').style.display = 'none';
+              casinoTheme.pause();
+              casinoTheme.currentTime = 0;
+              if(prevMusic){
+                prevMusic.play().catch(()=>{});
+                prevMusic = null;
+              }
               spinReturnToMenu = false;
+              spinOverlayClickable = false;
             }else{
               finalizeGameOver();
               spinReturnToMenu = true;
+              closeSpinOverlay();
             }
-            spinForRevive=false;
+            spinForRevive = false;
           }
         }
 
@@ -4406,6 +4417,7 @@ function showRevivePrompt(){
       showPowerUpSpin(false, true);
     } else {
       finalizeGameOver();
+      resetGame();
     }
     updateReviveDisplay();
   }
