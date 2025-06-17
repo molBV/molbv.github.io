@@ -3741,8 +3741,7 @@ function updateSliceDisks() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-    let coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
-    if (gauntletMode && inMecha) coinSpeed = currentSpeed;
+    const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
     if(c.homing){
       const dx = bird.x - c.x;
       const dy = bird.y - c.y;
@@ -3811,8 +3810,7 @@ function updateSliceDisks() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    let powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
-    if (gauntletMode && inMecha) powerSpeed = currentSpeed;
+    const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
     if(p.homing){
       const dx = bird.x - p.x;
       const dy = bird.y - p.y;
@@ -4243,8 +4241,7 @@ function startRoulette(){
           if(spinForRevive){
             finalizeGameOver();
             spinReturnToMenu = true;
-            spinForRevive = false;
-            closeSpinOverlay();
+            spinForRevive=false;
           }
         }
         else if (type === 'none') {
@@ -4252,8 +4249,7 @@ function startRoulette(){
           if(spinForRevive){
             finalizeGameOver();
             spinReturnToMenu = true;
-            spinForRevive = false;
-            closeSpinOverlay();
+            spinForRevive=false;
           }
         }
         else {
@@ -4269,21 +4265,12 @@ function startRoulette(){
             if(sym === 'Revive.png'){
               startReviveEffect();
               menuEl.style.display = 'none';
-              document.getElementById('spinOverlay').style.display = 'none';
-              casinoTheme.pause();
-              casinoTheme.currentTime = 0;
-              if(prevMusic){
-                prevMusic.play().catch(()=>{});
-                prevMusic = null;
-              }
               spinReturnToMenu = false;
-              spinOverlayClickable = false;
             }else{
               finalizeGameOver();
               spinReturnToMenu = true;
-              closeSpinOverlay();
             }
-            spinForRevive = false;
+            spinForRevive=false;
           }
         }
 
@@ -4419,7 +4406,6 @@ function showRevivePrompt(){
       showPowerUpSpin(false, true);
     } else {
       finalizeGameOver();
-      resetGame();
     }
     updateReviveDisplay();
   }
