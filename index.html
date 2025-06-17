@@ -3741,7 +3741,8 @@ function updateSliceDisks() {
   // ── coin pickup (your existing code) ──
   coins.forEach((c, i) => {
   // move
-    const coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
+    let coinSpeed = inMecha ? baseSpeed * 0.66 : currentSpeed;
+    if (gauntletMode && inMecha) coinSpeed = currentSpeed;
     if(c.homing){
       const dx = bird.x - c.x;
       const dy = bird.y - c.y;
@@ -3810,7 +3811,8 @@ function updateSliceDisks() {
 
   // ── triple rocket powerup pickup ──
   rocketPowerups.forEach((p,i)=>{
-    const powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
+    let powerSpeed = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
+    if (gauntletMode && inMecha) powerSpeed = currentSpeed;
     if(p.homing){
       const dx = bird.x - p.x;
       const dy = bird.y - p.y;
