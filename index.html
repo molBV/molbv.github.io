@@ -735,10 +735,7 @@ let marathonMoving = false;
       menuEl.style.display = "block";
       return;
     }
-    adventurePlays--;
-    localStorage.setItem("birdyAdventurePlays", adventurePlays);
-    recordAdventureDepletion();
-    updateAdventureInfo();
+    consumeAdventureBird();
     menuEl.style.display = 'none';
     if (storedDoubles > 0) {
       storedDoubles--;
@@ -1266,6 +1263,7 @@ const staggerSparks = [];
     let prevMusic = null;
     let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
     let adventureReset = parseInt(localStorage.getItem("birdyAdventureReset") || "0");
+    let adventureTimers = JSON.parse(localStorage.getItem('birdyAdventureTimers') || '[]');
 
     function resetAdventurePlaysIfNeeded(){
       if(!adventureReset) return;
@@ -1285,6 +1283,40 @@ const staggerSparks = [];
         adventureReset = Date.now();
         localStorage.setItem("birdyAdventureReset", adventureReset);
       }
+    }
+
+    function saveAdventureTimers(){
+      localStorage.setItem('birdyAdventureTimers', JSON.stringify(adventureTimers));
+    }
+
+    function checkAdventureTimers(){
+      const now = Date.now();
+      let updated = false;
+      while(adventureTimers.length && now >= adventureTimers[0]){
+        adventureTimers.shift();
+        if(adventurePlays < 5){
+          adventurePlays++;
+          localStorage.setItem('birdyAdventurePlays', adventurePlays);
+          updated = true;
+        }
+      }
+      if(updated){
+        saveAdventureTimers();
+        updateAdventureInfo();
+      }
+    }
+
+    function consumeAdventureBird(){
+      if(adventurePlays <= 0) return false;
+      adventurePlays--;
+      localStorage.setItem('birdyAdventurePlays', adventurePlays);
+      recordAdventureDepletion();
+      const now = Date.now();
+      const delay = adventureTimers.length === 0 ? 1800000 : 3600000;
+      adventureTimers.push(now + delay);
+      saveAdventureTimers();
+      updateAdventureInfo();
+      return true;
     }
 
     const electricRings = [];
@@ -3924,26 +3956,22 @@ function updateAdventureInfo(){
   document.getElementById("adventureCount").textContent = adventurePlays + "/5";
 }
 function updateAdventureTimer(){
+  checkAdventureTimers();
   const el = document.getElementById("adventureTimer");
-  if(!adventureReset){
+  if(!adventureTimers.length){
     el.textContent = '';
     return;
   }
   const now = Date.now();
-  let diff = adventureReset + 86400000 - now;
+  const diff = adventureTimers[0] - now;
   if(diff <= 0){
-    adventureReset = 0;
-    adventurePlays = Math.max(adventurePlays, 5);
-    localStorage.removeItem("birdyAdventureReset");
-    localStorage.setItem("birdyAdventurePlays", adventurePlays);
-    updateAdventureInfo();
     el.textContent = '';
     return;
   }
   const h = Math.floor(diff/3600000);
   const m = Math.floor((diff%3600000)/60000);
   const s = Math.floor((diff%60000)/1000);
-  el.textContent = `Next 5 in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  el.textContent = `Next Bird in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
 function addEffectIcon(key, src){
@@ -4207,10 +4235,7 @@ function startRoulette(){
     totalCoins -= 10;
     localStorage.setItem('birdyCoinsEarned', totalCoins);
   } else {
-    adventurePlays--;
-    localStorage.setItem('birdyAdventurePlays', adventurePlays);
-    recordAdventureDepletion();
-    updateAdventureInfo();
+    consumeAdventureBird();
   }
   updateCoins();
   updateScore();
@@ -5456,6 +5481,7 @@ if (state === STATE.Play) {
     updateScore();
     loop();
     updateAdventureInfo();
+    checkAdventureTimers();
     updateAdventureTimer();
     setInterval(updateAdventureTimer,1000);
     Promise.all([
