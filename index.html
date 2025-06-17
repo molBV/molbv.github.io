@@ -1026,8 +1026,8 @@ const tossBombs   = [];   // upward‐toss bombs
   const coinDisplay = document.getElementById('coinDisplay');
   const spinCoinDisplay = document.getElementById('spinCoinDisplay');
   const spinBtn = document.getElementById('spin-btn');
-  spinOverlay.addEventListener('click', () => {
-    if (spinOverlayClickable) closeSpinOverlay();
+  spinOverlay.addEventListener('click', e => {
+    if (spinOverlayClickable && e.target === spinOverlay) closeSpinOverlay();
   });
 
             
@@ -1104,6 +1104,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       explosionSound.volume = globalVolume;
       winSound.volume = globalVolume;
       loseSound.volume = globalVolume;
+      spinSound.volume = globalVolume;
 
     }
     applyVolume();
@@ -1141,8 +1142,8 @@ document.addEventListener('keydown',   initMusic, {passive:true});
 
 
     document.getElementById('spin-btn').onclick = () => {
-      if (totalCoins < 10) {
-        showAchievement('Not enough coins');
+      if (adventurePlays <= 0) {
+        showAchievement('No birds left');
         return;
       }
       startRoulette();
@@ -4042,7 +4043,7 @@ const WIN_HEIGHT = 100,
 function updateCoins(){
   coinDisplay.textContent = totalCoins;
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Coins: ${totalCoins}`;
+    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
   }
 }
 function doShake(){
@@ -4131,7 +4132,7 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Coins: ${totalCoins}`;
+    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
   }
   spinOverlayClickable=false;
 
@@ -4166,8 +4167,9 @@ function startRoulette(){
 
   const { result, type } = chooseOutcome();
   document.getElementById('prizeText').textContent = '';
-  totalCoins -= 10;
-  localStorage.setItem('birdyCoinsEarned', totalCoins);
+  adventurePlays--;
+  localStorage.setItem('birdyAdventurePlays', adventurePlays);
+  updateAdventureInfo();
   updateCoins();
   updateScore();
 
@@ -4576,11 +4578,16 @@ function showHighScores(hsAdv, hsMar, autoScroll = false){
              renderBoard(hsAdv, 'hs') +
              `<h2 style="margin-top:16px;">Top 50 Marathon</h2>` +
              renderBoard(hsMar, 'ms') +
-             `<br/><button id="retryBtn">Play Again</button>`;
+             `<br/><button id="retryBtn">Play Again</button> <button id="scoreHome">Home</button>`;
   ct.innerHTML = html;
   document.getElementById('retryBtn').onclick = () => {
     document.getElementById('overlay').style.display = 'none';
     resetGame();
+  };
+  const homeBtn = document.getElementById('scoreHome');
+  if (homeBtn) homeBtn.onclick = () => {
+    document.getElementById('overlay').style.display = 'none';
+    menuEl.style.display = 'block';
   };
 
   if(autoScroll){
@@ -4646,12 +4653,12 @@ function showAchievementsList() {
     const done = achievements[def.id];
     html += `<li>${done ? '✅' : '❌'} ${def.desc}</li>`;
   });
-  html += '</ul><button id="achClose">Close</button>';
+  html += '</ul><button id="achHome">Home</button>';
   ct.innerHTML = html;
   ov.style.display = 'block';
-  document.getElementById('achClose').onclick = () => {
+  document.getElementById('achHome').onclick = () => {
     ov.style.display = 'none';
-    if(state===STATE.Start) menuEl.style.display = 'block';
+    menuEl.style.display = 'block';
   };
 }
 
@@ -4674,12 +4681,12 @@ function showStoryLog() {
     html += `<p id="nextStory" class="flash" style="font-style:italic;margin-top:10px;">Next: ${nextHint}</p>`;
   }
 
-  html += '</div><button id="storyClose">Close</button>';
+  html += '</div><button id="storyHome">Home</button>';
   ct.innerHTML = html;
   ov.style.display = 'block';
-  document.getElementById('storyClose').onclick = () => {
+  document.getElementById('storyHome').onclick = () => {
     ov.style.display = 'none';
-    if(state===STATE.Start) menuEl.style.display = 'block';
+    menuEl.style.display = 'block';
   };
 }
 
@@ -4752,7 +4759,7 @@ function showShop() {
               `</div>`;
     }
 
-    html += `</div><button id="shopClose">Close</button>`;
+    html += `</div><button id="shopHome">Home</button>`;
     ct.innerHTML = html;
       if(section==='upgrades') {
         renderUpgradeTree();
@@ -4819,9 +4826,9 @@ function showShop() {
     });
 
 
-    document.getElementById('shopClose').onclick = () => {
+    document.getElementById('shopHome').onclick = () => {
       ov.style.display = 'none';
-      if(state===STATE.Start) menuEl.style.display = 'block';
+      menuEl.style.display = 'block';
     };
   }
 
