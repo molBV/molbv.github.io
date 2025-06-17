@@ -2592,17 +2592,20 @@ function spawnPipe(){
   }
 
   if (bossesDefeated >= 3 && Math.random() < 0.25) {
+    let dx = p.x + pipeW / 2;
+    if (pipes.length > 1) {
+      const prev = pipes[pipes.length - 2];
+      dx = ((prev.x + pipeW / 2) + dx) / 2;
+    }
     const d = {
-      x: p.x + pipeW / 2,
-      y: topH + gap / 2,
+      x: dx,
+      y: H / 2,
       vy: 1.5,
       rot: 0,
       hp: 3,
-      enemy: true,
-      pipe: p
+      enemy: true
     };
     slicingDisks.push(d);
-    p.disk = d;
   }
 
   // — apples —
@@ -3608,8 +3611,12 @@ function updateSliceDisks() {
         d.vy *= -1;
       }
     } else {
-      d.x += d.vx;
+      const ts = slowMoTimer > 0 ? 0.5 : 1;
+      d.x -= currentSpeed * ts;
       d.y += d.vy || 0;
+      if (d.y < 24 || d.y > H - 24) {
+        d.vy *= -1;
+      }
     }
     d.rot += 0.2;
     ctx.save();
@@ -3958,12 +3965,16 @@ function updateAdventureInfo(){
 function updateAdventureTimer(){
   checkAdventureTimers();
   const el = document.getElementById("adventureTimer");
-  if(!adventureTimers.length){
+  const now = Date.now();
+  let diff = 0;
+  if (adventureTimers.length) {
+    diff = adventureTimers[0] - now;
+  } else if (adventureReset) {
+    diff = adventureReset + 86400000 - now;
+  } else {
     el.textContent = '';
     return;
   }
-  const now = Date.now();
-  const diff = adventureTimers[0] - now;
   if(diff <= 0){
     el.textContent = '';
     return;
