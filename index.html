@@ -212,6 +212,35 @@
       z-index:30;
     }
 
+    #btnPause {
+      position:absolute;
+      top:70px;
+      right:10px;
+      font-size:24px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#fff;
+      text-shadow:2px 2px 4px #000;
+      z-index:15;
+    }
+    #pauseOverlay {
+      display:none;
+      position:absolute;
+      left:0;
+      top:100px;
+      bottom:80px;
+      width:100%;
+      background:rgba(0,0,0,0.5);
+      color:#fff;
+      font:18px sans-serif;
+      text-align:center;
+      padding-top:20px;
+      z-index:30;
+    }
+    #resumeTimer { margin-bottom:10px; font-size:1.2rem; }
+    #pauseOverlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+
     /* ── Power-Up Spin Overlay ───────────────────────────── */
     #spinOverlay {
       display:none;
@@ -395,6 +424,12 @@
   <button id="btnSettings">⚙️</button>
   <div id="settingsPanel">
     <input id="volumeSlider" type="range" min="0" max="1" step="0.01">
+  </div>
+  <button id="btnPause">⏸️</button>
+  <div id="pauseOverlay">
+    <div id="resumeTimer"></div>
+    <button id="resumeBtn">Resume</button><br/>
+    <button id="mainMenuBtn">Main Menu</button>
   </div>
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
@@ -1058,6 +1093,19 @@ function initMusic() {
 document.addEventListener('mousedown', initMusic, {passive:true});
 document.addEventListener('keydown',   initMusic, {passive:true});
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        bgMusic.pause();
+        mechaMusic.pause();
+      } else if (!paused) {
+        if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
+          mechaMusic.play().catch(()=>{});
+        } else {
+          bgMusic.play().catch(()=>{});
+        }
+      }
+    });
+
     const ORIGINAL_WIDTH  = canvas.width,
           ORIGINAL_HEIGHT = canvas.height;
     function resizeCanvas(){
@@ -1099,6 +1147,11 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     const explosionSound = document.getElementById('explosionSound');
     const winSound = document.getElementById('winSound');
     const loseSound = document.getElementById('loseSound');
+    const pauseBtn = document.getElementById('btnPause');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const mainMenuBtn = document.getElementById('mainMenuBtn');
+    const resumeTimerEl = document.getElementById('resumeTimer');
 
     function applyVolume() {
       bgMusic.volume = globalVolume;
@@ -1141,6 +1194,45 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       globalVolume = parseFloat(e.target.value);
       localStorage.setItem('birdyVolume', globalVolume);
       applyVolume();
+    };
+
+    function openPause() {
+      if (paused) return;
+      paused = true;
+      pauseOverlay.style.display = 'block';
+      bgMusic.pause();
+      mechaMusic.pause();
+    }
+
+    function startResumeCountdown() {
+      let count = 3;
+      resumeTimerEl.textContent = 'Resuming in ' + count;
+      resumeTimerEl.style.display = 'block';
+      const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          resumeTimerEl.textContent = 'Resuming in ' + count;
+        } else {
+          clearInterval(timer);
+          pauseOverlay.style.display = 'none';
+          resumeTimerEl.style.display = 'none';
+          paused = false;
+          if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
+            mechaMusic.play().catch(()=>{});
+          } else {
+            bgMusic.play().catch(()=>{});
+          }
+          loop();
+        }
+      }, 1000);
+    }
+
+    pauseBtn.onclick = openPause;
+    resumeBtn.onclick = startResumeCountdown;
+    mainMenuBtn.onclick = () => {
+      pauseOverlay.style.display = 'none';
+      paused = false;
+      resetGame();
     };
 
 
