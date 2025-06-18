@@ -3762,8 +3762,8 @@ function updateSliceDisks() {
   const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount/200;
   currentSpeed += (targetSpeed - currentSpeed) * 0.05;
 
-  // spawn new pipes when NOT in Mecha and not during boss
-  if (state === STATE.Play && frames % 90 === 0 && !inMecha) spawnPipe();
+  // spawn new pipes only in normal modes
+  if (state === STATE.Play && frames % 90 === 0 && !inMecha && !gauntletMode) spawnPipe();
 
   // ── pipe movement, scoring & collision ──
   pipes.forEach((p,i) => {
@@ -5484,8 +5484,8 @@ if (state === STATE.Play) {
     updateHeavyBall();
     if(!gauntletMode){
       drawPipes();
-      updatePipes();
     }
+    updatePipes();
 
   // — spawn bigger, evil rocket waves when in Mecha —
   if (inMecha && frames % 60 === 0) {
