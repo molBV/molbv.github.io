@@ -4585,6 +4585,9 @@ function showRevivePrompt(){
     } else if(action === 'casino') {
       menuEl.style.display = 'none';
       showPowerUpSpin(false, true);
+    } else if(action === 'menu') {
+      finalizeGameOver();
+      resetGame();
     } else {
       finalizeGameOver();
     }
