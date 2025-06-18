@@ -360,7 +360,7 @@
 
     <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
     <div class="adventure-info">
-      <span id="adventureCount">5/5</span>
+      <span id="adventureCount">20/20</span>
       <span id="adventureTimer" class="flash"></span><br/>
       <button id="buyBirdBtn" class="menu-btn primary" style="font-size:16px; padding:6px 12px; margin-top:8px;">
         Buy Bird – 20 Coins
@@ -737,7 +737,7 @@ let marathonMoving = false;
     }
     adventurePlays--;
     localStorage.setItem("birdyAdventurePlays", adventurePlays);
-    recordAdventureDepletion();
+    recordAdventureUse();
     updateAdventureInfo();
     menuEl.style.display = 'none';
     if (storedDoubles > 0) {
@@ -905,9 +905,11 @@ let marathonMoving = false;
   };
 
   document.getElementById("buyBirdBtn").onclick = () => {
-    if(totalCoins >= 20){
+    if(adventurePlays >= ADVENTURE_MAX){
+      showAchievement("Birds full");
+    } else if(totalCoins >= 20){
       totalCoins -= 20;
-      adventurePlays++;
+      adventurePlays = Math.min(adventurePlays + 1, ADVENTURE_MAX);
       localStorage.setItem("birdyCoinsEarned", totalCoins);
       localStorage.setItem("birdyAdventurePlays", adventurePlays);
       updateScore();
@@ -1264,26 +1266,32 @@ const staggerSparks = [];
     let spinForRevive = false;
     let spinOverlayClickable = false;
     let prevMusic = null;
-    let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "5");
-    let adventureReset = parseInt(localStorage.getItem("birdyAdventureReset") || "0");
+    const ADVENTURE_MAX     = 20;
+    const ADVENTURE_RECHARGE = 1800000; // 30 minutes
+    let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "20");
+    let adventureStamp = parseInt(localStorage.getItem("birdyAdventureStamp") || Date.now());
 
-    function resetAdventurePlaysIfNeeded(){
-      if(!adventureReset) return;
+    function regenAdventurePlays(){
       const now = Date.now();
-      const day = 86400000;
-      if(now - adventureReset >= day){
-        adventureReset = 0;
-        adventurePlays = Math.max(adventurePlays, 5);
-        localStorage.removeItem("birdyAdventureReset");
-        localStorage.setItem("birdyAdventurePlays", adventurePlays);
+      if(adventurePlays >= ADVENTURE_MAX){
+        adventureStamp = now;
+      } else {
+        const diff = now - adventureStamp;
+        if(diff >= ADVENTURE_RECHARGE){
+          const add = Math.min(ADVENTURE_MAX - adventurePlays, Math.floor(diff / ADVENTURE_RECHARGE));
+          adventurePlays += add;
+          adventureStamp += ADVENTURE_RECHARGE * add;
+          localStorage.setItem("birdyAdventurePlays", adventurePlays);
+        }
       }
+      localStorage.setItem("birdyAdventureStamp", adventureStamp);
     }
-    resetAdventurePlaysIfNeeded();
+    regenAdventurePlays();
 
-    function recordAdventureDepletion(){
-      if(adventurePlays <= 0 && !adventureReset){
-        adventureReset = Date.now();
-        localStorage.setItem("birdyAdventureReset", adventureReset);
+    function recordAdventureUse(){
+      if(adventurePlays < ADVENTURE_MAX){
+        adventureStamp = Date.now();
+        localStorage.setItem("birdyAdventureStamp", adventureStamp);
       }
     }
 
@@ -3912,29 +3920,21 @@ function updateReviveDisplay(){
   document.getElementById('reviveCount').textContent = `${storedRevives}/1`;
 }
 function updateAdventureInfo(){
-  document.getElementById("adventureCount").textContent = adventurePlays + "/5";
+  document.getElementById("adventureCount").textContent = adventurePlays + "/" + ADVENTURE_MAX;
 }
 function updateAdventureTimer(){
+  regenAdventurePlays();
   const el = document.getElementById("adventureTimer");
-  if(!adventureReset){
+  if(adventurePlays >= ADVENTURE_MAX){
     el.textContent = '';
     return;
   }
   const now = Date.now();
-  let diff = adventureReset + 86400000 - now;
-  if(diff <= 0){
-    adventureReset = 0;
-    adventurePlays = Math.max(adventurePlays, 5);
-    localStorage.removeItem("birdyAdventureReset");
-    localStorage.setItem("birdyAdventurePlays", adventurePlays);
-    updateAdventureInfo();
-    el.textContent = '';
-    return;
-  }
-  const h = Math.floor(diff/3600000);
-  const m = Math.floor((diff%3600000)/60000);
+  let diff = adventureStamp + ADVENTURE_RECHARGE - now;
+  if(diff < 0) diff = 0;
+  const m = Math.floor(diff/60000);
   const s = Math.floor((diff%60000)/1000);
-  el.textContent = `Next 5 in ${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  el.textContent = `Next in ${m}:${String(s).padStart(2,"0")}`;
 }
 
 function addEffectIcon(key, src){
@@ -4059,7 +4059,7 @@ const WIN_HEIGHT = 100,
 function updateCoins(){
   coinDisplay.textContent = totalCoins;
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/${ADVENTURE_MAX}`;
   }
 }
 function doShake(){
@@ -4148,7 +4148,7 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   ov.style.display="block";
   document.getElementById("prizeText").textContent="";
   if (spinCoinDisplay) {
-    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/5`;
+    spinCoinDisplay.textContent = `Birds: ${adventurePlays}/${ADVENTURE_MAX}`;
   }
   spinOverlayClickable=false;
 
@@ -4185,7 +4185,7 @@ function startRoulette(){
   document.getElementById('prizeText').textContent = '';
   adventurePlays--;
   localStorage.setItem('birdyAdventurePlays', adventurePlays);
-  recordAdventureDepletion();
+  recordAdventureUse();
   updateAdventureInfo();
   updateCoins();
   updateScore();
@@ -4303,7 +4303,7 @@ function handleReward(sym,label){
     case '50.png':
       totalCoins += 50; break;
     case 'birdieV2.png':
-      adventurePlays += 1;
+      adventurePlays = Math.min(adventurePlays + 1, ADVENTURE_MAX);
       localStorage.setItem('birdyAdventurePlays', adventurePlays);
       updateAdventureInfo();
       break;
@@ -4822,7 +4822,7 @@ function showShop() {
             storedDoubles = 1;
             localStorage.setItem('birdyDouble', storedDoubles);
           } else if(key=="birdieV2.png") {
-            adventurePlays += 5;
+            adventurePlays = Math.min(adventurePlays + 5, ADVENTURE_MAX);
             localStorage.setItem("birdyAdventurePlays", adventurePlays);
             updateAdventureInfo();
           }
