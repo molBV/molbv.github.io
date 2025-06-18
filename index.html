@@ -1334,6 +1334,7 @@ const staggerSparks = [];
 const batThrust = [];
 const sonarRings = [];
 const miniRockets = [];
+const batSwarms = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -2589,13 +2590,14 @@ function drawBackground(){
               this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1);
             }
             this.y += this.vel;
-            if (isBatSkin()) {
+            if (isBatSkin() && !inMecha) {
               batThrust.push({
-                x: this.x,
-                y: this.y + 30,
+                x: this.x - 10,
+                y: this.y + 25,
                 vx: (Math.random()-0.5)*0.5,
                 vy: 2 + Math.random()*0.5,
-                life: 15
+                life: 15,
+                rot: this.vel < 0 ? Math.PI/2 : Math.PI/4
               });
             }
           }
@@ -3051,13 +3053,68 @@ function updateBatThrust(){
     t.y += t.vy;
     t.life--;
     ctx.save();
-    ctx.globalAlpha = t.life/15;
+    ctx.globalAlpha = (t.life/15) * 0.6;
     ctx.fillStyle = 'cyan';
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.rot || Math.PI/2);
+    const size = 3;
     ctx.beginPath();
-    ctx.arc(t.x, t.y, 2, 0, Math.PI*2);
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size, size);
+    ctx.lineTo(-size, size);
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
     if(t.life<=0) batThrust.splice(i,1);
+  }
+}
+
+function spawnBatSwarms(x, y){
+  const count = 2 + Math.floor(Math.random()*4);
+  for(let i=0;i<count;i++){
+    let target = null;
+    if(jellies.length) target = jellies[Math.floor(Math.random()*jellies.length)];
+    else if(stage2Bombs.length) target = stage2Bombs[Math.floor(Math.random()*stage2Bombs.length)];
+    else if(bossActive && bossObj) target = bossObj;
+    if(target){
+      batSwarms.push({x, y, tx:target.x, ty:target.y, life:60, parts:[]});
+    }
+  }
+}
+
+function updateBatSwarms(){
+  for(let i=batSwarms.length-1;i>=0;i--){
+    const s = batSwarms[i];
+    const dx = s.tx - s.x;
+    const dy = s.ty - s.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    s.x += dx/dist*2 + (Math.random()-0.5);
+    s.y += dy/dist*2 + (Math.random()-0.5);
+    s.parts.push({x:s.x, y:s.y, life:20});
+    for(let j=s.parts.length-1;j>=0;j--){
+      const p=s.parts[j];
+      p.life--;
+      ctx.save();
+      ctx.globalAlpha=p.life/20;
+      ctx.fillStyle='black';
+      ctx.translate(p.x,p.y);
+      ctx.rotate(Math.PI/2);
+      const size=3;
+      ctx.beginPath();
+      ctx.moveTo(0,-size);
+      ctx.lineTo(size,size);
+      ctx.lineTo(-size,size);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if(p.life<=0) s.parts.splice(j,1);
+    }
+    if(dist<5 || s.life<=0){
+      spawnExplosion(s.tx, s.ty);
+      batSwarms.splice(i,1);
+    } else {
+      s.life--;
+    }
   }
 }
 
@@ -3387,6 +3444,7 @@ function updateRockets() {
         // consume the rocket
         rocketsOut.splice(i, 1);
         spawnExplosion(b.x, b.y, true, r.electric);
+        if(r.bat && r.triple && r.electric) spawnBatSwarms(b.x, b.y);
         if (r.type === 'cow') spawnMilkSplash(b.x, b.y);
         maybeDropCoin(b.x, b.y);
 
@@ -3410,6 +3468,7 @@ function updateRockets() {
       if (Math.hypot(r.x - j.x, r.y - j.y) < 24) {
           rocketsOut.splice(i, 1);
           spawnExplosion(j.x, j.y, true, r.electric);
+          if(r.bat && r.triple && r.electric) spawnBatSwarms(j.x, j.y);
         if (r.type === 'cow') spawnMilkSplash(j.x, j.y);
         maybeDropCoin(j.x, j.y);
         triggerShake(5);
@@ -3439,6 +3498,7 @@ function updateRockets() {
         rocketsOut.splice(i, 1);
           rocketsIn.splice(k, 1);
           spawnExplosion(r.x, r.y, true, r.electric);
+          if(r.bat && r.triple && r.electric) spawnBatSwarms(r.x, r.y);
         if (r.type === 'cow') spawnMilkSplash(r.x, r.y);
         maybeDropCoin(r.x, r.y);
         score++; updateScore();
@@ -5371,6 +5431,7 @@ if (state === STATE.Boss) {
   updateElectricEffect();
   updateMagnetEffect();
   updateBatThrust();
+  updateBatSwarms();
   updateSonarRings();
   updateSmell();
   updateHeavyBall();
@@ -5398,6 +5459,7 @@ if (state === STATE.BossExplode) {
   updateMilkParticles();
   updateElectricEffect();
   updateBatThrust();
+  updateBatSwarms();
   updateSonarRings();
   updateSkinParticles();
   updateColumnFlames();
@@ -5553,6 +5615,7 @@ drawBackground();
  updateSkinParticles();
  updateElectricEffect();
  updateBatThrust();
+ updateBatSwarms();
  updateSonarRings();
  updateColumnFlames();
  updateColumnSnow();
@@ -5582,11 +5645,12 @@ if (state === STATE.Play) {
     bird.draw();
     updateReviveEffect();
     updateDoubleEffect();
-    updateElectricEffect();
-    updateMagnetEffect();
-    updateBatThrust();
-    updateSonarRings();
-    updateSmell();
+   updateElectricEffect();
+   updateMagnetEffect();
+   updateBatThrust();
+    updateBatSwarms();
+   updateSonarRings();
+   updateSmell();
     updateHeavyBall();
     if(!gauntletMode){
       drawPipes();
