@@ -1912,7 +1912,7 @@ if (p.pushX || p.pushY) {
       electricRings.push({ x:p.x, y:p.y, r:p.r*1.5, alpha:0.8, color:'cyan' });
       triggerShake(10);
       spawnImpactParticles(p.x, p.y, 0, 0);
-      if (p.phase2 && ++p.chargeCount % 3 === 0) {
+      if (++p.chargeCount % 3 === 0) {
         for(let a=0;a<8;a++){
           slicingDisks.push({
             x:p.x,
@@ -2512,7 +2512,9 @@ function drawBackground(){
         } else if (isBatSkin() && !birdSprite.src.includes('mech_bat')) {
           img = this.vel < 0 ? BAT_FLY : BAT_FRAMES[Math.floor(frames / 6) % BAT_FRAMES.length];
         }
-        ctx.drawImage(img, -32, -32, 64, 64);
+        const iw = isBatSkin() && !birdSprite.src.includes('mech_bat') ? (img.width  || 64) : 64;
+        const ih = isBatSkin() && !birdSprite.src.includes('mech_bat') ? (img.height || 64) : 64;
+        ctx.drawImage(img, -iw/2, -ih/2, iw, ih);
         ctx.restore();
         if (this.flashTimer > 0) this.flashTimer--;
       },
@@ -3329,6 +3331,17 @@ function updateRockets() {
   rocketsOut.forEach((r, i) => {
     // advance & draw the outgoing rocket
     r.x += r.vx * ts;
+    if (r.erratic) {
+      r.vy += (Math.random() - 0.5) * 0.3;
+      if (bossActive && bossObj) {
+        const dx = bossObj.x - r.x;
+        if (dx < 80) {
+          r.vy += r.y < bossObj.y ? -0.5 : 0.5;
+          r.vx = Math.min(r.vx, 2);
+        }
+      }
+    }
+    r.y += (r.vy || 0) * ts;
     const size = r.size || (r.triple ? 20 : 16);
     const img = r.bat
                ? BAT_ROCKET_FRAMES[Math.floor(frames/4)%BAT_ROCKET_FRAMES.length]
@@ -3336,7 +3349,15 @@ function updateRockets() {
                : r.type === 'ice' ? iceRocketSprite
                : r.type === 'cow' ? cowRocketSprite
                : rocketOutSprite;
-    ctx.drawImage(img, r.x, r.y - size/2, size, size);
+    if (r.erratic) {
+      ctx.save();
+      ctx.translate(r.x + size/2, r.y);
+      ctx.rotate(Math.atan2(r.vy || 0, r.vx));
+      ctx.drawImage(img, -size/2, -size/2, size, size);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, r.x, r.y - size/2, size, size);
+    }
     if (r.flame && frames % 2 === 0) {
       rocketFlames.push({x:r.x, y:r.y, life:10});
     }
@@ -5209,10 +5230,13 @@ function flapHandler(e){
           });
         } else {
           const baseSize = (tripleShot ? 20 : 16) * rocketSizeMult;
+          const erratic = bossEncounterCount === 4 && bird.stunTimer > 0;
           rocketsOut.push({
             x: bird.x + 40,
             y: bird.y + (s - (shots-1)/2) * 8,
             vx: 4,
+            vy: erratic ? (Math.random()-0.5)*2 : 0,
+            erratic,
             damage: (tripleShot ? 20 : 10) * rocketDamageMult,
             triple: tripleShot,
             electric: tripleElectric,
