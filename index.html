@@ -152,6 +152,24 @@
       pointer-events:none;
       font:16px sans-serif;
     }
+    #stageScore {
+      position:absolute;
+      top:120px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:32px;
+      font-weight:bold;
+      text-shadow:2px 2px 2px #000;
+      color:#fff;
+      display:none;
+      z-index:30;
+      pointer-events:none;
+    }
+    .grade { text-shadow:2px 2px 2px #000; }
+    .grade.S { color:#EF5350; }
+    .grade.A { color:#66BB6A; }
+    .grade.B { color:#42A5F5; }
+    .grade.C { color:#FFD54F; }
     #storyPopup {
       position:absolute;
       top:50%;
@@ -420,6 +438,7 @@
     </div>
   </div>
   <div id="achievementPopup"></div>
+  <div id="stageScore"></div>
   <div id="storyPopup"></div>
   <button id="btnSettings">⚙️</button>
   <div id="settingsPanel">
@@ -753,6 +772,8 @@ const storyEntries = [
   checkStoryAchievements();
   let slowMoTimer = 0;
   let mechaStartFrame = 0;
+  let gauntletCoinStart = 0;
+  let gauntletRocketStart = 0;
 
   let runPipes=0, runCoins=0, runJellies=0, runPowerups=0, runPipeBreaks=0;
 
@@ -1362,12 +1383,12 @@ const staggerSparks = [];
     const ADVENTURE_RECHARGE = 1800000; // 30 minutes
     let adventurePlays = parseInt(localStorage.getItem("birdyAdventurePlays") || "20");
     let adventureStamp = parseInt(localStorage.getItem("birdyAdventureStamp") || Date.now());
+    adventurePlays = Math.min(adventurePlays + 5, ADVENTURE_MAX);
+    localStorage.setItem("birdyAdventurePlays", adventurePlays);
 
     function regenAdventurePlays(){
       const now = Date.now();
-      if(adventurePlays >= ADVENTURE_MAX){
-        adventureStamp = now;
-      } else {
+      if(adventurePlays < ADVENTURE_MAX){
         const diff = now - adventureStamp;
         if(diff >= ADVENTURE_RECHARGE){
           const add = Math.min(ADVENTURE_MAX - adventurePlays, Math.floor(diff / ADVENTURE_RECHARGE));
@@ -1375,8 +1396,8 @@ const staggerSparks = [];
           adventureStamp += ADVENTURE_RECHARGE * add;
           localStorage.setItem("birdyAdventurePlays", adventurePlays);
         }
+        localStorage.setItem("birdyAdventureStamp", adventureStamp);
       }
-      localStorage.setItem("birdyAdventureStamp", adventureStamp);
     }
     regenAdventurePlays();
 
@@ -2626,31 +2647,36 @@ function spawnPipe(){
     : movingPipeChanceBase;
   const moving = (bossesDefeated >= 2 || marathonMoving) && Math.random() < movingChance;
   if (moving) coinP *= 0.5;
-  pipes.push({
-    x: W,
-    top: topH,
-    baseTop: topH,
-    gap,
-    color,
-    passed: false,
-    moving,
-    phase: Math.random() * Math.PI * 2,
-    amp: pipeMoveAmplitude
-  });
-  const p = pipes[pipes.length - 1];
-  if (isFireSkin()) {
-    // keep normal pipes for the Fire skin
-  } else if (isAquaSkin()) {
-    p.img = iceColumnImg;
-    p.snowFX = true;
-  // keep normal pipes for the Story skin
-  } else if (isStorySkin()) {
-    // no custom column image
-  } else if (defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech')) {
-    p.img = cowPipeImg;
+  let p = null;
+  if (!gauntletMode) {
+    pipes.push({
+      x: W,
+      top: topH,
+      baseTop: topH,
+      gap,
+      color,
+      passed: false,
+      moving,
+      phase: Math.random() * Math.PI * 2,
+      amp: pipeMoveAmplitude
+    });
+    p = pipes[pipes.length - 1];
+  }
+  if (p) {
+    if (isFireSkin()) {
+      // keep normal pipes for the Fire skin
+    } else if (isAquaSkin()) {
+      p.img = iceColumnImg;
+      p.snowFX = true;
+    // keep normal pipes for the Story skin
+    } else if (isStorySkin()) {
+      // no custom column image
+    } else if (defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech')) {
+      p.img = cowPipeImg;
+    }
   }
 
-  if (bossesDefeated >= 3 && Math.random() < 0.25) {
+  if (p && bossesDefeated >= 3 && Math.random() < 0.25) {
     const d = {
       x: p.x + pipeW / 2,
       y: topH + gap / 2,
@@ -4715,6 +4741,13 @@ function showAchievement(message, duration = 2000) {
   }, duration);
 }
 
+function showStageScore(lines, duration = 3000) {
+  const el = document.getElementById('stageScore');
+  el.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
 let storyHideTimer;
 function showStoryMessage(text, duration = 3000) {
   clearTimeout(storyHideTimer);
@@ -5274,8 +5307,23 @@ if (state === STATE.BossExplode) {
   if (--bossExplosionTimer <= 0) {
     state = STATE.Play;
     if (gauntletMode) {
+      const stageTime = Math.floor((frames - gauntletRocketStart) / 60);
+      const coinsEarned = coinCount - gauntletCoinStart;
+      const timeGrade = stageTime < 30 ? 'S' : stageTime < 40 ? 'A' : stageTime < 50 ? 'B' : 'C';
+      const coinGrade = coinsEarned > 10 ? 'S' : coinsEarned > 7 ? 'A' : coinsEarned > 4 ? 'B' : coinsEarned > 2 ? 'C' : 'D';
+      showStageScore([
+        `Time <span class="grade ${timeGrade}">${timeGrade}</span>`,
+        `Coins <span class="grade ${coinGrade}">${coinGrade}</span>`
+      ]);
+      flyingArmor.push({ img: armorPiece1, x: bird.x, y: bird.y, vx:-2, vy:-3 });
+      flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
+      coinCount = 10;
+      gauntletCoinStart = coinCount;
       rocketsSpawned = 0;
+      gauntletRocketStart = frames;
       spawnRocketWave();
+      inMecha = true;
+      mechaTriggered = true;
       mechaMusic.play().catch(() => {});
     }
   }
@@ -5342,6 +5390,10 @@ if (state === STATE.MechaTransit) {
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
       mechaStartFrame = frames;
+      if (gauntletMode) {
+        gauntletCoinStart = coinCount;
+        gauntletRocketStart = frames;
+      }
       state = STATE.Play;
       rocketsSpawned = 0;
       mechaStartScore = score;
@@ -5362,6 +5414,10 @@ if (state === STATE.MechaTransit) {
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
       mechaStartFrame = frames;
+      if (gauntletMode) {
+        gauntletCoinStart = coinCount;
+        gauntletRocketStart = frames;
+      }
       state = STATE.Play;
       rocketsSpawned = 0;
       mechaStartScore = score;
