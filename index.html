@@ -539,6 +539,9 @@
     birdSprite.src = 'assets/' + defaultSkin;
     const DEFAULT_BIRD_FRAMES = ['assets/birdieV2.png', 'assets/birdieflap.png']
       .map(src => Object.assign(new Image(), { src }));
+    const BAT_FRAMES = ['assets/batty1-min.png','assets/batty2-min.png','assets/batty3-min.png']
+      .map(src => Object.assign(new Image(), { src }));
+    const BAT_FLY = Object.assign(new Image(), { src:'assets/batty_fly-min.png' });
 const bgLayers = {
   distant1: Object.assign(new Image(), { src: 'assets/background/distantisland1.png' }),
   distant2: Object.assign(new Image(), { src: 'assets/background/distantisland2.png' }),
@@ -1010,6 +1013,8 @@ const shockRocketSprite = new Image();
 shockRocketSprite.src = 'assets/boss_animation/actual_shock_rocket.png';
 const cowRocketSprite = new Image();
 cowRocketSprite.src   = 'assets/cow_rocket.png';
+const BAT_ROCKET_FRAMES = ['assets/bat_rocket1.png','assets/bat_rocket2.png']
+  .map(src => Object.assign(new Image(), { src }));
 const cowPipeImg      = new Image();
 cowPipeImg.src        = 'assets/cow_pipe.png';
 const iceColumnImg    = new Image();
@@ -1326,6 +1331,9 @@ const skinParticles = [];
 const moneyLeaves = [];
 const milkParticles = [];
 const staggerSparks = [];
+const batThrust = [];
+const sonarRings = [];
+const miniRockets = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -1620,6 +1628,10 @@ const staggerSparks = [];
     function isStorySkin(){
       return defaultSkin === 'story_bird.png' || birdSprite.src.includes('Story_mech');
     }
+
+    function isBatSkin(){
+      return defaultSkin === 'batty1-min.png' || birdSprite.src.includes('mech_bat');
+    }
 // ── Mecha-transition kick-off ───────────────────────────────
 function startMechaTransition() {
   transitionTimer = 0;
@@ -1648,6 +1660,9 @@ function startMechaTransition() {
     altMechaTimer = 90;
   } else if (defaultSkin === 'story_bird.png') {
     altMecha = 'story';
+    altMechaTimer = 90;
+  } else if (defaultSkin === 'batty1-min.png') {
+    altMecha = 'bat';
     altMechaTimer = 90;
   } else if (defaultSkin === 'MoneySkin.png') {
     altMecha = 'money';
@@ -2494,6 +2509,8 @@ function drawBackground(){
           img = DEFAULT_BIRD_FRAMES[Math.floor(frames / 6) % DEFAULT_BIRD_FRAMES.length];
         } else if (defaultSkin === 'cow_down.png' && !birdSprite.src.includes('cow_mech')) {
           img = this.vel < 0 ? cowUpSprite : cowDownSprite;
+        } else if (isBatSkin() && !birdSprite.src.includes('mech_bat')) {
+          img = this.vel < 0 ? BAT_FLY : BAT_FRAMES[Math.floor(frames / 6) % BAT_FRAMES.length];
         }
         ctx.drawImage(img, -32, -32, 64, 64);
         ctx.restore();
@@ -2570,6 +2587,15 @@ function drawBackground(){
               this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1);
             }
             this.y += this.vel;
+            if (isBatSkin()) {
+              batThrust.push({
+                x: this.x,
+                y: this.y + 30,
+                vx: (Math.random()-0.5)*0.5,
+                vy: 2 + Math.random()*0.5,
+                life: 15
+              });
+            }
           }
           if (defaultSkin === 'FireSkinBase.png' || defaultSkin === 'AquaSkinBase.png') {
             const type = defaultSkin === 'FireSkinBase.png' ? 'fire' : 'bubble';
@@ -3016,6 +3042,39 @@ function updateSkinParticles() {
   }
 }
 
+function updateBatThrust(){
+  for(let i=batThrust.length-1;i>=0;i--){
+    const t = batThrust[i];
+    t.x += t.vx;
+    t.y += t.vy;
+    t.life--;
+    ctx.save();
+    ctx.globalAlpha = t.life/15;
+    ctx.fillStyle = 'cyan';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    if(t.life<=0) batThrust.splice(i,1);
+  }
+}
+
+function updateSonarRings(){
+  for(let i=sonarRings.length-1;i>=0;i--){
+    const r = sonarRings[i];
+    r.r += 2;
+    r.alpha -= 0.03;
+    ctx.save();
+    ctx.strokeStyle = `rgba(0,150,255,${r.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+    if(r.alpha<=0) sonarRings.splice(i,1);
+  }
+}
+
 function spawnMoneyLeaf(x, y, vx, vy) {
   const img = leafImages[Math.floor(Math.random() * leafImages.length)];
   moneyLeaves.push({
@@ -3271,7 +3330,9 @@ function updateRockets() {
     // advance & draw the outgoing rocket
     r.x += r.vx * ts;
     const size = r.size || (r.triple ? 20 : 16);
-    const img = r.type === 'fire' ? fireRocketSprite
+    const img = r.bat
+               ? BAT_ROCKET_FRAMES[Math.floor(frames/4)%BAT_ROCKET_FRAMES.length]
+               : r.type === 'fire' ? fireRocketSprite
                : r.type === 'ice' ? iceRocketSprite
                : r.type === 'cow' ? cowRocketSprite
                : rocketOutSprite;
@@ -3865,14 +3926,19 @@ function updateSliceDisks() {
     }
 
     if (!c.taken) {
-      if(magnetActive){
+      const batAttract = isBatSkin();
+      if(magnetActive || batAttract){
         const dx = bird.x - c.x;
         const dy = bird.y - c.y;
         const dist = Math.hypot(dx, dy);
-        if(dist < 80){
+        const range = Math.max(magnetActive ? 80 : 0, batAttract ? 120 : 0);
+        if(dist < range){
           c.x += dx * 0.1;
           c.y += dy * 0.1;
           if(frames % 4 === 0) spawnMagnetParticle(c.x, c.y);
+          if(batAttract && frames % 6 === 0){
+            sonarRings.push({ x: bird.x, y: bird.y, r: 10, alpha: 0.5 });
+          }
         }
       }
       // draw spinning coin…
@@ -3935,7 +4001,8 @@ function updateSliceDisks() {
     if(!p.taken){
       ctx.save();
       ctx.translate(p.x, p.y + Math.sin(frames*0.1)*2);
-      const img = (defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech')) ? cowRocketSprite : rocketOutSprite;
+      const img = isBatSkin() ? BAT_ROCKET_FRAMES[0]
+               : (defaultSkin === 'cow_down.png' || birdSprite.src.includes('cow_mech')) ? cowRocketSprite : rocketOutSprite;
       for(let j=0;j<3;j++){
         ctx.drawImage(img, -8, -12 + j*8, 16, 16);
       }
@@ -4852,6 +4919,7 @@ function showShop() {
         {key:'FireSkinBase.png', name:'Fire Skin', cost:100, owned:ownedSkins['FireSkinBase.png']},
         {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
         {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10},
+        {key:'batty1-min.png', name:'Bat', cost:100, owned:ownedSkins['batty1-min.png']},
         {key:'MoneySkin.png', name:'Money Bags', cost:500, owned:ownedSkins['MoneySkin.png']},
         {key:'cow_down.png', name:'Cow', cost:420, owned:ownedSkins['cow_down.png']}
       ];
@@ -5146,6 +5214,7 @@ function flapHandler(e){
             triple: tripleShot,
             electric: tripleElectric,
             money: defaultSkin === 'MoneySkin.png',
+            bat: isBatSkin(),
             size: baseSize,
             flame: rocketFlameEnabled || rocketType==='fire',
             type: rocketType
@@ -5274,6 +5343,8 @@ if (state === STATE.Boss) {
   updateDoubleEffect();
   updateElectricEffect();
   updateMagnetEffect();
+  updateBatThrust();
+  updateSonarRings();
   updateSmell();
   updateHeavyBall();
   bird.draw();
@@ -5299,6 +5370,8 @@ if (state === STATE.BossExplode) {
   updateStaggerSparks();
   updateMilkParticles();
   updateElectricEffect();
+  updateBatThrust();
+  updateSonarRings();
   updateSkinParticles();
   updateColumnFlames();
   updateColumnSnow();
@@ -5385,7 +5458,9 @@ if (state === STATE.MechaTransit) {
             ? 'assets/cow_mech.png'
             : altMecha === 'story'
               ? 'assets/Story_mech.png'
-              : 'assets/MoneyMech.png';
+              : altMecha === 'bat'
+                ? 'assets/mech_bat.png'
+                : 'assets/MoneyMech.png';
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
@@ -5450,6 +5525,8 @@ applyShake();
 drawBackground();
  updateSkinParticles();
  updateElectricEffect();
+ updateBatThrust();
+ updateSonarRings();
  updateColumnFlames();
  updateColumnSnow();
  updateMoneyLeaves();
@@ -5480,6 +5557,8 @@ if (state === STATE.Play) {
     updateDoubleEffect();
     updateElectricEffect();
     updateMagnetEffect();
+    updateBatThrust();
+    updateSonarRings();
     updateSmell();
     updateHeavyBall();
     if(!gauntletMode){
