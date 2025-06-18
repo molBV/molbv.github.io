@@ -2512,8 +2512,8 @@ function drawBackground(){
         } else if (isBatSkin() && !birdSprite.src.includes('mech_bat')) {
           img = this.vel < 0 ? BAT_FLY : BAT_FRAMES[Math.floor(frames / 6) % BAT_FRAMES.length];
         }
-        const iw = isBatSkin() && !birdSprite.src.includes('mech_bat') ? (img.width  || 64) : 64;
-        const ih = isBatSkin() && !birdSprite.src.includes('mech_bat') ? (img.height || 64) : 64;
+        const iw = 64;
+        const ih = 64;
         ctx.drawImage(img, -iw/2, -ih/2, iw, ih);
         ctx.restore();
         if (this.flashTimer > 0) this.flashTimer--;
