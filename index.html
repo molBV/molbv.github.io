@@ -237,6 +237,18 @@
       pointer-events:none;
       font:18px serif;
     }
+    #cheeseMessage {
+      position:absolute;
+      top:40%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      color:#ff0;
+      font:24px var(--font-heading);
+      text-shadow:2px 2px 4px #000;
+      display:none;
+      z-index:40;
+      pointer-events:none;
+    }
 
     @keyframes flash {
       0%,100%{opacity:1}
@@ -541,6 +553,7 @@
   <div id="achievementPopup"></div>
   <div id="stageScore"></div>
   <div id="storyPopup"></div>
+  <div id="cheeseMessage" class="flash"></div>
   <button id="btnSettings">⚙️</button>
   <div id="settingsPanel">
     <input id="volumeSlider" type="range" min="0" max="1" step="0.01">
@@ -1136,6 +1149,10 @@ const cowUpSprite     = new Image();
 cowUpSprite.src       = 'assets/cow_up.png';
 const cowDownSprite   = new Image();
 cowDownSprite.src     = 'assets/cow_down.png';
+const cheeseKillerSprite = new Image();
+cheeseKillerSprite.src  = 'assets/cheeesekiller.png';
+const cheeseChargeSprite = new Image();
+cheeseChargeSprite.src  = 'assets/cheekillercharge.png';
 const penguinMechaBase    = new Image();
 penguinMechaBase.src      = 'assets/penguinmechaBase.png';
 const penguinMechaShoot1  = new Image();
@@ -1427,6 +1444,9 @@ let bossTriggerMisses  = 0;   // times a boss rocket despawned unhit
 let bossTriggerActive  = false; // is a boss trigger rocket on-screen
 let bossObj;                // boss-specific timers & mode
 let bossExplosionTimer = 0; // countdown for boss defeat explosion
+
+let cheeseKiller = null;
+let topStayTimer = 0;
 
 let altMecha = null;        // 'fire', 'aqua', 'story', or 'money' during alt mech transition
 let altMechaTimer = 0;
@@ -2947,6 +2967,22 @@ function spawnSliceDisk(){
   });
 }
 
+function spawnCheeseKiller() {
+  cheeseKiller = {
+    x: W + 40,
+    y: H / 2,
+    vx: -4,
+    vy: 0,
+    r: 32,
+    hp: 3000,
+    charge: 0,
+    cooldown: 0,
+    flashTimer: 0
+  };
+  showCheeseMessage();
+  triggerShake(10);
+}
+
 function spawnExplosion(x, y, fromRocket = false, electric = false) {
   explosions.push({ x, y, frame: 0 });
   explosionSfx.currentTime = 0;
@@ -4094,6 +4130,50 @@ function updateSliceDisks() {
   }
 }
 
+function updateCheeseKiller() {
+  if (!cheeseKiller) return;
+  const ck = cheeseKiller;
+  const ts = slowMoTimer > 0 ? 0.5 : 1;
+  const targetX = W - 80;
+  if (ck.x > targetX) {
+    ck.x += ck.vx * ts;
+    if (ck.x < targetX) ck.x = targetX;
+  } else {
+    ck.x = targetX;
+  }
+  ck.vy += (bird.y - ck.y) * 0.02 * ts;
+  ck.vy += Math.sin(frames * 0.05) * 0.1 * ts;
+  ck.y += ck.vy * ts;
+  ck.vy *= 0.95;
+  ck.y = Math.max(ck.r, Math.min(H - ck.r, ck.y));
+  if (ck.cooldown > 0) ck.cooldown--;
+  if (ck.charge > 0) {
+    ck.charge--;
+    if (ck.charge == 0) {
+      rocketsIn.push({ x: ck.x - ck.r, y: ck.y, vx: -4, vy: 0, isHoming: true, isBossShot: true });
+      ck.cooldown = 40;
+    }
+  } else if (ck.cooldown <= 0 && Math.random() < 0.05) {
+    ck.charge = 20;
+    triggerShake(5);
+  }
+  const img = ck.charge > 0 ? cheeseChargeSprite : cheeseKillerSprite;
+  ctx.drawImage(img, ck.x - 32, ck.y - 32, 64, 64);
+  if (ck.flashTimer > 0) ck.flashTimer--;
+  for (let i = rocketsOut.length - 1; i >= 0; i--) {
+    const r = rocketsOut[i];
+    if (Math.hypot(r.x - ck.x, r.y - ck.y) < ck.r + 8) {
+      rocketsOut.splice(i,1);
+      spawnExplosion(ck.x, ck.y, false, r.electric);
+      ck.hp -= (r.damage || 10);
+      ck.flashTimer = 6;
+      if (ck.hp <= 0) { cheeseKiller = null; break; }
+    }
+  }
+  if (Math.hypot(bird.x - ck.x, bird.y - ck.y) < ck.r + bird.rad) {
+    handleHit();
+  }
+}
 
   function updatePipes(){
   // only run during play or boss
@@ -5119,6 +5199,13 @@ function showStoryMessage(text, duration = 3000) {
   storyHideTimer = setTimeout(() => { pop.style.display = 'none'; }, duration);
 }
 
+function showCheeseMessage(duration = 2000) {
+  const el = document.getElementById('cheeseMessage');
+  el.textContent = 'Cheese Killer SUMMONED';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
 function triggerStoryEvent(id) {
   if (!storyLog[id]) {
     storyLog[id] = true;
@@ -5584,6 +5671,10 @@ function applyShake() {
     function loop(){
       if (paused) return;
       frames++;
+      if (bird.y < H * 0.05) topStayTimer++; else topStayTimer = 0;
+      if (topStayTimer > 180 && !cheeseKiller && state === STATE.Play) {
+        spawnCheeseKiller();
+      }
       if (slowMoTimer > 0) slowMoTimer--;
       if (inMecha && !storyLog['Arcane_Harmony'] && frames - mechaStartFrame >= 1800) {
         triggerStoryEvent('Arcane_Harmony');
@@ -5910,13 +6001,14 @@ if (state === STATE.Play) {
 
 
     if (inMecha) {
-      if(reviveTimer<=0){
-        updateRockets();
-        updateJellies();
-      }
+    if(reviveTimer<=0){
+      updateRockets();
+      updateJellies();
     }
-    updateSliceDisks();
-    bird.update();
+  }
+  updateSliceDisks();
+  updateCheeseKiller();
+  bird.update();
 
 } else {
   // Start or Over screen
