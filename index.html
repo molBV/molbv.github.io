@@ -2597,7 +2597,7 @@ function drawBackground(){
                 vx: (Math.random()-0.5)*0.5,
                 vy: 2 + Math.random()*0.5,
                 life: 15,
-                rot: this.vel < 0 ? Math.PI/2 : Math.PI/4
+                rot: this.vel < 0 ? Math.PI/2 : 5 * Math.PI / 4
               });
             }
           }
@@ -2630,24 +2630,10 @@ function drawBackground(){
             }
           }
           if (this.y + this.rad > H) {
-  // while armored, always bounce
-if (inMecha) {
-    this.y   = H/2;    // bounce mid-screen
-    this.vel = 0;
-    // after the 2s immunity window, bouncing also removes the suit
-    if (frames > mechaSafeExpiry) {
-      inMecha = false;
-      tripleShot = false;
-      tripleElectric = false;
-      electricTimer = 0;
-      birdSprite.src = 'assets/' + defaultSkin;
-    }
-  }
-  // if not armored, die as normal
-  else if ((state === STATE.Play || state === STATE.Boss) && !revivePromptActive) {
-    if (reviveTimer <= 0) endGame();
-  }
-}
+            if ((state === STATE.Play || state === STATE.Boss) && !revivePromptActive) {
+              endGame();
+            }
+          }
 
           if(this.y-this.rad<0){ this.y=this.rad; this.vel=0; }
         }
@@ -4260,6 +4246,7 @@ function startReviveEffect(){
   reviveTimer = 180;         // 3 second countdown
   reviveRings.length = 0;
   bird.vel = 0;
+  bird.y = H/2;              // bring player back to mid-screen
   coinCount += 5;
   updateScore();
   updateReviveDisplay();
@@ -4276,6 +4263,16 @@ function startReviveEffect(){
       type:'bubble'
     });
   }
+}
+
+function hideSpinOverlay(){
+  const ov = document.getElementById('spinOverlay');
+  ov.style.display = 'none';
+  if (typeof casinoTheme !== 'undefined') {
+    casinoTheme.pause();
+    casinoTheme.currentTime = 0;
+  }
+  spinOverlayClickable = false;
 }
 
 let revivePromptActive = false;
@@ -4521,6 +4518,7 @@ function startRoulette(){
           if(spinForRevive){
             if(sym === 'Revive.png'){
               startReviveEffect();
+              hideSpinOverlay();
               menuEl.style.display = 'none';
               spinReturnToMenu = false;
             }else{
