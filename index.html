@@ -1483,6 +1483,7 @@ const batThrust = [];
 const sonarRings = [];
 const miniRockets = [];
 const batSwarms = [];
+const pulseRings = [];
 
     let tripleShot = false;
     let rocketsSpawned = 0;       // count rockets during Mecha
@@ -2061,6 +2062,15 @@ if (p.pushX || p.pushY) {
           big: bossEncounterCount===4 && p.bigCharge,
           coinLoss: p.tripleFire ? 3 : 1
         });
+        if (bossEncounterCount===4) {
+          rocketsIn.push({
+            x: p.x + Math.sin(p.y*0.04)*30 - p.r,
+            y: p.y + o + yOff,
+            vx: -2,
+            isBossShot:true,
+            pulseRush:true
+          });
+        }
       });
       electricRings.push({ x:p.x, y:p.y, r:p.r*1.5, alpha:0.8, color:'cyan' });
       triggerShake(10);
@@ -3369,6 +3379,23 @@ function updateSonarRings(){
   }
 }
 
+function updatePulseRings(){
+  for(let i=pulseRings.length-1;i>=0;i--){
+    const r = pulseRings[i];
+    r.r += 2;
+    r.alpha -= 0.03;
+    ctx.save();
+    const col = r.color === 'yellow' ? '255,230,0' : '0,150,255';
+    ctx.strokeStyle = `rgba(${col},${r.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+    if(r.alpha<=0) pulseRings.splice(i,1);
+  }
+}
+
 function spawnMoneyLeaf(x, y, vx, vy) {
   const img = leafImages[Math.floor(Math.random() * leafImages.length)];
   moneyLeaves.push({
@@ -3829,17 +3856,33 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
 
   // ── INCOMING ROCKETS ─────────────────────────────────
   rocketsIn.forEach((r, i) => {
+    // 0) special pulse rockets
+    if (r.pulseRush) {
+      if (frames % 6 === 0) {
+        pulseRings.push({x:r.x,y:r.y,r:10,alpha:0.6,color:'blue'});
+        pulseRings.push({x:r.x,y:r.y,r:10,alpha:0.6,color:'yellow'});
+      }
+      if (!r.rush && Math.hypot(bird.x - r.x, bird.y - r.y) < 120) {
+        r.isHoming = true;
+        r.homingStrength = 0.02;
+        r.rush = true;
+      }
+    }
+
     // 1) homing-steer if flagged
     if (r.isHoming) {
-      if (r.x < bird.x) {
+      if (r.x < bird.x && !r.ignoreXCheck) {
         r.isHoming = false;
       } else {
         const dx = bird.x - r.x;
         const dy = bird.y - r.y;
-        r.vx += dx * 0.001;
-        r.vy += dy * 0.001;
-        r.vx *= 0.98;
-        r.vy *= 0.98;
+        const accel = r.homingStrength || 0.001;
+        r.vx += dx * accel;
+        r.vy += dy * accel;
+        if (!r.homingStrength) {
+          r.vx *= 0.98;
+          r.vy *= 0.98;
+        }
       }
     }
 
@@ -5710,6 +5753,7 @@ if (state === STATE.Boss) {
   updateBatThrust();
   updateBatSwarms();
   updateSonarRings();
+  updatePulseRings();
   updateSmell();
   updateHeavyBall();
   bird.draw();
@@ -5739,6 +5783,7 @@ if (state === STATE.BossExplode) {
   updateBatThrust();
   updateBatSwarms();
   updateSonarRings();
+  updatePulseRings();
   updateSkinParticles();
   updateSnowflakes();
   updateColumnFlames();
@@ -5914,6 +5959,7 @@ drawBackground();
  updateBatThrust();
  updateBatSwarms();
  updateSonarRings();
+ updatePulseRings();
  updateColumnFlames();
  updateColumnSnow();
  updateMoneyLeaves();
@@ -5945,8 +5991,9 @@ if (state === STATE.Play) {
    updateElectricEffect();
    updateMagnetEffect();
    updateBatThrust();
-    updateBatSwarms();
+   updateBatSwarms();
    updateSonarRings();
+   updatePulseRings();
    updateSmell();
     updateHeavyBall();
     if(!gauntletMode){
