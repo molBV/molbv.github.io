@@ -2965,10 +2965,11 @@ function spawnSliceDisk(){
 }
 
 function spawnCheeseKiller() {
+  const spawnY = Math.random() * (H - 100) + 50;
   cheeseKiller = {
     x: W + 40,
-    y: H / 2,
-    vx: -4,
+    y: spawnY,
+    vx: -1.5,
     vy: 0,
     r: 32,
     hp: 3000,
@@ -5701,7 +5702,8 @@ function applyShake() {
     function loop(){
       if (paused) return;
       frames++;
-      if (bird.y < H * 0.05) topStayTimer++; else topStayTimer = 0;
+      if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
+
       if (topStayTimer > 180 && !cheeseKiller) {
         spawnCheeseKiller();
       }
