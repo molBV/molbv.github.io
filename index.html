@@ -1195,6 +1195,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       if (paused) return;
       paused = true;
       settingsPanel.style.display = 'block';
+      cancelAnimationFrame(animationId);
       bgMusic.pause();
       mechaMusic.pause();
     }
@@ -1226,35 +1227,25 @@ document.addEventListener('keydown',   initMusic, {passive:true});
       if (paused) return;
       paused = true;
       pauseOverlay.style.display = 'block';
+      cancelAnimationFrame(animationId);
       bgMusic.pause();
       mechaMusic.pause();
     }
 
-    function startResumeCountdown() {
-      let count = 3;
-      resumeTimerEl.textContent = 'Resuming in ' + count;
-      resumeTimerEl.style.display = 'block';
-      const timer = setInterval(() => {
-        count--;
-        if (count > 0) {
-          resumeTimerEl.textContent = 'Resuming in ' + count;
-        } else {
-          clearInterval(timer);
-          pauseOverlay.style.display = 'none';
-          resumeTimerEl.style.display = 'none';
-          paused = false;
-          if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
-            mechaMusic.play().catch(()=>{});
-          } else {
-            bgMusic.play().catch(()=>{});
-          }
-          loop();
-        }
-      }, 1000);
+    function resumeGame() {
+      pauseOverlay.style.display = 'none';
+      resumeTimerEl.style.display = 'none';
+      paused = false;
+      if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
+        mechaMusic.play().catch(()=>{});
+      } else {
+        bgMusic.play().catch(()=>{});
+      }
+      loop();
     }
 
     pauseBtn.onclick = openPause;
-    resumeBtn.onclick = startResumeCountdown;
+    resumeBtn.onclick = resumeGame;
     mainMenuBtn.onclick = () => {
       pauseOverlay.style.display = 'none';
       paused = false;
@@ -1288,6 +1279,7 @@ let superTimer = 0;
 let shieldCount= 0;
 let pipeCount  = 0;
 let paused     = false;
+let animationId;
 
 // boss fight state
 let bossActive      = false;
@@ -5438,7 +5430,8 @@ if (state === STATE.Boss) {
   // 4) draw the boss on top
   drawBoss();
 
-  return requestAnimationFrame(loop);
+  animationId = requestAnimationFrame(loop);
+  return;
 }
 
 if (state === STATE.BossExplode) {
@@ -5487,7 +5480,8 @@ if (state === STATE.BossExplode) {
       mechaMusic.play().catch(() => {});
     }
   }
-  return requestAnimationFrame(loop);
+  animationId = requestAnimationFrame(loop);
+  return;
 }
 
 
@@ -5603,7 +5597,8 @@ for (let j = flyingArmor.length - 1; j >= 0; j--) {
   }
 }
   bird.draw();
-  return requestAnimationFrame(loop);   // skip everything else until we finish
+  animationId = requestAnimationFrame(loop);   // skip everything else until we finish
+  return;
 }
 
 // then shake
@@ -5732,7 +5727,7 @@ if (state === STATE.Play) {
          ctx.restore();
  }
       if(superTimer>0) superTimer--;
-      requestAnimationFrame(loop);
+      animationId = requestAnimationFrame(loop);
     }
     updateScore();
     loop();
