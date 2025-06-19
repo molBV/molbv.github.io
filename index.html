@@ -267,7 +267,12 @@
     }
     #upgradeTree { position:relative; width:100%; height:100%; }
     #upgradeLines { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-    .upgradeNode { position:absolute; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; transform:translate(-50%,-50%); }
+    .upgradeNode { position:absolute; width:36px; height:36px; border-radius:50%; border:2px solid; transform:translate(-50%,-50%); }
+    .upgradeNode img { width:100%; height:100%; border-radius:50%; }
+    .upgradeNode.equipped { width:48px; height:48px; }
+    .upgradeNode.locked img { filter:grayscale(1) brightness(0.4); }
+    .upgradeNode.owned img { filter:grayscale(0.7) brightness(0.7); }
+    .priceTag { position:absolute; bottom:-14px; width:100%; text-align:center; font-size:12px; color:#fff; pointer-events:none; }
     .lineGlow { filter: drop-shadow(0 0 4px currentColor); }
 
     #btnSettings {
@@ -1558,6 +1563,7 @@ const batSwarms = [];
             effect: () => { coinSpawnBonus += 0.10; },
             costFactor: 1,
             tier: 0,
+            icon: 'coins10up.png',
             x: 0,
             y: 0
           },
@@ -1569,6 +1575,7 @@ const batSwarms = [];
             costFactor: 1.1,
             tier: 1,
             parent: 'natural_coin10',
+            icon: 'coins10up.png',
             x: -1,
             y: 1
           },
@@ -1580,6 +1587,7 @@ const batSwarms = [];
             costFactor: 1.2,
             tier: 1,
             parent: 'natural_coin10',
+            icon: 'magnetup.png',
             x: 1,
             y: 1
           },
@@ -1591,6 +1599,7 @@ const batSwarms = [];
             costFactor: 1.2,
             tier: 2,
             parent: 'natural_magnet',
+            icon: 'magnetup.png',
             x: 1,
             y: 2
           }
@@ -1613,6 +1622,7 @@ const batSwarms = [];
             },
             costFactor: 1,
             tier: 0,
+            icon: 'big_rocket.png',
             x: 3,
             y: 0
           },
@@ -1624,6 +1634,7 @@ const batSwarms = [];
             costFactor: 1.3,
             tier: 1,
             parent: 'mech_rocket_big',
+            icon: 'splash_damage.png',
             x: 3,
             y: 1
           },
@@ -1635,6 +1646,7 @@ const batSwarms = [];
             costFactor: 1.4,
             tier: 2,
             parent: 'mech_rocket_splash',
+            icon: 'pulse_rocket.png',
             x: 3,
             y: 2
           }
@@ -5264,19 +5276,25 @@ function renderUpgradeTree() {
       const equipped = equippedUpgrades.includes(upg.id);
       const node = document.createElement("div");
       node.className = "upgradeNode";
+      if(equipped) node.classList.add("equipped");
+      else if(owned) node.classList.add("owned");
+      else node.classList.add("locked");
       node.style.borderColor = branch.color;
-      node.style.background = equipped ? "#fff" : owned ? branch.color : "#333";
       node.style.left = (center + upg.x * gridX) + "px";
       node.style.top  = (40 + upg.y * gridY) + "px";
-      node.textContent = owned ? (equipped ? "★" : "✓") : cost;
-      if(upg.id.includes("coin") || upg.id.includes("rocket") || upg.id.includes("magnet")){
-        const icon = document.createElement("div");
-        icon.className = "iconBounce";
-        icon.style.fontSize = "16px";
-        icon.textContent = upg.id.includes("coin") ? "🪙" : upg.id.includes("rocket") ? "🚀" : "🧲";
-        node.prepend(icon);
+
+      const img = document.createElement("img");
+      img.src = "assets/" + upg.icon;
+      img.className = "iconBounce";
+      node.appendChild(img);
+
+      if(!owned){
+        const price = document.createElement("div");
+        price.className = "priceTag";
+        price.textContent = cost + ' 🪙';
+        node.appendChild(price);
       }
-      if(!owned) node.style.cursor = "pointer";
+      node.style.cursor = "pointer";
       node.addEventListener("mouseenter", () => { showTooltip(upg.name+": "+upg.description); });
       node.addEventListener("mouseleave", hideTooltip);
       node.addEventListener("click", () => {
