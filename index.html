@@ -8,12 +8,32 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="theme-color" content="#70d0ee">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      /* typography */
+      --font-heading: "Fredoka One", sans-serif;
+      --font-body:    "Poppins", sans-serif;
+
+      /* glassmorphism */
+      --menu-bg:       rgba(255,255,255,0.15);
+      --menu-border:   rgba(255,255,255,0.3);
+      --menu-shadow:   0 8px 24px rgba(0,0,0,0.15);
+
+      /* button tokens */
+      --btn-radius:    12px;
+      --btn-shadow:    0 4px 12px rgba(0,0,0,0.15);
+      --btn-height:    56px;
+    }
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
       width:100%; height:100%;
       overflow:hidden; position:relative;
       background:#70d0ee;
+    }
+    body, input, button {
+      font-family: var(--font-body);
     }
     canvas {
       position:absolute;
@@ -63,66 +83,87 @@
 
     #menu {
       position:absolute;
-      top:50%;
-      left:50%;
+      top:50%; left:50%;
       transform:translate(-50%, -50%);
-      width:320px;
+      width:90vw;
+      max-width:360px;
       padding:24px;
-      background:rgba(255,255,255,0.1);
-      backdrop-filter:blur(12px);
-      border:1px solid rgba(255,255,255,0.3);
-      border-radius:16px;
-      box-shadow:0 8px 24px rgba(0,0,0,0.2);
+      background:var(--menu-bg);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--menu-border);
+      border-radius:24px;
+      box-shadow:var(--menu-shadow);
       text-align:center;
       z-index:15;
     }
     #menu h1 {
-      font-size:32px;
-      color:#FFD54F;
-      text-shadow:2px 2px 4px rgba(0,0,0,0.6);
+      font-family:var(--font-heading);
+      font-size:2.5rem;
+      color:#FFC107;
+      text-shadow:0 2px 4px rgba(0,0,0,0.4);
       margin-bottom:4px;
     }
     #menu h2 {
-      font-size:16px;
-      color:#fff;
-      text-shadow:2px 2px 4px rgba(0,0,0,0.6);
-      margin-bottom:16px;
+      font-family:var(--font-body);
+      font-size:1.25rem;
+      color:#FFF;
+      text-shadow:0 2px 4px rgba(0,0,0,0.4);
+      margin-bottom:24px;
     }
     .menu-btn.primary {
       display:block;
       width:100%;
-      margin:8px 0;
-      padding:12px;
-      font-size:20px;
-      color:#fff;
-      border:none;
-      border-radius:8px;
-      box-shadow:0 4px 8px rgba(0,0,0,0.2);
-      cursor:pointer;
-    }
-    .menu-btn.primary.adventure { background:#66BB6A; }
-    .menu-btn.primary.marathon  { background:#42A5F5; }
-    .menu-btn.primary.gauntlet  { background:#EF5350; }
-    .menu-row {
-      display:flex;
-      justify-content:center;
-      gap:12px;
+      height:var(--btn-height);
       margin:16px 0;
-    }
-    .menu-btn.secondary {
-      width:64px;
-      height:64px;
-      background:rgba(255,255,255,0.8);
+      padding:0;
+      font-family:var(--font-body);
+      font-size:1.125rem;
+      font-weight:500;
+      color:#FFF;
       border:none;
-      border-radius:12px;
-      box-shadow:0 2px 4px rgba(0,0,0,0.2);
-      color:#333;
-      font-size:12px;
-      display:inline-flex;
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      cursor:pointer;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .menu-btn.primary:hover {
+      transform:translateY(-2px);
+      box-shadow:0 6px 16px rgba(0,0,0,0.2);
+    }
+    .menu-btn.primary.adventure { background-image: linear-gradient(to bottom, #8BC34A, #558B2F); }
+    .menu-btn.primary.marathon  { background-image: linear-gradient(to bottom, #4FC3F7, #0288D1); }
+    .menu-btn.primary.gauntlet  { background-image: linear-gradient(to bottom, #EF5350, #C62828); }
+    #btnGauntlet { display:none; }
+    .menu-row {
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+      margin:32px 0;
+    }
+
+    .menu-btn.secondary {
+      display:flex;
       flex-direction:column;
       align-items:center;
       justify-content:center;
+      height:var(--btn-height);
+      background:rgba(255,255,255,0.9);
+      border:none;
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      font-size:0.75rem;
+      color:#333;
       cursor:pointer;
+      transition:background 0.2s, transform 0.2s;
+    }
+
+    .menu-btn.secondary:hover {
+      background:#fff;
+      transform:translateY(-2px);
+    }
+
+    .menu-btn.secondary img {
+      width:24px; height:24px;
     }
     .menu-btn.secondary span {
       display:block;
@@ -131,18 +172,20 @@
     .stats {
       display:flex;
       justify-content:space-between;
-      color:#fff;
-      font-size:16px;
+      margin-top:24px;
+      padding:12px;
+      background:rgba(255,255,255,0.2);
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      font-size:1rem;
+      color:#FFF;
       text-shadow:1px 1px 3px rgba(0,0,0,0.6);
-      margin-top:16px;
     }
-    .adventure-info {
-      font-size:14px;
-      color:#fff;
-      margin-bottom:8px;
-    }
-    #adventureTimer.flash {
-      margin-left:8px;
+
+    .stats div {
+      display:flex;
+      align-items:center;
+      gap:4px;
     }
     #achievementPopup {
       position:absolute;
@@ -359,6 +402,18 @@
       animation:firework 0.6s ease-out forwards;
     }
 
+    @media (max-width: 400px) {
+      #menu {
+        padding:16px;
+        max-width:90vw;
+      }
+      .menu-btn.primary, .menu-btn.secondary {
+        height:48px;
+        font-size:1rem;
+      }
+      #menu h1 { font-size:2rem; }
+      #menu h2 { font-size:1rem; }
+    }
 
   </style>
 
@@ -412,13 +467,6 @@
     <h2>Rocket Birdie</h2>
 
     <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
-    <div class="adventure-info">
-      <span id="adventureCount">20/20</span>
-      <span id="adventureTimer" class="flash"></span><br/>
-      <button id="buyBirdBtn" class="menu-btn primary" style="font-size:16px; padding:6px 12px; margin-top:8px;">
-        Buy Bird – 20 Coins
-      </button>
-    </div>
 
     <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
     <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
@@ -432,9 +480,6 @@
       </button>
       <button id="btnShop" class="menu-btn secondary">
         🛒<span>Shop</span>
-      </button>
-      <button id="btnLeaderboard" class="menu-btn secondary">
-        📊<span>Leaderboard</span>
       </button>
     </div>
 
@@ -957,33 +1002,39 @@ let marathonMoving = false;
     menuEl.style.display = 'none';
     showShop();
   };
-  document.getElementById('btnLeaderboard').onclick = () => {
-    menuEl.style.display = 'none';
-    Promise.all([
-      fetchTopGlobalScores(false),
-      fetchTopGlobalScores(true)
-    ]).then(([adv, mar]) => {
-      const ov = document.getElementById('overlay');
-      ov.style.display = 'block';
-      showHighScores(adv, mar, true);
-    });
-  };
-
-  document.getElementById("buyBirdBtn").onclick = () => {
-    if(adventurePlays >= ADVENTURE_MAX){
-      showAchievement("Birds full");
-    } else if(totalCoins >= 20){
-      totalCoins -= 20;
-      adventurePlays = Math.min(adventurePlays + 1, ADVENTURE_MAX);
-      localStorage.setItem("birdyCoinsEarned", totalCoins);
-      localStorage.setItem("birdyAdventurePlays", adventurePlays);
-      updateScore();
-      updateAdventureInfo();
-      updateCoins();
-    } else {
-      showAchievement("Not enough coins");
+    const leaderboardBtn = document.getElementById("btnLeaderboard");
+    if(leaderboardBtn){
+      leaderboardBtn.onclick = () => {
+        menuEl.style.display = "none";
+        Promise.all([
+          fetchTopGlobalScores(false),
+          fetchTopGlobalScores(true)
+        ]).then(([adv, mar]) => {
+          const ov = document.getElementById("overlay");
+          ov.style.display = "block";
+          showHighScores(adv, mar, true);
+        });
+      };
     }
-  };
+
+  const buyBtn = document.getElementById("buyBirdBtn");
+  if(buyBtn){
+    buyBtn.onclick = () => {
+      if(adventurePlays >= ADVENTURE_MAX){
+        showAchievement("Birds full");
+      } else if(totalCoins >= 20){
+        totalCoins -= 20;
+        adventurePlays = Math.min(adventurePlays + 1, ADVENTURE_MAX);
+        localStorage.setItem("birdyCoinsEarned", totalCoins);
+        localStorage.setItem("birdyAdventurePlays", adventurePlays);
+        updateScore();
+        updateAdventureInfo();
+        updateCoins();
+      } else {
+        showAchievement("Not enough coins");
+      }
+    };
+  }
   // boss frames: phase 1 vs. phase 2
   const bossFramesS1 = ['frame0','frame1','frame2']
     .map(f => Object.assign(new Image(), { src:`assets/boss_animation/${f}.png` }));
@@ -999,7 +1050,7 @@ const bossFramesS4 = ['shocky','shocky.charge1','shocky.charge2']
   // charging‐rocket “attach” sprite for phase 2
   //const bossRocketAttachS2 = new Image();
   //bossRocketAttachS2.src = 'assets/boss_animation/boss_s2_charge.png';
-  
+
   // only used in boss fight #2+
 const activeHomingImg = new Image();
 activeHomingImg.src   = 'assets/boss_animation/active_homing.png';
@@ -1100,7 +1151,7 @@ const tossBombs   = [];   // upward‐toss bombs
     if (spinOverlayClickable && e.target === spinOverlay) closeSpinOverlay();
   });
 
-            
+
     // ── Audio: background music + SFX context ──
     // dummy chord function (no-op)
 function playChord(/* chordType, startTime */) {}
@@ -1156,7 +1207,7 @@ document.addEventListener('keydown',   initMusic, {passive:true});
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    
+
 
     // ── Simple SFX ──
     function playTone(freq, dur=0.1){
@@ -1718,7 +1769,7 @@ pipes.length     = apples.length = coins.length = 0;
    y: H/2,
    vx: -6,       // your “fly-in” speed
    vy: 0,
-    r: 32, 
+    r: 32,
     mode:'random', modeTimer:0, modeDuration:300,
     isCharging:false, chargeTimer:0, chargeDuration:60, shakeMag:0,
     justFired:false, smoke: [],
@@ -2147,7 +2198,7 @@ function triggerBossAttack(){
     if (bossEncounterCount === 1 && bossHealth <= bossMaxHealth * 0.8) p.strongQueue = 3;
   }
 }
-  
+
 
    function endBossFight(victory) {
     if (bossRetryHandler) {
@@ -2239,7 +2290,7 @@ glow.addColorStop(0.5, 'rgba(255,200,0,0.8)');   // new “halfway” stop
 glow.addColorStop(1, 'rgba(255,200,0,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2); 
+  ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
   ctx.fill();
     ctx.drawImage(
       bombSprite,
@@ -2268,7 +2319,7 @@ radialBombs.forEach(b => {
 
   // 2) Optionally, you can still keep a small shadow for extra pop:
   ctx.save();
-  ctx.shadowBlur  = 20; 
+  ctx.shadowBlur  = 20;
   ctx.shadowColor = 'rgba(255,200,0,0.6)';
   ctx.drawImage(
     bombSprite,
@@ -2293,7 +2344,7 @@ radialBombs.forEach(b => {
       ctx.fill();
     ctx.restore();
   });
-  
+
   // b) draw bird & main UI
   bird.draw();  // reuse your bird.draw()
 
@@ -2365,7 +2416,7 @@ radialBombs.forEach(b => {
 //}
 
 
-  
+
   p.justFired = false;
 
   // d) draw health bar
@@ -3592,7 +3643,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
     drawSize,
     drawSize
   );
-  
+
     // 3) **collision with bird?**
   const dist = Math.hypot(bird.x - b.x, bird.y - b.y);
   const bombRadius = drawSize/2;
@@ -4206,16 +4257,18 @@ function updateScore(){
 }
 
 function updateReviveDisplay(){
-  document.getElementById('reviveCount').textContent = `${storedRevives}/1`;
+  document.getElementById("reviveCount").textContent = `${storedRevives}/1`;
 }
 function updateAdventureInfo(){
-  document.getElementById("adventureCount").textContent = adventurePlays + "/" + ADVENTURE_MAX;
+  const el = document.getElementById("adventureCount");
+  if(el) el.textContent = adventurePlays + "/" + ADVENTURE_MAX;
 }
 function updateAdventureTimer(){
   regenAdventurePlays();
   const el = document.getElementById("adventureTimer");
+  if(!el) return;
   if(adventurePlays >= ADVENTURE_MAX){
-    el.textContent = '';
+    el.textContent = "";
     return;
   }
   const now = Date.now();
@@ -4754,7 +4807,7 @@ function handleHit(){
     finalizeGameOver();
   }
 
-  function resetGame(){ 
+  function resetGame(){
   // ── reset all game state ──
   state = STATE.Start;
   score = 0;
@@ -4775,7 +4828,7 @@ function handleHit(){
   columnSnow.length = 0;
   rocketPowerups.length = 0;
   slicingDisks.length = 0;
-  
+
   // reset coins _before_ updating the UI
   coinCount         = 0;
   coinBoostExpiries = [];
@@ -5732,7 +5785,7 @@ if (state === STATE.Play) {
     }
 
     if (rocketsSpawned >= 30 && frames % 132 === 0) spawnJelly();
-    
+
       // homing bomb (only after 1 boss, and only 25% of those seconds)
   if (bossEncounterCount > 0 && Math.random() < 0.25) {
     stage2Bombs.push({
@@ -5744,7 +5797,7 @@ if (state === STATE.Play) {
     });
   }
   }
-  
+
 
 
     if (inMecha) {
@@ -5766,7 +5819,7 @@ if (state === STATE.Play) {
        // if (score >= 30 && state === STATE.Play && !bossActive) {
         //  startBossFight();
        // }
-      
+
       // — draw SPEED UP flash if active —
       if (speedFlashTimer > 0) {
          speedFlashTimer--;
