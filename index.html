@@ -1698,6 +1698,9 @@ const batSwarms = [];
     // tooltip element for upgrade tree
     const tip = document.createElement('div');
     tip.style.position = 'absolute';
+    tip.style.left = '50%';
+    tip.style.bottom = '10px';
+    tip.style.transform = 'translateX(-50%)';
     tip.style.background = 'rgba(0,0,0,0.8)';
     tip.style.color = '#fff';
     tip.style.padding = '4px 8px';
@@ -1705,11 +1708,9 @@ const batSwarms = [];
     tip.style.pointerEvents = 'none';
     tip.style.opacity = 0;
     tip.style.transition = 'opacity .1s';
-    document.body.appendChild(tip);
+    document.getElementById('overlay').appendChild(tip);
     function showTooltip(text) {
       tip.textContent = text;
-      tip.style.left = (window.event.pageX+10)+'px';
-      tip.style.top  = (window.event.pageY+10)+'px';
       tip.style.opacity = 1;
     }
     function hideTooltip() { tip.style.opacity = 0; }
