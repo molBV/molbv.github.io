@@ -74,11 +74,6 @@
     }
     #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
     #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
-    #overlay .menu-btn.primary {
-      margin:8px 0;
-      padding:12px;
-      font-size:20px;
-    }
     #reviveClock { font-size:24px; margin:8px 0; }
 
     #menu {
@@ -133,7 +128,7 @@
     .menu-btn.primary.adventure { background-image: linear-gradient(to bottom, #8BC34A, #558B2F); }
     .menu-btn.primary.marathon  { background-image: linear-gradient(to bottom, #4FC3F7, #0288D1); }
     .menu-btn.primary.gauntlet  { background-image: linear-gradient(to bottom, #EF5350, #C62828); }
-    #btnGauntlet { display:none; }
+
     .menu-row {
       display:grid;
       grid-template-columns:repeat(3, 1fr);
@@ -186,6 +181,15 @@
       display:flex;
       align-items:center;
       gap:4px;
+    }
+    .adventure-info {
+      font-size:0.875rem;
+      color:#FFF;
+      margin:8px 0 16px;
+    }
+    #adventureTimer.flash {
+      margin-left:8px;
+
     }
     #achievementPopup {
       position:absolute;
@@ -248,7 +252,19 @@
     .iconWrap { position:relative; display:inline-block; width:32px; height:32px; margin-right:6px; }
     .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
 
-    #gameOverContent { position:relative; height:100%; }
+    #gameOverContent {
+      position:relative;
+      width:90vw;
+      max-width:360px;
+      margin:40px auto;
+      padding:24px;
+      background:var(--menu-bg);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--menu-border);
+      border-radius:24px;
+      box-shadow:var(--menu-shadow);
+      text-align:center;
+    }
     #upgradeTree { position:relative; width:100%; height:100%; }
     #upgradeLines { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
     .upgradeNode { position:absolute; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:10px; color:#fff; border:2px solid; transform:translate(-50%,-50%); }
@@ -467,6 +483,14 @@
     <h2>Rocket Birdie</h2>
 
     <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
+
+    <div class="adventure-info">
+      <span id="adventureCount">20/20</span>
+      <span id="adventureTimer" class="flash"></span><br/>
+      <button id="buyBirdBtn" class="menu-btn primary" style="height:40px;font-size:1rem;margin-top:8px;">
+        Buy Bird – 20 Coins
+      </button>
+    </div>
 
     <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
     <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
