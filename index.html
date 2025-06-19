@@ -2996,10 +2996,15 @@ function updateSkinParticles() {
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       }
       ctx.fill();
-    } else if (p.type === 'smoke') {
+    } else if (p.type === 'smoke' || p.type === 'darkSmoke') {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 1.5);
-      g.addColorStop(0, 'rgba(80,60,40,0.2)');
-      g.addColorStop(1, 'rgba(80,60,40,0)');
+      if (p.type === 'darkSmoke') {
+        g.addColorStop(0, 'rgba(0,0,0,0.3)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+      } else {
+        g.addColorStop(0, 'rgba(80,60,40,0.2)');
+        g.addColorStop(1, 'rgba(80,60,40,0)');
+      }
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size * 1.5, 0, Math.PI * 2);
@@ -3050,24 +3055,61 @@ function updateBatThrust(){
 function spawnBatSwarms(x, y){
   const count = 2 + Math.floor(Math.random()*4);
   for(let i=0;i<count;i++){
-    let target = null;
-    if(jellies.length) target = jellies[Math.floor(Math.random()*jellies.length)];
-    else if(stage2Bombs.length) target = stage2Bombs[Math.floor(Math.random()*stage2Bombs.length)];
-    else if(bossActive && bossObj) target = bossObj;
-    if(target){
-      batSwarms.push({x, y, tx:target.x, ty:target.y, life:60, parts:[]});
-    }
+    batSwarms.push({
+      x,
+      y,
+      vx:(Math.random()-0.5)*2,
+      vy:(Math.random()-0.5)*2,
+      state:'roam',
+      timer:60,
+      parts:[]
+    });
   }
 }
 
 function updateBatSwarms(){
   for(let i=batSwarms.length-1;i>=0;i--){
     const s = batSwarms[i];
-    const dx = s.tx - s.x;
-    const dy = s.ty - s.y;
-    const dist = Math.hypot(dx, dy) || 1;
-    s.x += dx/dist*2 + (Math.random()-0.5);
-    s.y += dy/dist*2 + (Math.random()-0.5);
+    if(s.state==='roam'){
+      s.vx += (Math.random()-0.5)*0.2;
+      s.vy += (Math.random()-0.5)*0.2;
+      s.x += s.vx;
+      s.y += s.vy;
+      s.vx *= 0.98;
+      s.vy *= 0.98;
+      s.timer--;
+      if(s.timer<=0){
+        let target=null;
+        if(jellies.length) target=jellies[Math.floor(Math.random()*jellies.length)];
+        else if(stage2Bombs.length) target=stage2Bombs[Math.floor(Math.random()*stage2Bombs.length)];
+        else if(bossActive && bossObj) target=bossObj;
+        if(target){
+          s.tx=target.x; s.ty=target.y; s.state='seek'; s.timer=30;
+        } else {
+          batSwarms.splice(i,1);
+          continue;
+        }
+      }
+    } else if(s.state==='seek'){
+      const dx=s.tx - s.x;
+      const dy=s.ty - s.y;
+      const dist=Math.hypot(dx,dy)||1;
+      s.vx+=dx/dist*0.5;
+      s.vy+=dy/dist*0.5;
+      s.x+=s.vx+(Math.random()-0.5);
+      s.y+=s.vy+(Math.random()-0.5);
+      s.vx*=0.95; s.vy*=0.95;
+      if(dist<6){ s.state='strike'; s.timer=10; }
+    } else if(s.state==='strike'){
+      s.x += (Math.random()-0.5)*2;
+      s.y += (Math.random()-0.5)*2;
+      s.timer--;
+      if(s.timer<=0){
+        spawnExplosion(s.x, s.y);
+        batSwarms.splice(i,1);
+        continue;
+      }
+    }
     s.parts.push({x:s.x, y:s.y, life:20});
     for(let j=s.parts.length-1;j>=0;j--){
       const p=s.parts[j];
@@ -3086,12 +3128,6 @@ function updateBatSwarms(){
       ctx.fill();
       ctx.restore();
       if(p.life<=0) s.parts.splice(j,1);
-    }
-    if(dist<5 || s.life<=0){
-      spawnExplosion(s.tx, s.ty);
-      batSwarms.splice(i,1);
-    } else {
-      s.life--;
     }
   }
 }
@@ -5494,6 +5530,7 @@ if (state === STATE.MechaTransit) {
         } else {
           const type = altMecha === 'fire' ? 'fire'
                       : (altMecha === 'aqua' || altMecha === 'cow') ? 'bubble'
+                      : altMecha === 'bat' ? 'darkSmoke'
                       : 'page';
           const life = type === 'page' ? 80 : 20;
           const p = {
@@ -5512,7 +5549,7 @@ if (state === STATE.MechaTransit) {
             p.vrot = (Math.random() - 0.5) * 0.05;
           }
           skinParticles.push(p);
-          if (altMecha === 'fire' && Math.random() < 0.5) {
+          if ((altMecha === 'fire' || altMecha === 'bat') && Math.random() < 0.5) {
             skinParticles.push({
               x: bird.x,
               y: bird.y,
@@ -5521,7 +5558,7 @@ if (state === STATE.MechaTransit) {
               size: 4 + Math.random() * 4,
               life: 25,
               max: 25,
-              type: 'smoke'
+              type: altMecha === 'bat' ? 'darkSmoke' : 'smoke'
             });
           }
         }
