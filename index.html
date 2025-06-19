@@ -5298,8 +5298,6 @@ function renderUpgradeTree() {
         node.appendChild(price);
       }
       node.style.cursor = "pointer";
-      node.addEventListener("mouseenter", () => { showTooltip(upg.name+": "+upg.description); });
-      node.addEventListener("mouseleave", hideTooltip);
       node.addEventListener("click", () => {
         if (!owned) {
           if (upg.parent && !ownedUpgrades.includes(upg.parent)) {
