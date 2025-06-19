@@ -642,6 +642,8 @@
       .map(src => Object.assign(new Image(), { src }));
     const BAT_FRAMES = ['assets/batty1-min.png','assets/batty2-min.png','assets/batty3-min.png']
       .map(src => Object.assign(new Image(), { src }));
+    const PENGUIN_FRAMES = ['assets/penguin1.png','assets/penguin2.png']
+      .map(src => Object.assign(new Image(), { src }));
     const BAT_FLY = Object.assign(new Image(), { src:'assets/batty_fly-min.png' });
 const bgLayers = {
   distant1: Object.assign(new Image(), { src: 'assets/background/distantisland1.png' }),
@@ -1134,6 +1136,16 @@ const cowUpSprite     = new Image();
 cowUpSprite.src       = 'assets/cow_up.png';
 const cowDownSprite   = new Image();
 cowDownSprite.src     = 'assets/cow_down.png';
+const penguinMechaBase    = new Image();
+penguinMechaBase.src      = 'assets/penguinmechaBase.png';
+const penguinMechaShoot1  = new Image();
+penguinMechaShoot1.src    = 'assets/penguinmechashoot1.png';
+const penguinMechaShoot2  = new Image();
+penguinMechaShoot2.src    = 'assets/penguinmechashoot2.png';
+const penguinRocketSprite = new Image();
+penguinRocketSprite.src   = 'assets/penguin_rocket.png';
+const snowflakeImg        = new Image();
+snowflakeImg.src          = 'assets/snowflake.png';
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
@@ -1427,6 +1439,7 @@ const rocketSnow = [];
 const columnFlames = [];
 const columnSnow = [];
 const skinParticles = [];
+const snowflakes = [];
 const moneyLeaves = [];
 const milkParticles = [];
 const staggerSparks = [];
@@ -1729,6 +1742,10 @@ const batSwarms = [];
     function isBatSkin(){
       return defaultSkin === 'batty1-min.png' || birdSprite.src.includes('mech_bat');
     }
+
+    function isPenguinSkin(){
+      return defaultSkin === 'penguin1.png' || birdSprite.src.includes('penguinmecha');
+    }
 // ── Mecha-transition kick-off ───────────────────────────────
 function startMechaTransition() {
   transitionTimer = 0;
@@ -1763,6 +1780,9 @@ function startMechaTransition() {
     altMechaTimer = 90;
   } else if (defaultSkin === 'MoneySkin.png') {
     altMecha = 'money';
+    altMechaTimer = 90;
+  } else if (defaultSkin === 'penguin1.png') {
+    altMecha = 'penguin';
     altMechaTimer = 90;
   }
 }
@@ -2558,6 +2578,7 @@ function drawBackground(){
       flashTimer:0,
       stunTimer:0,
       shakeTimer:0,
+      penguinShootTimer:0,
       draw(){
         if(shieldCount>0){
           ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
@@ -2608,12 +2629,21 @@ function drawBackground(){
           img = this.vel < 0 ? cowUpSprite : cowDownSprite;
         } else if (isBatSkin() && !birdSprite.src.includes('mech_bat')) {
           img = this.vel < 0 ? BAT_FLY : BAT_FRAMES[Math.floor(frames / 6) % BAT_FRAMES.length];
+        } else if (defaultSkin === 'penguin1.png') {
+          if (birdSprite.src.includes('penguinmecha')) {
+            if (this.penguinShootTimer > 4) img = penguinMechaShoot1;
+            else if (this.penguinShootTimer > 0) img = penguinMechaShoot2;
+            else img = penguinMechaBase;
+          } else {
+            img = PENGUIN_FRAMES[Math.floor(frames / 6) % PENGUIN_FRAMES.length];
+          }
         }
         const iw = 64;
         const ih = 64;
         ctx.drawImage(img, -iw/2, -ih/2, iw, ih);
         ctx.restore();
         if (this.flashTimer > 0) this.flashTimer--;
+        if (this.penguinShootTimer > 0) this.penguinShootTimer--;
       },
       flap(){
         if (this.stunTimer > 0) {
@@ -2662,6 +2692,21 @@ function drawBackground(){
           for(let i=0;i<cnt;i++) {
             spawnMoneyLeaf(this.x, this.y, (Math.random()-0.5)*0.5, 1+Math.random());
           }
+        }
+        if (defaultSkin === 'penguin1.png') {
+          for (let i = 0; i < 6; i++) {
+            snowflakes.push({
+              x: this.x - 20,
+              y: this.y,
+              vx: (Math.random()-0.5)*2,
+              vy: (Math.random()-0.5)*2 + 1,
+              rot: Math.random()*Math.PI*2,
+              vrot:(Math.random()-0.5)*0.1,
+              size:8+Math.random()*4,
+              life:40
+            });
+          }
+          if (inMecha) this.penguinShootTimer = 6;
         }
       },
       update(){
@@ -2724,6 +2769,18 @@ function drawBackground(){
                 });
               }
             }
+          }
+          if (defaultSkin === 'penguin1.png' && frames % 3 === 0) {
+            snowflakes.push({
+              x:this.x-20,
+              y:this.y,
+              vx:(Math.random()-0.5)*1,
+              vy:Math.random()*1+0.5,
+              rot:Math.random()*Math.PI*2,
+              vrot:(Math.random()-0.5)*0.05,
+              size:6+Math.random()*3,
+              life:40
+            });
           }
           if (this.y + this.rad > H) {
             if ((state === STATE.Play || state === STATE.Boss) && !revivePromptActive) {
@@ -3133,6 +3190,24 @@ function updateSkinParticles() {
   }
 }
 
+function updateSnowflakes() {
+  for (let i = snowflakes.length - 1; i >= 0; i--) {
+    const f = snowflakes[i];
+    f.x += f.vx;
+    f.y += f.vy;
+    f.vy += 0.02;
+    f.rot += f.vrot;
+    f.life--;
+    ctx.save();
+    ctx.globalAlpha = f.life / 40;
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.rot);
+    ctx.drawImage(snowflakeImg, -f.size/2, -f.size/2, f.size, f.size);
+    ctx.restore();
+    if (f.life <= 0 || f.y > H + 40) snowflakes.splice(i,1);
+  }
+}
+
 function updateBatThrust(){
   for(let i=batThrust.length-1;i>=0;i--){
     const t = batThrust[i];
@@ -3525,6 +3600,7 @@ function updateRockets() {
                : r.type === 'fire' ? fireRocketSprite
                : r.type === 'ice' ? iceRocketSprite
                : r.type === 'cow' ? cowRocketSprite
+               : r.type === 'penguin' ? penguinRocketSprite
                : rocketOutSprite;
     if (r.erratic) {
       ctx.save();
@@ -3540,6 +3616,9 @@ function updateRockets() {
     }
     if (r.type === 'ice' && frames % 2 === 0) {
       rocketSnow.push({x:r.x, y:r.y, life:10, vx:(Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5});
+    }
+    if (r.type === 'penguin' && frames % 2 === 0) {
+      snowflakes.push({x:r.x, y:r.y, vx:(Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5, rot:Math.random()*Math.PI*2, vrot:(Math.random()-0.5)*0.1, size:6, life:30});
     }
     if (r.triple && frames % 2 === 0) {
       rocketSmoke.push({ x:r.x, y:r.y, r:2, alpha:1 });
@@ -5132,6 +5211,7 @@ function showShop() {
         {key:'AquaSkinBase.png', name:'Aqua Skin', cost:100, owned:ownedSkins['AquaSkinBase.png']},
         {key:'story_bird.png', name:'Story Skin', cost:100, owned:ownedSkins['story_bird.png'], req:10},
         {key:'batty1-min.png', name:'Bat', cost:100, owned:ownedSkins['batty1-min.png']},
+        {key:'penguin1.png', name:'Penguin', cost:100, owned:ownedSkins['penguin1.png']},
         {key:'MoneySkin.png', name:'Money Bags', cost:500, owned:ownedSkins['MoneySkin.png']},
         {key:'cow_down.png', name:'Cow', cost:420, owned:ownedSkins['cow_down.png']}
       ];
@@ -5373,7 +5453,9 @@ function flapHandler(e){
                      birdSprite.src.includes('AquaSkinMech');
       const isCow  = defaultSkin === 'cow_down.png' ||
                      birdSprite.src.includes('cow_mech');
-      const rocketType = specialRocket || (isFire ? 'fire' : isAqua ? 'ice' : isCow ? 'cow' : 'normal');
+      const isPenguin = defaultSkin === 'penguin1.png' ||
+                        birdSprite.src.includes('penguinmecha');
+      const rocketType = specialRocket || (isFire ? 'fire' : isAqua ? 'ice' : isCow ? 'cow' : isPenguin ? 'penguin' : 'normal');
       for(let s=0;s<shots;s++){
         if(discModeTimer>0){
           slicingDisks.push({
@@ -5516,6 +5598,7 @@ if (state === STATE.Boss) {
   applyShake();
   drawBackground();
   updateSkinParticles();
+  updateSnowflakes();
   updateColumnFlames();
   updateColumnSnow();
   updateMoneyLeaves();
@@ -5562,6 +5645,7 @@ if (state === STATE.BossExplode) {
   updateBatSwarms();
   updateSonarRings();
   updateSkinParticles();
+  updateSnowflakes();
   updateColumnFlames();
   updateColumnSnow();
   updateMoneyLeaves();
@@ -5600,6 +5684,17 @@ if (state === STATE.MechaTransit) {
       for (let i = 0; i < 8; i++) {
         if (altMecha === 'money') {
           spawnMoneyLeaf(bird.x, bird.y, (Math.random() - 0.5) * 0.5, 1 + Math.random());
+        } else if (altMecha === 'penguin') {
+          snowflakes.push({
+            x: bird.x,
+            y: bird.y,
+            vx:(Math.random()-0.5)*4,
+            vy:(Math.random()-0.5)*4,
+            rot:Math.random()*Math.PI*2,
+            vrot:(Math.random()-0.5)*0.1,
+            size:8+Math.random()*3,
+            life:40
+          });
         } else {
           const type = altMecha === 'fire' ? 'fire'
                       : (altMecha === 'aqua' || altMecha === 'cow') ? 'bubble'
@@ -5651,7 +5746,9 @@ if (state === STATE.MechaTransit) {
               ? 'assets/Story_mech.png'
               : altMecha === 'bat'
                 ? 'assets/mech_bat.png'
-                : 'assets/MoneyMech.png';
+                : altMecha === 'penguin'
+                  ? 'assets/penguinmechaBase.png'
+                  : 'assets/MoneyMech.png';
       console.log('🦾 FULL MECHA ENGAGED!');
       showAchievement('🦾 Mecha Suit Assembled');
       triggerStoryEvent('Suit_Assembled');
@@ -5692,6 +5789,7 @@ if (state === STATE.MechaTransit) {
   applyShake();
   drawBackground();
   updateSkinParticles();
+  updateSnowflakes();
   updateColumnFlames();
   updateColumnSnow();
   updateMoneyLeaves();
@@ -5716,6 +5814,7 @@ applyShake();
 
 drawBackground();
  updateSkinParticles();
+ updateSnowflakes();
  updateElectricEffect();
  updateBatThrust();
  updateBatSwarms();
