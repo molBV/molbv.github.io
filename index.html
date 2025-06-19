@@ -54,6 +54,12 @@
     }
     #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
     #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+    #overlay .menu-btn.primary {
+      margin:8px 0;
+      padding:12px;
+      font-size:20px;
+    }
+    #reviveClock { font-size:24px; margin:8px 0; }
 
     #menu {
       position:absolute;
@@ -4676,9 +4682,8 @@ function showRevivePrompt(){
       <h2>${useItem ? 'Use Revive?' : 'Continue for 50 coins?'}</h2>
       ${useItem ? '' : `<p>Coins: ${totalCoins}</p>`}
       <p id="reviveClock">${countdown}</p>
-      <button id="revBtn" ${canRevive ? '' : 'disabled'}>Revive</button>
-      <button id="casinoBtn">Casino</button>
-      <button id="menuBtn">Menu</button>
+      <button id="revBtn" class="menu-btn primary" ${canRevive ? '' : 'disabled'}>Revive</button>
+      <button id="menuBtn" class="menu-btn primary">Menu</button>
     `;
   }
   render();
@@ -4703,9 +4708,6 @@ function showRevivePrompt(){
         updateScore();
       }
       startReviveEffect();
-    } else if(action === 'casino') {
-      menuEl.style.display = 'none';
-      showPowerUpSpin(false, true);
     } else if(action === 'menu') {
       finalizeGameOver();
     } else {
@@ -4715,7 +4717,6 @@ function showRevivePrompt(){
   }
   ct.onclick = (e)=>{
     if(e.target.id==='revBtn')    cleanup('revive');
-    if(e.target.id==='casinoBtn') cleanup('casino');
     if(e.target.id==='menuBtn')   cleanup('menu');
   };
   return true;
