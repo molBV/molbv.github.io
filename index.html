@@ -1205,6 +1205,22 @@ const tossBombs   = [];   // upward‐toss bombs
     }
   });
 
+  function outsideScreenHandler(e) {
+    if (state === STATE.Over && !overlay.contains(e.target)) {
+      if (!hasSubmittedScore) {
+        saveGlobalScore('Anon', score);
+        trackEvent('submit_score', { score });
+        hasSubmittedScore = true;
+      }
+      if (!overlayTop10Lock) {
+        overlay.style.display = 'none';
+        resetGame();
+      }
+    }
+  }
+  document.addEventListener('mousedown', outsideScreenHandler);
+  document.addEventListener('touchstart', outsideScreenHandler, { passive:true });
+
   const spinOverlay = document.getElementById('spinOverlay');
   const coinDisplay = document.getElementById('coinDisplay');
   const spinCoinDisplay = document.getElementById('spinCoinDisplay');
