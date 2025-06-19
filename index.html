@@ -4363,18 +4363,7 @@ function updateUpgradeStats(){
   }
   html += `<div>Slots: ${equippedUpgrades.length}/${equipSlots}</div>`;
   el.innerHTML = html;
-  const coinEl = document.getElementById('coinCount');
-  if(coinEl){
-    const rect = coinEl.getBoundingClientRect();
-    el.style.left = (rect.left + rect.width/2) + 'px';
-    el.style.top = (rect.top - el.offsetHeight - 4) + 'px';
-    el.style.transform = 'translateX(-50%)';
-  } else {
-    el.style.left = '50%';
-    el.style.top = '';
-    el.style.bottom = '0';
-    el.style.transform = 'translateX(-50%)';
-  }
+  el.style.textAlign = 'center';
 }
 
 function startReviveEffect(){
@@ -5185,14 +5174,15 @@ function showShop() {
         html += `</div>`;
       });
     } else if(section==='upgrades') {
-      html += `<div id="upgradeTreeWrap" style="margin-top:10px;width:100%;height:calc(100% - 60px);overflow-y:auto;">`+
+      html += `<div id="upgradeTreeWrap" style="margin-top:10px;width:100%;height:calc(100% - 60px);overflow-y:auto;position:relative;">`+
               `<div id="upgradeTree"></div>`+
-
-              `<div id="upgradeStats" style="position:absolute;text-align:center;font-size:14px;"></div>`+
               `</div>`;
     }
 
     html += `</div><button id="shopHome">Home</button>`;
+    if(section==='upgrades') {
+      html += `<div id="upgradeStats" style="margin-top:4px;text-align:center;font-size:14px;"></div>`;
+    }
     ct.innerHTML = html;
       if(section==='upgrades') {
         renderUpgradeTree();
