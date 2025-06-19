@@ -1379,6 +1379,7 @@ const batSwarms = [];
     let spinReturnToMenu = false;
     let spinForRevive = false;
     let spinOverlayClickable = false;
+    let nextSpin = null;
     let prevMusic = null;
     const ADVENTURE_MAX     = 20;
     const ADVENTURE_RECHARGE = 1800000; // 30 minutes
@@ -4432,6 +4433,17 @@ function blinkCenter(r){
   r.querySelectorAll('.symbol')[ROLLS].classList.add('blink');
 }
 
+function reloadRoulette(){
+  nextSpin = chooseOutcome();
+  reels.forEach((reel,i) => {
+    const strip = reel.querySelector('.strip');
+    strip.style.transition = 'none';
+    strip.innerHTML = '';
+    strip.appendChild(buildStrip(nextSpin.result[i]));
+    strip.style.transform = `translateY(${ROW_H * 5}px)`;
+  });
+}
+
 function showPowerUpSpin(returnToMenu=false, forRevive=false) {
   spinReturnToMenu=returnToMenu;
   spinForRevive=forRevive;
@@ -4442,6 +4454,7 @@ function showPowerUpSpin(returnToMenu=false, forRevive=false) {
     spinCoinDisplay.textContent = `Birds: ${adventurePlays}/${ADVENTURE_MAX}`;
   }
   spinOverlayClickable=false;
+  reloadRoulette();
 
   document.getElementById("spin-btn").style.pointerEvents="auto";
 }
@@ -4472,7 +4485,8 @@ document.querySelectorAll('#spinOverlay .reel').forEach(r => reels.push(r));
 function startRoulette(){
   spinBtn.style.pointerEvents = 'none';
 
-  const { result, type } = chooseOutcome();
+  if(!nextSpin) reloadRoulette();
+  const { result, type } = nextSpin;
   document.getElementById('prizeText').textContent = '';
   adventurePlays--;
   localStorage.setItem('birdyAdventurePlays', adventurePlays);
@@ -4490,9 +4504,6 @@ function startRoulette(){
   reels.forEach((reel,i) => {
     const strip = reel.querySelector('.strip');
     strip.style.transition = 'none';
-    strip.innerHTML        = '';
-    strip.appendChild(buildStrip(result[i]));
-
     const initShift = ROW_H * 5;
     strip.style.transform = `translateY(${initShift}px)`;
     void strip.offsetWidth;
@@ -4560,6 +4571,7 @@ function startRoulette(){
         updateCoins();
         updateScore();
         spinOverlayClickable = true;
+        nextSpin = null;
       }
     }, DURS[i]);
   });
