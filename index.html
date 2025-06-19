@@ -2131,7 +2131,7 @@ if (p.strongQueue > 0) {
   rocketsOut.forEach((b,i)=>{
     if (Math.hypot(b.x - p.x, b.y - p.y) < p.r + 8) {
       rocketsOut.splice(i,1);
-        spawnExplosion(p.x, p.y, true, b.electric);
+        spawnExplosion(p.x, p.y, false, b.electric);
         if (b.type === 'cow') spawnMilkSplash(p.x, p.y);
         maybeDropCoin(p.x, p.y);
         triggerShake(8);
@@ -2173,7 +2173,7 @@ if (p.strongQueue > 0) {
     if(d.enemy) return;
     if (Math.hypot(d.x - p.x, d.y - p.y) < p.r + 24) {
       slicingDisks.splice(i,1);
-      spawnExplosion(p.x, p.y, true, d.pulse);
+      spawnExplosion(p.x, p.y, false, d.pulse);
       maybeDropCoin(p.x, p.y);
       triggerShake(8);
       spawnImpactParticles(p.x, p.y, p.x - d.x, p.y - d.y);
@@ -2861,19 +2861,7 @@ function spawnPipe(){
     }
   }
 
-  if (p && bossesDefeated >= 3 && Math.random() < 0.25) {
-    const d = {
-      x: p.x + pipeW / 2,
-      y: topH + gap / 2,
-      vy: 1.5,
-      rot: 0,
-      hp: 3,
-      enemy: true,
-      pipe: p
-    };
-    slicingDisks.push(d);
-    p.disk = d;
-  }
+
 
   // — apples —
   if (Math.random() < appP) {
