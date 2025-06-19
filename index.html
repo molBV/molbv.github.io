@@ -1648,25 +1648,13 @@ const batSwarms = [];
             y: 0
           },
           {
-            id: 'mech_rocket_splash',
-            name: 'Splash',
-            description: 'Rockets cause splash damage',
-            effect: () => { rocketSplash = true; },
-            costFactor: 1.3,
-            tier: 1,
-            parent: 'mech_rocket_big',
-            icon: 'splash_damage.png',
-            x: 3,
-            y: 1
-          },
-          {
             id: 'mech_rocket_pulse',
             name: 'Pulse Rockets',
             description: 'Triple power-up again adds pulsing area damage',
             effect: () => { rocketPulseUpgrade = true; },
             costFactor: 1.4,
             tier: 2,
-            parent: 'mech_rocket_splash',
+            parent: 'mech_rocket_big',
             icon: 'pulse_rocket.png',
             x: 3,
             y: 2
