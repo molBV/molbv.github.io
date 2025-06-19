@@ -1898,7 +1898,6 @@ pipes.length     = apples.length = coins.length = 0;
     ,stunTimer:0
   ,bigCharge:false
   ,phase2:false
-  ,chargeCount:0
     };
   showAchievement('🚀 Boss Incoming!');
 
@@ -2075,19 +2074,7 @@ if (p.pushX || p.pushY) {
       electricRings.push({ x:p.x, y:p.y, r:p.r*1.5, alpha:0.8, color:'cyan' });
       triggerShake(10);
       spawnImpactParticles(p.x, p.y, 0, 0);
-      if (++p.chargeCount % 3 === 0) {
-        for(let a=0;a<8;a++){
-          slicingDisks.push({
-            x:p.x,
-            y:p.y,
-            vx: Math.cos(a*Math.PI/4)*6,
-            vy: Math.sin(a*Math.PI/4)*6,
-            damage:15,
-            enemy:true
-          });
-        }
-        triggerShake(12);
-      }
+      // removed radial disk attack
       p.isCharging=false; p.shakeMag=0; p.justFired=true; p.tripleFire=false;
       if (bossEncounterCount === 3 && p.aggressive && p.firePipeCooldown <= 0) {
         spawnFirePipe();
@@ -5715,7 +5702,7 @@ function applyShake() {
       if (paused) return;
       frames++;
       if (bird.y < H * 0.05) topStayTimer++; else topStayTimer = 0;
-      if (topStayTimer > 180 && !cheeseKiller && state === STATE.Play) {
+      if (topStayTimer > 180 && !cheeseKiller) {
         spawnCheeseKiller();
       }
       if (slowMoTimer > 0) slowMoTimer--;
