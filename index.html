@@ -265,15 +265,36 @@
       box-shadow:var(--menu-shadow);
       text-align:center;
     }
-    #upgradeTree { position:relative; width:100%; height:100%; }
-    #upgradeLines { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-    .upgradeNode { position:absolute; width:36px; height:36px; border-radius:50%; border:2px solid; transform:translate(-50%,-50%); }
+    #upgradeTree {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(60px, 1fr));
+      gap:12px;
+      justify-items:center;
+      width:100%;
+      padding:10px 0;
+    }
+    .upgradeNode {
+      position:relative;
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:2px solid;
+    }
+
     .upgradeNode img { width:100%; height:100%; border-radius:50%; }
     .upgradeNode.equipped { width:48px; height:48px; }
     .upgradeNode.locked img { filter:grayscale(1) brightness(0.4); }
     .upgradeNode.owned img { filter:grayscale(0.7) brightness(0.7); }
-    .priceTag { position:absolute; bottom:-14px; width:100%; text-align:center; font-size:12px; color:#fff; pointer-events:none; }
-    .lineGlow { filter: drop-shadow(0 0 4px currentColor); }
+    .priceTag {
+      position:absolute;
+      bottom:-14px;
+      width:100%;
+      text-align:center;
+      font-size:12px;
+      color:#fff;
+      pointer-events:none;
+    }
+
 
     #btnSettings {
       position:absolute;
@@ -5175,8 +5196,8 @@ function showShop() {
         html += `</div>`;
       });
     } else if(section==='upgrades') {
-      html += `<div id="upgradeTreeWrap" style="position:relative;margin-top:10px;width:100%;height:calc(100% - 60px);">`+
-              `<svg id="upgradeLines"></svg><div id="upgradeTree"></div></div>`+
+      html += `<div id="upgradeTreeWrap" style="margin-top:10px;width:100%;height:calc(100% - 60px);overflow-y:auto;">`+
+              `<div id="upgradeTree"></div>`+
 
               `<div id="upgradeStats" style="position:absolute;text-align:center;font-size:14px;"></div>`+
               `</div>`;
@@ -5260,14 +5281,8 @@ function showShop() {
 }
 
 function renderUpgradeTree() {
-  const tree   = document.getElementById("upgradeTree");
-  const lines  = document.getElementById("upgradeLines");
+  const tree = document.getElementById("upgradeTree");
   tree.innerHTML = "";
-  lines.innerHTML = "";
-  const gridX = 80;
-  const gridY = 80;
-  const center = tree.offsetWidth / 2;
-  const pos = {};
 
   upgradeTreeConfig.forEach(branch => {
     branch.upgrades.forEach(upg => {
@@ -5280,8 +5295,7 @@ function renderUpgradeTree() {
       else if(owned) node.classList.add("owned");
       else node.classList.add("locked");
       node.style.borderColor = branch.color;
-      node.style.left = (center + upg.x * gridX) + "px";
-      node.style.top  = (40 + upg.y * gridY) + "px";
+
 
       const img = document.createElement("img");
       img.src = "assets/" + upg.icon;
@@ -5335,33 +5349,6 @@ function renderUpgradeTree() {
         }
       });
       tree.appendChild(node);
-      pos[upg.id] = { node, branch, upg };
-    });
-  });
-
-  requestAnimationFrame(() => {
-    const treeRect = tree.getBoundingClientRect();
-    lines.setAttribute('width', treeRect.width);
-    lines.setAttribute('height', treeRect.height);
-    Object.values(pos).forEach(({node, upg, branch}) => {
-      if (!upg.parent) return;
-      const parent = pos[upg.parent];
-      if(!parent) return;
-      const a = parent.node.getBoundingClientRect();
-      const b = node.getBoundingClientRect();
-      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1', a.left - treeRect.left + a.width/2);
-      line.setAttribute('y1', a.top - treeRect.top + a.height/2);
-      line.setAttribute('x2', b.left - treeRect.left + b.width/2);
-      line.setAttribute('y2', b.top - treeRect.top + b.height/2);
-      line.setAttribute('stroke', branch.color);
-      line.setAttribute('stroke-width', 3);
-      if (ownedUpgrades.includes(upg.parent) && ownedUpgrades.includes(upg.id)) {
-        line.classList.add('lineGlow');
-      } else {
-        line.style.opacity = 0.3;
-      }
-      lines.appendChild(line);
     });
   });
 }
