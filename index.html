@@ -5703,6 +5703,7 @@ function applyShake() {
       if (paused) return;
       frames++;
       if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
+
       if (topStayTimer > 180 && !cheeseKiller) {
         spawnCheeseKiller();
       }
