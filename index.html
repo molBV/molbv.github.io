@@ -1696,18 +1696,6 @@ const pulseRings = [];
             icon: 'big_rocket.png',
             x: 3,
             y: 0
-          },
-          {
-            id: 'mech_rocket_pulse',
-            name: 'Pulse Rockets',
-            description: 'Triple power-up again adds pulsing area damage',
-            effect: () => { rocketPulseUpgrade = true; },
-            costFactor: 1.4,
-            tier: 2,
-            parent: 'mech_rocket_big',
-            icon: 'pulse_rocket.png',
-            x: 3,
-            y: 2
           }
         ]
       }
@@ -1725,9 +1713,9 @@ const pulseRings = [];
       upgradeTreeConfig.forEach(branch => {
         branch.upgrades.forEach(upg => {
           if (equippedUpgrades.includes(upg.id)) upg.effect();
-          if (ownedUpgrades.includes(upg.id) && upg.id==='mech_rocket_pulse') rocketPulseUpgrade = true;
         });
       });
+      if (ownedUpgrades.includes('mech_rocket_pulse')) rocketPulseUpgrade = true;
       equippedUpgrades = equippedUpgrades.slice(0, equipSlots);
     }
     applyEquippedUpgrades();
@@ -4549,6 +4537,9 @@ function updateUpgradeStats(){
       }
     });
   });
+  if(equippedUpgrades.includes('mech_rocket_pulse')){
+    rocketNames.push('Pulse Rockets');
+  }
   if(rocketNames.length){
     html += `<div>Rocket Upgrades: ${rocketNames.join(', ')}</div>`;
   }
