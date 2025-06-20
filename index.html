@@ -1163,6 +1163,17 @@ const penguinRocketSprite = new Image();
 penguinRocketSprite.src   = 'assets/penguin_rocket.png';
 const snowflakeImg        = new Image();
 snowflakeImg.src          = 'assets/snowflake.png';
+const pipeCloudCanvas = document.createElement('canvas');
+pipeCloudCanvas.width = pipeCloudCanvas.height = 32;
+const pipeCloudCtx = pipeCloudCanvas.getContext('2d');
+pipeCloudCtx.fillStyle = 'rgba(255,255,255,0.6)';
+pipeCloudCtx.beginPath();
+pipeCloudCtx.arc(12,18,8,0,Math.PI*2);
+pipeCloudCtx.arc(20,14,8,0,Math.PI*2);
+pipeCloudCtx.arc(24,20,6,0,Math.PI*2);
+pipeCloudCtx.fill();
+const cloudOverlay    = new Image();
+cloudOverlay.src      = pipeCloudCanvas.toDataURL();
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
@@ -3591,9 +3602,28 @@ function updateReviveEffect() {
           ctx.drawImage(img, 0, -(H - p.top - p.gap), pipeW, H - p.top - p.gap);
           ctx.restore();
         } else {
-          ctx.fillStyle = p.fireGlow ? '#FF5722' : p.color;
+          ctx.save();
+          ctx.shadowColor   = 'rgba(0,0,0,0.25)';
+          ctx.shadowBlur    = 8;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          const darker = shade(p.color,-40);
+          const grad   = ctx.createLinearGradient(p.x,0,p.x+pipeW,0);
+          grad.addColorStop(0,   darker);
+          grad.addColorStop(0.5, p.color);
+          grad.addColorStop(1,   darker);
+          ctx.fillStyle = p.fireGlow ? '#FF5722' : grad;
           ctx.fillRect(p.x, 0, pipeW, p.top);
           ctx.fillRect(p.x, p.top + p.gap, pipeW, H - p.top - p.gap);
+          ctx.lineWidth   = 3;
+          ctx.strokeStyle = shade(p.color,-60);
+          ctx.strokeRect(p.x, 0, pipeW, p.top);
+          ctx.strokeRect(p.x, p.top + p.gap, pipeW, H - p.top - p.gap);
+          ctx.restore();
+          ctx.globalAlpha = 0.6;
+          ctx.drawImage(cloudOverlay, p.x + pipeW/2 - 16, p.top - 24);
+          ctx.drawImage(cloudOverlay, p.x + pipeW/2 - 16, p.top + p.gap - 8);
+          ctx.globalAlpha = 1.0;
         }
         if (!img && p.fireGlow) {
           ctx.save();
