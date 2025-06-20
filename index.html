@@ -3628,6 +3628,7 @@ function updateReviveEffect() {
           let grad = ctx.createLinearGradient(0,0,0,p.top);
           grad.addColorStop(0, lighter);
           grad.addColorStop(1, darker);
+
           ctx.fillStyle = p.fireGlow ? '#FF5722' : grad;
           ctx.fillRect(p.x, 0, pipeW, p.top);
           grad = ctx.createLinearGradient(0,0,0,H - p.top - p.gap);
@@ -3640,6 +3641,7 @@ function updateReviveEffect() {
           ctx.strokeRect(p.x, 0, pipeW, p.top);
           ctx.strokeRect(p.x, p.top + p.gap, pipeW, H - p.top - p.gap);
           ctx.restore();
+
         }
         if (!img && p.fireGlow) {
           ctx.save();
