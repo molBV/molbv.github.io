@@ -2985,7 +2985,7 @@ function spawnExplosion(x, y, fromRocket = false, electric = false) {
   explosions.push({ x, y, frame: 0 });
   explosionSfx.currentTime = 0;
   explosionSfx.play().catch(() => {});
-  if (fromRocket && rocketSplash) {
+  if (fromRocket && rocketSplash && state !== STATE.Boss) {
     for(let a=0;a<8;a++){
       const ang = a * Math.PI/4;
       slicingDisks.push({ x, y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3, rot:0, hp:1, enemy:false });
@@ -5579,7 +5579,7 @@ function flapHandler(e){
                         birdSprite.src.includes('penguinmecha');
       const rocketType = specialRocket || (isFire ? 'fire' : isAqua ? 'ice' : isCow ? 'cow' : isPenguin ? 'penguin' : 'normal');
       for(let s=0;s<shots;s++){
-        if(discModeTimer>0){
+        if(discModeTimer>0 && state !== STATE.Boss){
           slicingDisks.push({
             x: bird.x + 40,
             y: bird.y + (s - (shots-1)/2) * 8,
