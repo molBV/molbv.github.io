@@ -1163,6 +1163,17 @@ const penguinRocketSprite = new Image();
 penguinRocketSprite.src   = 'assets/penguin_rocket.png';
 const snowflakeImg        = new Image();
 snowflakeImg.src          = 'assets/snowflake.png';
+const pipeCloudCanvas = document.createElement('canvas');
+pipeCloudCanvas.width = pipeCloudCanvas.height = 32;
+const pipeCloudCtx = pipeCloudCanvas.getContext('2d');
+pipeCloudCtx.fillStyle = 'rgba(255,255,255,0.6)';
+pipeCloudCtx.beginPath();
+pipeCloudCtx.arc(12,18,8,0,Math.PI*2);
+pipeCloudCtx.arc(20,14,8,0,Math.PI*2);
+pipeCloudCtx.arc(24,20,6,0,Math.PI*2);
+pipeCloudCtx.fill();
+const cloudOverlay    = new Image();
+cloudOverlay.src      = pipeCloudCanvas.toDataURL();
 const mechaMusic      = new Audio('assets/boss_fight.mp3'); //mecha_theme
 const explosionSfx  = new Audio('assets/explosion.mp3');
 explosionSfx.preload = 'auto';
@@ -1463,7 +1474,7 @@ let altMechaTimer = 0;
     const movingPipeChanceActive = 0.6;  // after movement unlocked
     const pipeMoveAmplitude = 15;   // max up/down movement in pixels
     const pipeMoveSpeed = 0.04;     // radians per frame
-    const clouds=[], trees=[];
+    const pipeClouds=[], trees=[];
     const rocketsOut = [];
     const rocketsIn  = [];
     const rocketPowerups = [];
@@ -1741,8 +1752,8 @@ const pulseRings = [];
     }
     function hideTooltip() { tip.style.opacity = 0; }
 
-    for(let i=0;i<7;i++){
-      clouds.push({ x:Math.random()*W, y:20+Math.random()*100, s:0.8+Math.random()*0.4 });
+    for(let i=0;i<6;i++){
+      pipeClouds.push({ x: W + Math.random()*800, y: 50+Math.random()*150, speed: 3+Math.random()*2 });
       trees.push({ x:Math.random()*W, h:50+Math.random()*80 });
     }
 
@@ -3580,6 +3591,22 @@ function updateReviveEffect() {
     }
   }
 
+  function updatePipeClouds(){
+    for(let i=pipeClouds.length-1;i>=0;i--){
+      const c = pipeClouds[i];
+      c.x -= c.speed;
+      if(c.x < -32){
+        c.x = W + 32 + Math.random()*800;
+        c.y = 50 + Math.random()*150;
+        c.speed = 3 + Math.random()*2;
+      }
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(cloudOverlay, c.x - 16, c.y, 32, 32);
+      ctx.restore();
+    }
+  }
+
     function drawPipes(){
       pipes.forEach(p=>{
         const img = p.img;
@@ -3591,9 +3618,28 @@ function updateReviveEffect() {
           ctx.drawImage(img, 0, -(H - p.top - p.gap), pipeW, H - p.top - p.gap);
           ctx.restore();
         } else {
-          ctx.fillStyle = p.fireGlow ? '#FF5722' : p.color;
+          ctx.save();
+          ctx.shadowColor   = 'rgba(0,0,0,0.25)';
+          ctx.shadowBlur    = 8;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          const lighter = shade(p.color,40);
+          const darker  = shade(p.color,-40);
+          let grad = ctx.createLinearGradient(0,0,0,p.top);
+          grad.addColorStop(0, lighter);
+          grad.addColorStop(1, darker);
+          ctx.fillStyle = p.fireGlow ? '#FF5722' : grad;
           ctx.fillRect(p.x, 0, pipeW, p.top);
+          grad = ctx.createLinearGradient(0,0,0,H - p.top - p.gap);
+          grad.addColorStop(0, lighter);
+          grad.addColorStop(1, darker);
+          ctx.fillStyle = p.fireGlow ? '#FF5722' : grad;
           ctx.fillRect(p.x, p.top + p.gap, pipeW, H - p.top - p.gap);
+          ctx.lineWidth   = 3;
+          ctx.strokeStyle = shade(p.color,-60);
+          ctx.strokeRect(p.x, 0, pipeW, p.top);
+          ctx.strokeRect(p.x, p.top + p.gap, pipeW, H - p.top - p.gap);
+          ctx.restore();
         }
         if (!img && p.fireGlow) {
           ctx.save();
@@ -5734,6 +5780,7 @@ if (state === STATE.Boss) {
   updateBatSwarms();
   updateSonarRings();
   updatePulseRings();
+  updatePipeClouds();
   updateSmell();
   updateHeavyBall();
   bird.draw();
@@ -5974,6 +6021,7 @@ if (state === STATE.Play) {
    updateBatSwarms();
    updateSonarRings();
    updatePulseRings();
+   updatePipeClouds();
    updateSmell();
     updateHeavyBall();
     if(!gauntletMode){
