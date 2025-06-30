@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Aviar - Rocket Birdie</title>
+  <title>Ultimate Birdie</title>
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="theme-color" content="#70d0ee">
@@ -12,463 +11,150 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* typography */
       --font-heading: "Fredoka One", sans-serif;
-      --font-body:    "Poppins", sans-serif;
-
-      /* glassmorphism */
-      --menu-bg:       rgba(255,255,255,0.15);
-      --menu-border:   rgba(255,255,255,0.3);
-      --menu-shadow:   0 8px 24px rgba(0,0,0,0.15);
-
-      /* button tokens */
-      --btn-radius:    12px;
-      --btn-shadow:    0 4px 12px rgba(0,0,0,0.15);
-      --btn-height:    56px;
+      --font-body: "Poppins", sans-serif;
+      --menu-bg: rgba(255,255,255,0.15);
+      --menu-border: rgba(255,255,255,0.3);
+      --menu-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      --btn-radius: 12px;
+      --btn-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     * { margin:0; padding:0; box-sizing:border-box; }
-    html, body {
-      width:100%; height:100%;
-      overflow:hidden; position:relative;
-      background:#70d0ee;
-    }
-    body, input, button {
+    body {
       font-family: var(--font-body);
+      min-height:100vh;
+      background:#70d0ee;
+      background:linear-gradient(#70d0ee,#89dff8);
+      color:#fff;
     }
-    canvas {
-      position:absolute;
-      top: 60px;
-      z-index: 0;
-    }
-    #score {
-      position:absolute; top: 80px; left: 50%;
-      transform:translateX(-50%);
-      color:#fff; font:2rem sans-serif;
-      text-shadow:2px 2px 4px #000;
+    header {
+      position:fixed;
+      top:0; left:0; right:0;
+      backdrop-filter:blur(20px);
+      background:rgba(255,255,255,0.1);
+      border-bottom:1px solid var(--menu-border);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:0.75rem 1rem;
       z-index:10;
     }
-    #reviveDisplay {
-      position:absolute; bottom:10px; left:10px;
-      color:#fff; font:1rem sans-serif;
-      text-shadow:2px 2px 4px #000;
-      z-index:25;                     /* above overlay */
-      display:flex; align-items:center;
+    .logo {
+      font-family:var(--font-heading);
+      font-size:1.5rem;
+      color:#FFC107;
     }
-    #effectDisplay {
-      position:absolute; bottom:10px; left:50%;
-      transform:translateX(-50%);
-      display:flex; gap:4px;
-      z-index:25;
+    nav { display:flex; gap:1rem; }
+    nav a {
+      color:#fff;
+      text-decoration:none;
+      font-weight:500;
+      position:relative;
     }
-    #effectDisplay img { width:24px; height:24px; }
-    #overlay {
-      display:none; position:absolute; left:0;
-      top:100px; bottom:80px;           /* leave score and coins visible */
-      width:100%;
-      background:rgba(0,0,0,0.5);
-      color:#fff; font:18px sans-serif;
-      text-align:center; padding-top:20px;
-      z-index:20;
-      overflow-y:auto;            /* allow tall content like story log to scroll */
-      padding-bottom:40px;        /* space below last entry */
-    }
-    #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
-    #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
-    #reviveClock { font-size:24px; margin:8px 0; }
-
-    #menu {
+    nav a:hover::after {
+      content:"";
       position:absolute;
-      top:50%; left:50%;
-      transform:translate(-50%, -50%);
-      width:90vw;
-      max-width:360px;
-      padding:24px;
+      left:0; right:0; bottom:-2px;
+      height:2px;
+      background:#fff;
+    }
+    nav a:hover { color:#ffe; }
+    .hamburger { display:none; cursor:pointer; font-size:1.5rem; }
+    @media(max-width:600px){
+      nav { display:none; position:absolute; top:100%; right:1rem; background:rgba(0,0,0,0.3); flex-direction:column; padding:1rem; border-radius:var(--btn-radius); }
+      nav.open { display:flex; }
+      .hamburger { display:block; }
+    }
+    .hero {
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+      padding:6rem 1rem 2rem;
+    }
+    .hero h1 {
+      font-family:var(--font-heading);
+      font-size:3rem;
+      text-shadow:0 2px 4px rgba(0,0,0,0.5);
+    }
+    .hero p {
+      font-size:1.25rem;
+      margin:0.5rem 0 2rem;
+    }
+    .screenshot-card {
       background:var(--menu-bg);
       backdrop-filter:blur(20px);
       border:1px solid var(--menu-border);
       border-radius:24px;
       box-shadow:var(--menu-shadow);
-      text-align:center;
-      z-index:15;
-    }
-    #menu h1 {
-      font-family:var(--font-heading);
-      font-size:2.5rem;
-      color:#FFC107;
-      text-shadow:0 2px 4px rgba(0,0,0,0.4);
-      margin-bottom:4px;
-    }
-    #menu h2 {
-      font-family:var(--font-body);
-      font-size:1.25rem;
-      color:#FFF;
-      text-shadow:0 2px 4px rgba(0,0,0,0.4);
-      margin-bottom:24px;
-    }
-    .menu-btn.primary {
-      display:block;
-      width:100%;
-      height:var(--btn-height);
-      margin:16px 0;
-      padding:0;
-      font-family:var(--font-body);
-      font-size:1.125rem;
-      font-weight:500;
-      color:#FFF;
-      border:none;
-      border-radius:var(--btn-radius);
-      box-shadow:var(--btn-shadow);
-      cursor:pointer;
-      transition:transform 0.2s, box-shadow 0.2s;
-    }
-    .menu-btn.primary:hover {
-      transform:translateY(-2px);
-      box-shadow:0 6px 16px rgba(0,0,0,0.2);
-    }
-    .menu-btn.primary.adventure { background-image: linear-gradient(to bottom, #8BC34A, #558B2F); }
-    .menu-btn.primary.marathon  { background-image: linear-gradient(to bottom, #4FC3F7, #0288D1); }
-    .menu-btn.primary.gauntlet  { background-image: linear-gradient(to bottom, #EF5350, #C62828); }
-
-    .menu-row {
-      display:grid;
-      grid-template-columns:repeat(3, 1fr);
-      gap:16px;
-      margin:32px 0;
-    }
-
-    .menu-btn.secondary {
+      padding:1rem;
       display:flex;
       flex-direction:column;
       align-items:center;
-      justify-content:center;
-      height:var(--btn-height);
-      background:rgba(255,255,255,0.9);
+    }
+    .screenshot-card img {
+      width:100%;
+      border-radius:12px;
+    }
+    .cta-btn {
+      margin-top:1rem;
+      padding:1rem 2rem;
       border:none;
       border-radius:var(--btn-radius);
-      box-shadow:var(--btn-shadow);
-      font-size:0.75rem;
-      color:#333;
+      background-image:linear-gradient(to bottom,#4FC3F7,#0288D1);
+      color:#fff;
+      font-family:var(--font-body);
+      font-weight:600;
       cursor:pointer;
-      transition:background 0.2s, transform 0.2s;
-    }
-
-    .menu-btn.secondary:hover {
-      background:#fff;
-      transform:translateY(-2px);
-    }
-
-    .menu-btn.secondary img {
-      width:24px; height:24px;
-    }
-    .menu-btn.secondary span {
-      display:block;
-      margin-top:4px;
-    }
-    .stats {
-      display:flex;
-      justify-content:space-between;
-      margin-top:24px;
-      padding:12px;
-      background:rgba(255,255,255,0.2);
-      border-radius:var(--btn-radius);
       box-shadow:var(--btn-shadow);
-      font-size:1rem;
-      color:#FFF;
-      text-shadow:1px 1px 3px rgba(0,0,0,0.6);
     }
-
-    .stats div {
-      display:flex;
-      align-items:center;
-      gap:4px;
+    .cta-btn:hover {
+      transform:translateY(-2px);
+      box-shadow:0 6px 16px rgba(0,0,0,0.2);
     }
-    .adventure-info {
-      font-size:0.875rem;
-      color:#FFF;
-      margin:8px 0 16px;
+    .features {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:1rem;
+      padding:2rem 1rem;
+      max-width:960px;
+      margin:0 auto;
     }
-    #adventureTimer.flash {
-      margin-left:8px;
-
-    }
-    #achievementPopup {
-      position:absolute;
-      top:20px;
-      left:50%;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,0.6);
-      color:#fff;
-      padding:4px 8px;
-      border-radius:4px;
-      display:none;
-      z-index:30;
-      pointer-events:none;
-      font:16px sans-serif;
-    }
-    #stageScore {
-      position:absolute;
-      top:120px;
-      left:50%;
-      transform:translateX(-50%);
-      font-size:32px;
-      font-weight:bold;
-      text-shadow:2px 2px 2px #000;
-      color:#fff;
-      display:none;
-      z-index:30;
-      pointer-events:none;
-    }
-    .grade { text-shadow:2px 2px 2px #000; }
-    .grade.S { color:#EF5350; }
-    .grade.A { color:#66BB6A; }
-    .grade.B { color:#42A5F5; }
-    .grade.C { color:#FFD54F; }
-    #storyPopup {
-      position:absolute;
-      top:50%;
-      left:50%;
-      transform:translate(-50%,-50%);
-      background:rgba(255,255,255,0.8);
-      color:#000;
-      padding:6px 12px;
-      border-radius:6px;
-      display:none;
-      z-index:35;
-      pointer-events:none;
-      font:18px serif;
-    }
-    #cheeseMessage {
-      position:absolute;
-      top:40%;
-      left:50%;
-      transform:translate(-50%,-50%);
-      color:#ff0;
-      font:24px var(--font-heading);
-      text-shadow:2px 2px 4px #000;
-      display:none;
-      z-index:40;
-      pointer-events:none;
-    }
-
-    @keyframes flash {
-      0%,100%{opacity:1}
-      50%{opacity:0.3}
-    }
-    .flash { animation: flash 1s infinite; }
-
-    @keyframes bounce {
-      0%,100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-    .iconBounce { animation: bounce 1s infinite; display:inline-block; }
-    .iconWrap { position:relative; display:inline-block; width:32px; height:32px; margin-right:6px; }
-    .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
-
-    #gameOverContent {
-      position:relative;
-      width:90vw;
-      max-width:360px;
-      margin:40px auto;
-      padding:24px;
+    .feature-card {
       background:var(--menu-bg);
       backdrop-filter:blur(20px);
       border:1px solid var(--menu-border);
       border-radius:24px;
       box-shadow:var(--menu-shadow);
+      padding:1rem;
       text-align:center;
     }
-    #upgradeTree {
-      display:grid;
-      grid-template-columns:repeat(auto-fill, minmax(60px, 1fr));
-      gap:12px;
-      justify-items:center;
-      width:100%;
-      padding:10px 0;
-    }
-    .upgradeNode {
-      position:relative;
-      width:36px;
-      height:36px;
-      border-radius:50%;
-      border:2px solid;
-    }
-
-    .upgradeNode img { width:100%; height:100%; border-radius:50%; }
-    .upgradeNode.equipped { width:48px; height:48px; }
-    .upgradeNode.locked img { filter:grayscale(1) brightness(0.4); }
-    .upgradeNode.owned img { filter:grayscale(0.7) brightness(0.7); }
-    .priceTag {
-      position:absolute;
-      bottom:-14px;
-      width:100%;
-      text-align:center;
-      font-size:12px;
-      color:#fff;
-      pointer-events:none;
-    }
-
-
-    #btnSettings {
-      position:absolute;
-      bottom:10px;
-      right:10px;
-      font-size:24px;
-      background:none;
-      border:none;
-      cursor:pointer;
-      color:#fff;
-      text-shadow:2px 2px 4px #000;
-      z-index:15;
-    }
-
-    #settingsPanel {
-      display:none;
-      position:absolute;
-      bottom:60px;
-      right:10px;
-      background:rgba(0,0,0,0.7);
-      padding:8px;
-      border-radius:6px;
-      color:#fff;
-      z-index:30;
-    }
-
-    #btnPause {
-      position:absolute;
-      top:70px;
-      right:10px;
-      font-size:24px;
-      background:none;
-      border:none;
-      cursor:pointer;
-      color:#fff;
-      text-shadow:2px 2px 4px #000;
-      z-index:15;
-    }
-    #pauseOverlay {
-      display:none;
-      position:absolute;
-      left:0;
-      top:100px;
-      bottom:80px;
-      width:100%;
-      background:rgba(0,0,0,0.5);
-      color:#fff;
-      font:18px sans-serif;
-      text-align:center;
-      padding-top:20px;
-      z-index:30;
-    }
-    #resumeTimer { margin-bottom:10px; font-size:1.2rem; }
-    #pauseOverlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
-
-    /* ── Power-Up Spin Overlay ───────────────────────────── */
-    #spinOverlay {
-      display:none;
-      position:absolute;
-      left:0; right:0;
-      top:100px; bottom:80px;
-      padding:20px;
-      background:rgba(0,0,0,0.5);
-      color:#fff;
-      font:18px sans-serif;
-      text-align:center;
-      z-index:20;
-    }
-    #spinCoinDisplay {
-      margin-bottom:8px;
-      font-size:1.2rem;
-    }
-    #rouletteWrap {
-      position:relative;
-      width:260px;
-      height:200px;
-      margin:0 auto;
-      overflow:hidden;
-    }
-    #roulette-frame {
-      position:absolute;
-      top:0; left:0;
-      width:100%;
-      pointer-events:none;
-      z-index:1;
-    }
-    .reel {
-      position:absolute;
-      top:22px;
-      height:140px;
-      width:33.3333%;
-      overflow:hidden;
-      z-index:2;
-    }
-    .reel:nth-child(2) { left:33.3333%; }
-    .reel:nth-child(3) { left:66.6666%; }
-    .strip {
-      position:absolute; top:0; left:0; right:0;
-    }
-    .symbol {
-      display:block;
-      width:100%;
+    .feature-card img {
+      width:40px;
       height:40px;
-      object-fit:contain;
-      transform-origin:center center;
+      margin-bottom:0.5rem;
     }
-    #prizeText {
-      margin-top:12px;
-      height:1.5rem;
-      font-size:1rem;
-      text-shadow:0 0 2px #000;
+    footer {
+      backdrop-filter:blur(20px);
+      background:rgba(255,255,255,0.1);
+      padding:1rem;
+      text-align:center;
+      border-top:1px solid var(--menu-border);
     }
-    #spin-btn {
-      margin-top:12px;
-      cursor:pointer;
-      user-select:none;
-      width:120px;
+    footer a {
+      color:#fff;
+      text-decoration:none;
+      margin:0 0.5rem;
     }
-    @keyframes shake {
-      0%,100%{transform:translateX(0)}
-      20%,60%{transform:translateX(-10px)}
-      40%,80%{transform:translateX(10px)}
+    footer a:hover { text-decoration:underline; }
+    @media(max-width:800px){
+      .hero h1 { font-size:2.5rem; }
+      .hero p { font-size:1rem; }
+      .features { grid-template-columns:1fr; }
+      .screenshot-card img { width:90vw; }
     }
-    .shake { animation:shake 0.5s ease-out; }
-    @keyframes blink {
-      0%,49%{opacity:1}
-      50%,100%{opacity:0}
-    }
-    .blink { animation:blink 1s step-end infinite; }
-
-    @keyframes confetti-fall {
-      0% { transform:translateY(-100px) rotate(0); opacity:1; }
-      100% { transform:translateY(300px) rotate(360deg); opacity:0; }
-    }
-    .confetti {
-      position:absolute; width:8px; height:8px; background:var(--c);
-      animation: confetti-fall 1s ease-out forwards;
-      pointer-events:none;
-    }
-    @keyframes firework {
-      from { transform:scale(0); opacity:1; }
-      to   { transform:scale(1.5); opacity:0; }
-    }
-    .firework {
-      position:absolute; width:6px; height:6px; border-radius:50%;
-      background:var(--c); pointer-events:none;
-      animation:firework 0.6s ease-out forwards;
-    }
-
-    @media (max-width: 400px) {
-      #menu {
-        padding:16px;
-        max-width:90vw;
-      }
-      .menu-btn.primary, .menu-btn.secondary {
-        height:48px;
-        font-size:1rem;
-      }
-      #menu h1 { font-size:2rem; }
-      #menu h2 { font-size:1rem; }
-    }
-
   </style>
   <!-- ==================== AdSense library loader ==================== -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366" crossorigin="anonymous"></script>
@@ -476,54 +162,52 @@
 </head>
 <body>
   <header>
-    <nav>
-      <a href="#" data-page="home">Home</a>
-      <a href="#" data-page="about">About</a>
-      <a href="#" data-page="privacy">Privacy</a>
-      <a href="#" data-page="game">Game</a>
+    <div class="logo">Ultimate Birdie</div>
+    <div class="hamburger" id="burger">☰</div>
+    <nav id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="game.html">Game</a>
     </nav>
-    <div id="adHeader" style="display:none;">
-      <ins class="adsbygoogle"
-           style="display:block; width:100%; height:60px"
-           data-ad-client="ca-pub-9879261118412366"
-           data-ad-slot="6412265994"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
   </header>
-  <main id="content">
-    <h1>Welcome to Ultimate Birdie</h1>
-    <p>Get ready to fly!</p>
+  <main>
+    <section class="hero">
+      <h1>Ultimate Birdie</h1>
+      <p>Fly farther. Break records. Become legend.</p>
+      <div class="screenshot-card">
+        <img src="game-screenshot.png" alt="Game Screenshot">
+        <a href="game.html" class="cta-btn">&#9654; Play Now</a>
+      </div>
+    </section>
+    <section class="features">
+      <div class="feature-card">
+        <img src="assets/rocket1.png" alt="Adventure Icon">
+        <h3>Adventure Mode</h3>
+        <p>20 lives, pulse-pounding challenges.</p>
+      </div>
+      <div class="feature-card">
+        <img src="assets/rocket2.png" alt="Marathon Icon">
+        <h3>Marathon Mode</h3>
+        <p>Endless pipes, infinite high scores.</p>
+      </div>
+      <div class="feature-card">
+        <img src="assets/mecha_suit.png" alt="Gauntlet Icon">
+        <h3>Gauntlet Mode</h3>
+        <p>Boss fights, epic mecha suit showdowns.</p>
+      </div>
+    </section>
   </main>
   <footer>
-    <a href="#" data-page="about">About</a> |
-    <a href="#" data-page="privacy">Privacy</a>
+    <p>© 2025 Ultimate Birdie • All rights reserved.</p>
+    <a href="privacy.html">Terms &amp; Conditions</a>
+    <a href="privacy.html">Privacy Policy</a>
   </footer>
-  <script>
-    const content = document.getElementById('content');
-    const adHeader = document.getElementById('adHeader');
-    async function loadPage(page) {
-      adHeader.style.display = page === 'game' ? 'block' : 'none';
-      if (page === 'home') {
-        content.innerHTML = '<h1>Welcome to Ultimate Birdie</h1><p>Get ready to fly!</p>';
-        return;
-      }
-      if (page === 'game') {
-        content.innerHTML = '<iframe src="game.html" width="100%" height="600" frameborder="0"></iframe>';
-      } else {
-        const res = await fetch(page + '.html');
-        const html = await res.text();
-        content.innerHTML = html;
-      }
-    }
-    document.querySelectorAll('nav a, footer a').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        loadPage(a.dataset.page);
-      });
+  <script type="module">
+    const burger = document.getElementById('burger');
+    const navLinks = document.getElementById('navLinks');
+    burger.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
     });
   </script>
 </body>
