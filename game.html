@@ -470,61 +470,102 @@
     }
 
   </style>
+
   <!-- ==================== AdSense library loader ==================== -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366" crossorigin="anonymous"></script>
+  <script async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366"
+          crossorigin="anonymous"></script>
   <!-- ================================================================= -->
 </head>
+
 <body>
-  <header>
-    <nav>
-      <a href="#" data-page="home">Home</a>
-      <a href="#" data-page="about">About</a>
-      <a href="#" data-page="privacy">Privacy</a>
-      <a href="#" data-page="game">Game</a>
-    </nav>
-    <div id="adHeader" style="display:none;">
-      <ins class="adsbygoogle"
-           style="display:block; width:100%; height:60px"
-           data-ad-client="ca-pub-9879261118412366"
-           data-ad-slot="6412265994"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </header>
-  <main id="content">
-    <h1>Welcome to Ultimate Birdie</h1>
-    <p>Get ready to fly!</p>
-  </main>
-  <footer>
-    <a href="#" data-page="about">About</a> |
-    <a href="#" data-page="privacy">Privacy</a>
-  </footer>
+  <!-- ── AdSense strip at top of page ── -->
+  <ins class="adsbygoogle"
+       style="display:block; width:100%; height:60px"
+       data-ad-client="ca-pub-9879261118412366"
+       data-ad-slot="6412265994"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
   <script>
-    const content = document.getElementById('content');
-    const adHeader = document.getElementById('adHeader');
-    async function loadPage(page) {
-      adHeader.style.display = page === 'game' ? 'block' : 'none';
-      if (page === 'home') {
-        content.innerHTML = '<h1>Welcome to Ultimate Birdie</h1><p>Get ready to fly!</p>';
-        return;
-      }
-      if (page === 'game') {
-        content.innerHTML = '<iframe src="game.html" width="100%" height="600" frameborder="0"></iframe>';
-      } else {
-        const res = await fetch(page + '.html');
-        const html = await res.text();
-        content.innerHTML = html;
-      }
-    }
-    document.querySelectorAll('nav a, footer a').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        loadPage(a.dataset.page);
-      });
-    });
+    (adsbygoogle = window.adsbygoogle || []).push({});
   </script>
+  <!-- ────────────────────────────────── -->
+
+  <audio id="bgMusic"
+         src="assets/dream.guitar.mp3"
+         loop
+         preload="metadata"></audio>
+  <audio id="spinSound" src="assets/slot_spin.mp3"></audio>
+  <audio id="explosionSound" src="assets/explosion.mp3"></audio>
+  <audio id="winSound" src="assets/casino_fun.mp3"></audio>
+  <audio id="loseSound" src="assets/losing-horn.mp3"></audio>
+
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="score">0</div>
+  <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
+  <div id="effectDisplay"></div>
+  <div id="overlay"><div id="gameOverContent"></div></div>
+  <div id="spinOverlay">
+    <div id="spinCoinDisplay"></div>
+    <div id="rouletteWrap">
+      <img src="assets/spin_face.png" id="roulette-frame" alt=""/>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+    </div>
+    <div id="prizeText"></div>
+    <img id="spin-btn" src="assets/spin_button.png" alt="Spin">
+  </div>
+  <div id="menu">
+    <h1>AVIAR</h1>
+    <h2>Rocket Birdie</h2>
+
+    <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
+
+    <div class="adventure-info">
+      <span id="adventureCount">20/20</span>
+      <span id="adventureTimer" class="flash"></span><br/>
+      <button id="buyBirdBtn" class="menu-btn primary" style="height:40px;font-size:1rem;margin-top:8px;">
+        Buy Bird – 20 Coins
+      </button>
+    </div>
+
+    <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
+    <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
+
+    <div class="menu-row">
+      <button id="btnAchievements" class="menu-btn secondary">
+        🏆<span>Achievements</span>
+      </button>
+      <button id="btnStory" class="menu-btn secondary">
+        <span class="flash">📖</span><span>Story Log</span>
+      </button>
+      <button id="btnShop" class="menu-btn secondary">
+        🛒<span>Shop</span>
+      </button>
+    </div>
+
+    <div class="stats">
+      <div>🪙 <span id="coinDisplay">0</span></div>
+      <div>Best <span id="bestScore">0</span></div>
+    </div>
+  </div>
+  <div id="achievementPopup"></div>
+  <div id="stageScore"></div>
+  <div id="storyPopup"></div>
+  <div id="cheeseMessage" class="flash"></div>
+  <button id="btnSettings">⚙️</button>
+  <div id="settingsPanel">
+    <input id="volumeSlider" type="range" min="0" max="1" step="0.01">
+  </div>
+  <button id="btnPause">⏸️</button>
+  <div id="pauseOverlay">
+    <div id="resumeTimer"></div>
+    <button id="resumeBtn">Resume</button><br/>
+    <button id="mainMenuBtn">Main Menu</button>
+  </div>
+
+  <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
