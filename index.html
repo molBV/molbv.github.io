@@ -567,39 +567,39 @@
 
   <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
   <script type="module">
-    // ── 1) FIREBASE SETUP ───────────────────────────────────────
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import {
-      getFirestore,
-      collection, addDoc,
-      query, orderBy, limit, getDocs,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  // ── 1) FIREBASE SETUP ───────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 
-    const firebaseConfig = {
-      apiKey:             "AIzaSyBa4dizIP5-_YpgJ3tyIPm20TB4T9xP9KM",
-      authDomain:         "ultimate-birdie.firebaseapp.com",
-      projectId:          "ultimate-birdie",
-      storageBucket:      "ultimate-birdie.appspot.com",
-      messagingSenderId:  "1061733247954",
-      appId:              "1:1061733247954:web:5ad19583381cc09a7c760b",
-      measurementId:      "G-54KDN5XG60"
-    };
+// add these two lines:
+import { getAuth, signInAnonymously } 
+  from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-    const app = initializeApp(firebaseConfig);
-    
-    // ── ANONYMOUS SIGN-IN ──
+import {
+  getFirestore,
+  collection, addDoc,
+  query, orderBy, limit, getDocs,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getAnalytics, logEvent } 
+  from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js";
+
+const firebaseConfig = {
+  /* your config */
+};
+
+const app = initializeApp(firebaseConfig);
+
+// ── ANONYMOUS SIGN-IN ───────────────────────────────────────
 const auth = getAuth(app);
 signInAnonymously(auth)
   .catch(err => console.error("Auth failed:", err));
-    
-    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js"; // ←─ HERE ─────────────────
-    const analytics = getAnalytics(app); // ←─ HERE ─────────────────
 
-    // helper so you don’t have to import everywhere
-    function trackEvent(eventName, params = {}) {
-      logEvent(analytics, eventName, params);
-    } // ←─ HERE ─────────────────
+// now analytics
+const analytics = getAnalytics(app);
+function trackEvent(eventName, params={}) {
+  logEvent(analytics, eventName, params);
+}
+    
 
     const db  = getFirestore(app);
 
