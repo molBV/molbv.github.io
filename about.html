@@ -2,14 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>About - Ultimate Birdie</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Poppins', sans-serif; padding:20px; }
-  </style>
+  <title>About Ultimate Birdie</title>
+  <link rel="stylesheet" href="styles.css"><!-- your shared stylesheet -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  >
+  <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
 <body>
-  <h1>About the game</h1>
-  <p>About the game...</p>
+  <!-- header / nav (same glass style as index.html) -->
+  <header class="glass-header">
+    <div class="container">
+      <h1 class="logo">Ultimate Birdie</h1>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="about.html" class="active">About</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="game.html">Play</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h2>About Ultimate Birdie</h2>
+      <p>
+        <strong>Ultimate Birdie</strong> (aka Aviar: Rocket Birdie) is an
+        HTML5 Canvas game that takes the classic “flap to dodge pipes”
+        formula and supercharges it with power-ups, story achievements and
+        epic boss battles. Dive into three distinct modes and see how far
+        you can soar!
+      </p>
+    </section>
+
+    <section class="features glass-card">
+      <h3>Game Modes</h3>
+      <ul>
+        <li>
+          <strong>Adventure</strong> – 20 lives per cycle, earn &amp; spend
+          coins to buy extra plays, unlock hidden story events.
+        </li>
+        <li>
+          <strong>Marathon</strong> – Endless pipe runs, infinite scoring,
+          global leaderboards.
+        </li>
+        <li>
+          <strong>Gauntlet</strong> – Face mecha boss after boss in a true
+          test of skill and timing.
+        </li>
+      </ul>
+    </section>
+
+    <section class="gameplay glass-card">
+      <h3>How to Play</h3>
+      <ul>
+        <li>Click, tap or press <kbd>Space</kbd> to flap your wings.</li>
+        <li>
+          Collect coins to unlock power-ups: double coins, magnets,
+          triple rockets, heavy load and more.
+        </li>
+        <li>
+          Smash through pipes when you’re “super” or spend coins to break
+          obstacles.
+        </li>
+        <li>
+          Spin the roulette wheel for random boosts—push your luck for
+          epic advantages.
+        </li>
+        <li>
+          Track your high scores on the global leaderboard powered by
+          Firebase Firestore.
+        </li>
+      </ul>
+    </section>
+
+    <section class="tech glass-card">
+      <h3>Built With</h3>
+      <ul>
+        <li>Pure JavaScript + HTML5 Canvas for smooth, cross-platform play.</li>
+        <li>
+          Firebase Auth &amp; Firestore for anonymous sign-in and
+          global leaderboards.
+        </li>
+        <li>Firebase Analytics for in-game event tracking.</li>
+        <li>CSS3 glassmorphism &amp; Google Fonts for a clean, modern UI.</li>
+      </ul>
+    </section>
+
+    <section class="credits glass-card">
+      <h3>Credits</h3>
+      <p>
+        Developed by the Ultimate Birdie Team. Inspired by classic endless
+        flyers, with an original story arc, achievements and boss
+        encounters to bring the sky to life.
+      </p>
+      <p>
+        Special thanks to all play-testers and the open-source community
+        for their feedback and support.
+      </p>
+    </section>
+  </main>
+
+  <footer class="glass-footer">
+    <div class="container">
+      <p>© 2025 Ultimate Birdie • <a href="privacy.html">Privacy Policy</a></p>
+    </div>
+  </footer>
 </body>
 </html>
