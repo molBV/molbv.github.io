@@ -11,17 +11,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
 <body>
-  <!-- header / nav (same glass style as index.html) -->
-  <header class="glass-header">
-    <div class="container">
-      <h1 class="logo">Ultimate Birdie</h1>
-      <nav>
-        <a href="index.html">Home</a>
-        <a href="about.html" class="active">About</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="game.html">Play</a>
-      </nav>
-    </div>
+  <header>
+    <div class="logo">Ultimate Birdie</div>
+    <div class="hamburger" id="burger">☰</div>
+    <nav id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="game.html">Game</a>
+    </nav>
   </header>
 
   <main class="container">
@@ -104,10 +102,18 @@
     </section>
   </main>
 
-  <footer class="glass-footer">
-    <div class="container">
-      <p>© 2025 Ultimate Birdie • <a href="privacy.html">Privacy Policy</a></p>
-    </div>
+  <footer>
+    <p>© 2025 Ultimate Birdie • All rights reserved.</p>
+    <a href="privacy.html">Terms &amp; Conditions</a>
+    <a href="privacy.html">Privacy Policy</a>
   </footer>
+
+  <script>
+    const burger   = document.getElementById("burger");
+    const navLinks = document.getElementById("navLinks");
+    burger.addEventListener("click", () => {
+      navLinks.classList.toggle("open");
+    });
+  </script>
 </body>
 </html>
