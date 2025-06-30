@@ -1153,6 +1153,7 @@ const cheeseKillerSprite = new Image();
 cheeseKillerSprite.src  = 'assets/cheeesekiller.png';
 const cheeseChargeSprite = new Image();
 cheeseChargeSprite.src  = 'assets/cheekillercharge.png';
+const CHEESE_KILLER_MAX_HP = 2000;
 const penguinMechaBase    = new Image();
 penguinMechaBase.src      = 'assets/penguinmechaBase.png';
 const penguinMechaShoot1  = new Image();
@@ -2973,7 +2974,8 @@ function spawnCheeseKiller() {
     vx: -1.5,
     vy: 0,
     r: 32,
-    hp: 3000,
+    hp: CHEESE_KILLER_MAX_HP,
+    max: CHEESE_KILLER_MAX_HP,
     charge: 0,
     cooldown: 0,
     flashTimer: 0
@@ -4262,7 +4264,7 @@ function updateCheeseKiller() {
   if (ck.charge > 0) {
     ck.charge--;
     if (ck.charge == 0) {
-      rocketsIn.push({ x: ck.x - ck.r, y: ck.y, vx: -4, vy: 0, isHoming: true, isBossShot: true });
+      rocketsIn.push({ x: ck.x - ck.r, y: ck.y, vx: -4, vy: 0, isHoming: true });
       ck.cooldown = 40;
     }
   } else if (ck.cooldown <= 0 && Math.random() < 0.05) {
@@ -4271,6 +4273,11 @@ function updateCheeseKiller() {
   }
   const img = ck.charge > 0 ? cheeseChargeSprite : cheeseKillerSprite;
   ctx.drawImage(img, ck.x - 32, ck.y - 32, 64, 64);
+  const barW = 60;
+  ctx.fillStyle = '#444';
+  ctx.fillRect(ck.x - barW/2, ck.y - ck.r - 10, barW, 4);
+  ctx.fillStyle = 'lime';
+  ctx.fillRect(ck.x - barW/2, ck.y - ck.r - 10, barW * (ck.hp / ck.max), 4);
   if (ck.flashTimer > 0) ck.flashTimer--;
   for (let i = rocketsOut.length - 1; i >= 0; i--) {
     const r = rocketsOut[i];
@@ -4279,7 +4286,11 @@ function updateCheeseKiller() {
       spawnExplosion(ck.x, ck.y, false, r.electric);
       ck.hp -= (r.damage || 10);
       ck.flashTimer = 6;
-      if (ck.hp <= 0) { cheeseKiller = null; break; }
+      if (ck.hp <= 0) {
+        cheeseKiller = null;
+        startBossFight();
+        break;
+      }
     }
   }
   if (Math.hypot(bird.x - ck.x, bird.y - ck.y) < ck.r + bird.rad) {
@@ -4728,6 +4739,8 @@ function finalizeGameOver(){
   state = STATE.Over;
   hasSubmittedScore  = false;
   overlayTop10Lock   = false;
+  cheeseKiller = null;
+  topStayTimer = 0;
 
   if (score > personalBest) {
     personalBest = score;
@@ -5203,6 +5216,9 @@ function handleHit(){
 
   // reposition bird
   bird.reset();
+
+  cheeseKiller = null;
+  topStayTimer = 0;
 
       // ←─ ADD THIS:
   bossEncounterCount = 0;
