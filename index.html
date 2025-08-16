@@ -1,70 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>Ultimate Birdie</title>
-  <link rel="icon" href="favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <meta name="theme-color" content="#70d0ee">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <!-- AdSense -->
-  <script async
-    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366"
-    crossorigin="anonymous"></script>
+  <meta charset="utf-8">
+  <title>Aviar — Rocket Birdie (Play Now)</title>
+  <meta name="description" content="Aviar is a fast, polished HTML5 bird game with boss fights, upgrades, and secrets — built with help from ChatGPT.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- No AdSense script on gameplay page -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"VideoGame",
+    "name":"Aviar — Rocket Birdie",
+    "url":"https://molbv.github.io/",
+    "author":{"@type":"Person","name":"Mykhaylo Usyk"},
+    "applicationCategory":"Game","operatingSystem":"Web",
+    "creator":{"@type":"Organization","name":"Built with help from ChatGPT"},
+    "genre":["Arcade","Action"],
+    "description":"HTML5 bird game with boss fights, power-ups and upgrades.",
+    "inLanguage":"en"
+  }
+  </script>
 </head>
 <body>
+  <!-- header -->
   <header>
-    <div class="logo">Ultimate Birdie</div>
-    <div class="hamburger" id="burger">☰</div>
-    <nav id="navLinks">
-      <a href="index.html">Home</a>
-      <a href="about.html">About</a>
-      <a href="privacy.html">Privacy</a>
-      <a href="game.html">Game</a>
-    </nav>
+    <div class="wrap">
+      <span class="brand">Aviar — Rocket Birdie</span>
+      <nav aria-label="Primary">
+        <a href="/index.html" aria-current="page">Play</a>
+        <a href="/how-to-play.html">How to Play</a>
+        <a href="/changelog.html">Changelog</a>
+        <a href="/about.html">About</a>
+        <a href="/blog/">Blog</a>
+        <a href="/contact.html">Contact</a>
+        <span style="float:right"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></span>
+      </nav>
+    </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <h1>Ultimate Birdie</h1>
-      <p>Fly farther. Break records. Become legend.</p>
-      <a href="game.html" class="cta-btn">&#9654; Play Now</a>
-    </section>
-
-    <section class="features">
-      <div class="feature-card">
-        <img src="assets/rocket1.png" alt="Adventure Icon">
-        <h3>Adventure Mode</h3>
-        <p>20 lives, pulse-pounding challenges.</p>
+  <main class="wrap">
+    <div class="grid grid-2">
+      <div class="card">
+        <span class="badge">ChatGPT-assisted indie game</span>
+        <h1>Play Aviar</h1>
+        <p class="lead">Tap/Space to flap. Avoid hazards, collect cores, beat bosses. Headphones recommended.</p>
+        <!-- Your existing canvas/game -->
+        <canvas id="game" width="800" height="450" class="card" style="width:100%;height:auto"></canvas>
+        <script src="/js/main.js"></script>
       </div>
-      <div class="feature-card">
-        <img src="assets/rocket2.png" alt="Marathon Icon">
-        <h3>Marathon Mode</h3>
-        <p>Endless pipes, infinite high scores.</p>
-      </div>
-      <div class="feature-card">
-        <img src="assets/mecha_suit.png" alt="Gauntlet Icon">
-        <h3>Gauntlet Mode</h3>
-        <p>Boss fights, epic mecha suit showdowns.</p>
-      </div>
-    </section>
+      <aside class="card">
+        <h2>Quick Tips</h2>
+        <ul class="inline">
+          <li>Short taps = fine control; long press = burst.</li>
+          <li>Save cores for boss phases.</li>
+          <li>Pause: <kbd>P</kbd> • Mute: <kbd>M</kbd></li>
+        </ul>
+        <p class="small">We keep ads off the gameplay page to prevent accidental clicks and preserve flow.</p>
+      </aside>
+    </div>
   </main>
 
+  <!-- footer -->
   <footer>
-    <p>© 2025 Ultimate Birdie • All rights reserved.</p>
-    <a href="privacy.html">Terms &amp; Conditions</a>
-    <a href="privacy.html">Privacy Policy</a>
+    <div class="wrap small">
+      © <span id="y"></span> Aviar. All rights reserved. • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a> • <a href="/ads.txt">ads.txt</a> • Built with help from ChatGPT
+    </div>
   </footer>
-
-  <script>
-    const burger   = document.getElementById('burger');
-    const navLinks = document.getElementById('navLinks');
-    burger.addEventListener('click', () => {
-      navLinks.classList.toggle('open');
-    });
-  </script>
+  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
 </body>
 </html>

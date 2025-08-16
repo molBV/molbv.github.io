@@ -1,119 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>About Ultimate Birdie</title>
-  <link rel="stylesheet" href="styles.css"><!-- your shared stylesheet -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap"
-    rel="stylesheet"
-  >
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><title>About Aviar — Rocket Birdie</title>
+  <meta name="description" content="About the Aviar HTML5 game: vision, tech stack, and team — built with help from ChatGPT.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/assets/site.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366" crossorigin="anonymous"></script>
 </head>
 <body>
-  <header>
-    <div class="logo">Ultimate Birdie</div>
-    <div class="hamburger" id="burger">☰</div>
-    <nav id="navLinks">
-      <a href="index.html">Home</a>
-      <a href="about.html">About</a>
-      <a href="privacy.html">Privacy</a>
-      <a href="game.html">Game</a>
-    </nav>
-  </header>
+  <!-- header -->
+  <header><div class="wrap"><span class="brand">Aviar — Rocket Birdie</span>
+    <nav aria-label="Primary">
+      <a href="/index.html">Play</a><a href="/how-to-play.html">How to Play</a>
+      <a href="/changelog.html">Changelog</a><a href="/about.html" aria-current="page">About</a>
+      <a href="/blog/">Blog</a><a href="/contact.html">Contact</a>
+      <span style="float:right"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></span>
+    </nav></div></header>
 
-  <main class="container">
-    <section class="hero">
-      <h2>About Ultimate Birdie</h2>
-      <p>
-        <strong>Ultimate Birdie</strong> (aka Aviar: Rocket Birdie) is an
-        HTML5 Canvas game that takes the classic “flap to dodge pipes”
-        formula and supercharges it with power-ups, story achievements and
-        epic boss battles. Dive into three distinct modes and see how far
-        you can soar!
-      </p>
-    </section>
+  <main class="wrap article">
+    <h1>About Aviar</h1>
+    <p class="lead">Aviar is a lightweight, fast, browser-native arcade game built for quick sessions and surprising depth (boss phases, upgrades, secrets).</p>
+    <p><span class="badge">Built with help from ChatGPT</span> — From early prototypes to content pages and polish passes, we used ChatGPT to accelerate ideas, drafts, and code sketches. The game code is hand-tuned; the process was AI-assisted.</p>
 
-    <section class="features glass-card">
-      <h3>Game Modes</h3>
-      <ul>
-        <li>
-          <strong>Adventure</strong> – 20 lives per cycle, earn &amp; spend
-          coins to buy extra plays, unlock hidden story events.
-        </li>
-        <li>
-          <strong>Marathon</strong> – Endless pipe runs, infinite scoring,
-          global leaderboards.
-        </li>
-        <li>
-          <strong>Gauntlet</strong> – Face mecha boss after boss in a true
-          test of skill and timing.
-        </li>
-      </ul>
-    </section>
+    <h2>Tech & Design</h2>
+    <p>Aviar uses a lean HTML5 canvas loop, minimal allocations, and hand-tuned collision to keep input latency low. Assets are optimized for instant play.</p>
 
-    <section class="gameplay glass-card">
-      <h3>How to Play</h3>
-      <ul>
-        <li>Click, tap or press <kbd>Space</kbd> to flap your wings.</li>
-        <li>
-          Collect coins to unlock power-ups: double coins, magnets,
-          triple rockets, heavy load and more.
-        </li>
-        <li>
-          Smash through pipes when you’re “super” or spend coins to break
-          obstacles.
-        </li>
-        <li>
-          Spin the roulette wheel for random boosts—push your luck for
-          epic advantages.
-        </li>
-        <li>
-          Track your high scores on the global leaderboard powered by
-          Firebase Firestore.
-        </li>
-      </ul>
-    </section>
+    <h2>Why no ads on the gameplay page?</h2>
+    <p>We keep ads off the canvas page to prevent accidental clicks and preserve flow. Ads will appear only on help, blog, and info pages after approval.</p>
 
-    <section class="tech glass-card">
-      <h3>Built With</h3>
-      <ul>
-        <li>Pure JavaScript + HTML5 Canvas for smooth, cross-platform play.</li>
-        <li>
-          Firebase Auth &amp; Firestore for anonymous sign-in and
-          global leaderboards.
-        </li>
-        <li>Firebase Analytics for in-game event tracking.</li>
-        <li>CSS3 glassmorphism &amp; Google Fonts for a clean, modern UI.</li>
-      </ul>
-    </section>
-
-    <section class="credits glass-card">
-      <h3>Credits</h3>
-      <p>
-        Developed by the Ultimate Birdie Team. Inspired by classic endless
-        flyers, with an original story arc, achievements and boss
-        encounters to bring the sky to life.
-      </p>
-      <p>
-        Special thanks to all play-testers and the open-source community
-        for their feedback and support.
-      </p>
-    </section>
+    <h2>Team</h2>
+    <p>Game design & engineering by Mykhaylo Usyk. Feedback & playtesting from friends and the indie web community.</p>
   </main>
 
-  <footer>
-    <p>© 2025 Ultimate Birdie • All rights reserved.</p>
-    <a href="privacy.html">Terms &amp; Conditions</a>
-    <a href="privacy.html">Privacy Policy</a>
-  </footer>
-
-  <script>
-    const burger   = document.getElementById("burger");
-    const navLinks = document.getElementById("navLinks");
-    burger.addEventListener("click", () => {
-      navLinks.classList.toggle("open");
-    });
-  </script>
-</body>
-</html>
+  <footer><div class="wrap small">© <span id="y"></span> Aviar • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a> • <a href="/ads.txt">ads.txt</a> • Built with help from ChatGPT</div></footer>
+  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body></html>

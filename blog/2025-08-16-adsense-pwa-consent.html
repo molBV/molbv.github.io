@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><title>From hobby to “real site”: AdSense review, PWA, and consent strategy — Aviar Dev Blog</title>
+<meta name="description" content="How we prepped the site for AdSense review: content pages, ads.txt, robots/sitemap, and keeping ads off gameplay.">
+<link rel="icon" href="/favicon.png" type="image/png"><link rel="stylesheet" href="/assets/site.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366" crossorigin="anonymous"></script>
+</head><body>
+<header><div class="wrap"><span class="brand">Aviar — Rocket Birdie</span>
+<nav aria-label="Primary"><a href="/index.html">Play</a><a href="/how-to-play.html">How to Play</a><a href="/changelog.html">Changelog</a><a href="/about.html">About</a><a href="/blog/" aria-current="page">Blog</a><a href="/contact.html">Contact</a><span style="float:right"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></span></nav></div></header>
+<main class="wrap article">
+  <h1>From hobby to “real site”: AdSense review, PWA, and consent strategy</h1>
+  <p class="small">August 16, 2025 • 7–8 min read</p>
+  <h2>Content first</h2>
+  <p>We added text-rich pages (About, How-to-Play, Changelog, Privacy, Terms, Contact) and this blog so the site isn’t just a canvas. Reviewers need crawlable content.</p>
+  <h2>Where ads live (and don’t)</h2>
+  <p>We include the base AdSense script on text pages only. The gameplay page (<code>/index.html</code>) is ad-free to prevent accidental clicks and keep controls clean.</p>
+  <h2>ads.txt, robots, sitemap</h2>
+  <p><code>/ads.txt</code> authorizes Google to sell inventory (<code>pub-9879261118412366</code>). <code>/robots.txt</code> allows crawling and points to <code>/sitemap.xml</code> so engines index the new pages.</p>
+  <h2>PWA basics</h2>
+  <p>A minimal <code>manifest.webmanifest</code> helps installability. We’ll add a service worker later once the content stabilizes.</p>
+  <h2>Consent</h2>
+  <p>After approval, we’ll wire a Google-certified CMP (Funding Choices) so EEA/UK/CH traffic gets Consent Mode v2 before any ad requests.</p>
+  <p class="small"><em>Also: this whole preparation was documented and scaffolded with help from ChatGPT to move fast while keeping policy in mind.</em></p>
+  <hr><p><a href="/blog/">← Back to blog</a></p>
+</main>
+<footer><div class="wrap small">© <span id="y"></span> Aviar • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a> • <a href="/ads.txt">ads.txt</a> • Built with help from ChatGPT</div></footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body></html>
