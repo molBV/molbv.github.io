@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Aviar Dev Blog</title>
+    <link>https://molbv.github.io/blog/</link>
+    <description>Development updates for Aviar.</description>
+    <item><title>From hobby to “real site”: AdSense review, PWA, and consent strategy</title><link>https://molbv.github.io/blog/2025-08-16-adsense-pwa-consent.html</link><pubDate>Sat, 16 Aug 2025 12:00:00 GMT</pubDate></item>
+    <item><title>Skins, achievements, and a small in-game shop (without ruining the vibe)</title><link>https://molbv.github.io/blog/2025-08-05-skins-achievements-shop.html</link><pubDate>Tue, 05 Aug 2025 12:00:00 GMT</pubDate></item>
+    <item><title>Upgrades &amp; economy: making progression feel earned</title><link>https://molbv.github.io/blog/2025-07-22-upgrade-economy.html</link><pubDate>Tue, 22 Jul 2025 12:00:00 GMT</pubDate></item>
+    <item><title>Boss phases: readable, learnable, beatable</title><link>https://molbv.github.io/blog/2025-07-08-boss-phases.html</link><pubDate>Tue, 08 Jul 2025 12:00:00 GMT</pubDate></item>
+    <item><title>Juice that matters: hitstop, shake, particles, and audio</title><link>https://molbv.github.io/blog/2025-06-24-juice-polish.html</link><pubDate>Tue, 24 Jun 2025 12:00:00 GMT</pubDate></item>
+    <item><title>Canvas architecture &amp; the game loop</title><link>https://molbv.github.io/blog/2025-06-10-canvas-architecture.html</link><pubDate>Tue, 10 Jun 2025 12:00:00 GMT</pubDate></item>
+    <item><title>From “Birdy” to Aviar — why rebuild?</title><link>https://molbv.github.io/blog/2025-05-23-birdy-to-aviar.html</link><pubDate>Fri, 23 May 2025 12:00:00 GMT</pubDate></item>
+  </channel>
+</rss>
