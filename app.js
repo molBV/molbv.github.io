@@ -2574,36 +2574,54 @@ function updateMilkParticles() {
   }
 }
 
-function spawnElectricLines(x, y){
-  for(let b=0;b<3;b++){
-    const pts=[];
-    const len=40+Math.random()*20;
-    let px=x, py=y, ang=Math.random()*Math.PI*2;
-    for(let s=0;s<5;s++){
-      ang += (Math.random()-0.5)*0.5;
-      px += Math.cos(ang)*len/5;
-      py += Math.sin(ang)*len/5;
-      pts.push({x:px,y:py});
+function spawnElectricLines(x, y) {
+  for (let b = 0; b < 3; b++) {
+    const pts = [];
+    const segs = 6;
+    const len = 40 + Math.random() * 20;
+    let px = x, py = y, ang = Math.random() * Math.PI * 2;
+    for (let s = 0; s < segs; s++) {
+      ang += (Math.random() - 0.5) * 0.9;
+      const step = len / segs;
+      px += Math.cos(ang) * step;
+      py += Math.sin(ang) * step;
+      pts.push({ x: px, y: py });
+      if (Math.random() < 0.3 && s > 1) {
+        const bPts = [];
+        let bx = px, by = py, bang = ang + (Math.random() < 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.5);
+        for (let sb = 0; sb < 2; sb++) {
+          bang += (Math.random() - 0.5) * 0.5;
+          bx += Math.cos(bang) * step * 0.7;
+          by += Math.sin(bang) * step * 0.7;
+          bPts.push({ x: bx, y: by });
+        }
+        electricBolts.push({ x: px, y: py, pts: bPts, life: 40, color: Math.random() < 0.5 ? 'cyan' : 'magenta' });
+      }
     }
-    electricBolts.push({x, y, pts, life:60, color:Math.random()<0.5?'cyan':'magenta'});
+    electricBolts.push({ x, y, pts, life: 60, color: Math.random() < 0.5 ? 'cyan' : 'magenta' });
   }
 }
 
-function updateElectricBolts(){
-  for(let i=electricBolts.length-1;i>=0;i--){
-    const b=electricBolts[i];
+function updateElectricBolts() {
+  for (let i = electricBolts.length - 1; i >= 0; i--) {
+    const b = electricBolts[i];
     b.life--;
-    const alpha=Math.sin((b.life/60)*Math.PI);
+    const alpha = Math.sin((b.life / 60) * Math.PI);
     ctx.save();
-    const col=b.color==='cyan'?'0,255,255':'255,0,255';
-    ctx.strokeStyle=`rgba(${col},${alpha})`;
-    ctx.lineWidth=2+2*alpha;
+    ctx.globalCompositeOperation = 'lighter';
+    const col = b.color === 'cyan' ? '0,255,255' : '255,0,255';
+    ctx.strokeStyle = `rgba(${col},${alpha})`;
+    ctx.shadowColor = `rgba(${col},${alpha})`;
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2 + 2 * alpha;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(b.x,b.y);
-    b.pts.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.moveTo(b.x, b.y);
+    b.pts.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.stroke();
     ctx.restore();
-    if(b.life<=0) electricBolts.splice(i,1);
+    if (b.life <= 0) electricBolts.splice(i, 1);
   }
 }
 
