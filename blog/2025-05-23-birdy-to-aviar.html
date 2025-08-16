@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><title>From “Birdy” to Aviar — why rebuild? — Aviar Dev Blog</title>
+<meta name="description" content="Lessons from the Birdy prototype that shaped Aviar: tighter input, learnable bosses, and a cleaner stack.">
+<link rel="icon" href="/favicon.png" type="image/png"><link rel="stylesheet" href="/assets/site.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9879261118412366" crossorigin="anonymous"></script>
+</head><body>
+<header><div class="wrap"><span class="brand">Aviar — Rocket Birdie</span>
+<nav aria-label="Primary"><a href="/index.html">Play</a><a href="/how-to-play.html">How to Play</a><a href="/changelog.html">Changelog</a><a href="/about.html">About</a><a href="/blog/" aria-current="page">Blog</a><a href="/contact.html">Contact</a><span style="float:right"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></span></nav></div></header>
+<main class="wrap article">
+  <h1>From “Birdy” to Aviar — why rebuild?</h1>
+  <p class="small">May 23, 2025 • 6–7 min read</p>
+  <p>The public “Birdy” prototype proved two things: (1) players love the micro-decision rhythm of flap pathing; (2) once you add bosses and upgrades, tiny input delays feel huge. Aviar is the rebuild that fixes the foundations so late-game features don’t wobble.</p>
+  <h2>What we kept</h2>
+  <ul class="inline"><li>Simple, readable input: single-button flap with micro-taps favored over long presses.</li><li>Short-session loop but with depth: waves → boss → respite → escalate.</li></ul>
+  <h2>What we scrapped</h2>
+  <ul class="inline"><li>Heavy frameworks and unnecessary abstractions.</li><li>Collision that drifted across framerates.</li><li>Boss patterns that required luck rather than learning.</li></ul>
+  <h2>What changed</h2>
+  <p>We rebuilt the canvas loop, rewrote collision, and planned upgrades/bosses together instead of bolting them on. Aviar is the “do it right” pass so we can scale content without new tech debt each time. <em>Built with help from ChatGPT for ideas and drafts; final code is hand-tuned.</em></p>
+  <hr><p><a href="/blog/">← Back to blog</a></p>
+</main>
+<footer><div class="wrap small">© <span id="y"></span> Aviar • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a> • <a href="/ads.txt">ads.txt</a> • Built with help from ChatGPT</div></footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body></html>
