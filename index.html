@@ -1,75 +1,582 @@
-<!doctype html>
+
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Aviar — Rocket Birdie (Play Now)</title>
-  <meta name="description" content="Aviar is a fast, polished HTML5 bird game with boss fights, upgrades, and secrets — built with help from ChatGPT.">
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <link rel="stylesheet" href="/assets/site.css">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8"/>
+  <title>Aviar - Rocket Birdie</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#70d0ee">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    :root {
+      /* typography */
+      --font-heading: "Fredoka One", sans-serif;
+      --font-body:    "Poppins", sans-serif;
 
-  <!-- No AdSense script on gameplay page -->
-  <script type="application/ld+json">
-  {
-    "@context":"https://schema.org",
-    "@type":"VideoGame",
-    "name":"Aviar — Rocket Birdie",
-    "url":"https://molbv.github.io/",
-    "author":{"@type":"Person","name":"Mykhaylo Usyk"},
-    "applicationCategory":"Game","operatingSystem":"Web",
-    "creator":{"@type":"Organization","name":"Built with help from ChatGPT"},
-    "genre":["Arcade","Action"],
-    "description":"HTML5 bird game with boss fights, power-ups and upgrades.",
-    "inLanguage":"en"
-  }
-  </script>
+      /* glassmorphism */
+      --menu-bg:       rgba(255,255,255,0.15);
+      --menu-border:   rgba(255,255,255,0.3);
+      --menu-shadow:   0 8px 24px rgba(0,0,0,0.15);
+
+      /* button tokens */
+      --btn-radius:    12px;
+      --btn-shadow:    0 4px 12px rgba(0,0,0,0.15);
+      --btn-height:    56px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:100%; height:100%;
+      overflow:hidden; position:relative;
+      background:#70d0ee;
+    }
+    body, input, button {
+      font-family: var(--font-body);
+    }
+    canvas {
+      position:absolute;
+      top: 60px;
+      z-index: 0;
+    }
+    #score {
+      position:absolute; top: 80px; left: 50%;
+      transform:translateX(-50%);
+      color:#fff; font:2rem sans-serif;
+      text-shadow:2px 2px 4px #000;
+      z-index:10;
+    }
+    #reviveDisplay {
+      position:absolute; bottom:10px; left:10px;
+      color:#fff; font:1rem sans-serif;
+      text-shadow:2px 2px 4px #000;
+      z-index:25;                     /* above overlay */
+      display:flex; align-items:center;
+    }
+    #effectDisplay {
+      position:absolute; bottom:10px; left:50%;
+      transform:translateX(-50%);
+      display:flex; gap:4px;
+      z-index:25;
+    }
+    #effectDisplay img { width:24px; height:24px; }
+    #overlay {
+      display:none; position:absolute; left:0;
+      top:100px; bottom:80px;           /* leave score and coins visible */
+      width:100%;
+      background:rgba(0,0,0,0.5);
+      color:#fff; font:18px sans-serif;
+      text-align:center; padding-top:20px;
+      z-index:20;
+      overflow-y:auto;            /* allow tall content like story log to scroll */
+      padding-bottom:40px;        /* space below last entry */
+    }
+    #overlay input { font-size:1rem; padding:4px; margin-top:8px; }
+    #overlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+    #reviveClock { font-size:24px; margin:8px 0; }
+
+    #menu {
+      position:absolute;
+      top:50%; left:50%;
+      transform:translate(-50%, -50%);
+      width:90vw;
+      max-width:360px;
+      padding:24px;
+      background:var(--menu-bg);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--menu-border);
+      border-radius:24px;
+      box-shadow:var(--menu-shadow);
+      text-align:center;
+      z-index:15;
+    }
+    #menu h1 {
+      font-family:var(--font-heading);
+      font-size:2.5rem;
+      color:#FFC107;
+      text-shadow:0 2px 4px rgba(0,0,0,0.4);
+      margin-bottom:4px;
+    }
+    #menu h2 {
+      font-family:var(--font-body);
+      font-size:1.25rem;
+      color:#FFF;
+      text-shadow:0 2px 4px rgba(0,0,0,0.4);
+      margin-bottom:24px;
+    }
+    .menu-btn.primary {
+      display:block;
+      width:100%;
+      height:var(--btn-height);
+      margin:16px 0;
+      padding:0;
+      font-family:var(--font-body);
+      font-size:1.125rem;
+      font-weight:500;
+      color:#FFF;
+      border:none;
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      cursor:pointer;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .menu-btn.primary:hover {
+      transform:translateY(-2px);
+      box-shadow:0 6px 16px rgba(0,0,0,0.2);
+    }
+    .menu-btn.primary.adventure { background-image: linear-gradient(to bottom, #8BC34A, #558B2F); }
+    .menu-btn.primary.marathon  { background-image: linear-gradient(to bottom, #4FC3F7, #0288D1); }
+    .menu-btn.primary.gauntlet  { background-image: linear-gradient(to bottom, #EF5350, #C62828); }
+
+    .menu-row {
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+      margin:32px 0;
+    }
+
+    .menu-btn.secondary {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      height:var(--btn-height);
+      background:rgba(255,255,255,0.9);
+      border:none;
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      font-size:0.75rem;
+      color:#333;
+      cursor:pointer;
+      transition:background 0.2s, transform 0.2s;
+    }
+
+    .menu-btn.secondary:hover {
+      background:#fff;
+      transform:translateY(-2px);
+    }
+
+    .menu-btn.secondary img {
+      width:24px; height:24px;
+    }
+    .menu-btn.secondary span {
+      display:block;
+      margin-top:4px;
+    }
+    .stats {
+      display:flex;
+      justify-content:space-between;
+      margin-top:24px;
+      padding:12px;
+      background:rgba(255,255,255,0.2);
+      border-radius:var(--btn-radius);
+      box-shadow:var(--btn-shadow);
+      font-size:1rem;
+      color:#FFF;
+      text-shadow:1px 1px 3px rgba(0,0,0,0.6);
+    }
+
+    .stats div {
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+    .adventure-info {
+      font-size:0.875rem;
+      color:#FFF;
+      margin:8px 0 16px;
+    }
+    #adventureTimer.flash {
+      margin-left:8px;
+
+    }
+    #achievementPopup {
+      position:absolute;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      padding:4px 8px;
+      border-radius:4px;
+      display:none;
+      z-index:30;
+      pointer-events:none;
+      font:16px sans-serif;
+    }
+    #stageScore {
+      position:absolute;
+      top:120px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:32px;
+      font-weight:bold;
+      text-shadow:2px 2px 2px #000;
+      color:#fff;
+      display:none;
+      z-index:30;
+      pointer-events:none;
+    }
+    .grade { text-shadow:2px 2px 2px #000; }
+    .grade.S { color:#EF5350; }
+    .grade.A { color:#66BB6A; }
+    .grade.B { color:#42A5F5; }
+    .grade.C { color:#FFD54F; }
+    #storyPopup {
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(255,255,255,0.8);
+      color:#000;
+      padding:6px 12px;
+      border-radius:6px;
+      display:none;
+      z-index:35;
+      pointer-events:none;
+      font:18px serif;
+    }
+    #cheeseMessage {
+      position:absolute;
+      top:40%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      color:#ff0;
+      font:24px var(--font-heading);
+      text-shadow:2px 2px 4px #000;
+      display:none;
+      z-index:40;
+      pointer-events:none;
+    }
+
+    @keyframes flash {
+      0%,100%{opacity:1}
+      50%{opacity:0.3}
+    }
+    .flash { animation: flash 1s infinite; }
+
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .iconBounce { animation: bounce 1s infinite; display:inline-block; }
+    .iconWrap { position:relative; display:inline-block; width:32px; height:32px; margin-right:6px; }
+    .iconWrap .shadow { position:absolute; bottom:0; left:50%; width:26px; height:5px; background:rgba(0,0,0,0.3); border-radius:50%; transform:translateX(-50%); z-index:-1; }
+
+    #gameOverContent {
+      position:relative;
+      width:90vw;
+      max-width:360px;
+      margin:40px auto;
+      padding:24px;
+      background:var(--menu-bg);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--menu-border);
+      border-radius:24px;
+      box-shadow:var(--menu-shadow);
+      text-align:center;
+    }
+    #upgradeTree {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(60px, 1fr));
+      gap:12px;
+      justify-items:center;
+      width:100%;
+      padding:10px 0;
+    }
+    .upgradeNode {
+      position:relative;
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:2px solid;
+    }
+
+    .upgradeNode img { width:100%; height:100%; border-radius:50%; }
+    .upgradeNode.equipped { width:48px; height:48px; }
+    .upgradeNode.locked img { filter:grayscale(1) brightness(0.4); }
+    .upgradeNode.owned img { filter:grayscale(0.7) brightness(0.7); }
+    .priceTag {
+      position:absolute;
+      bottom:-14px;
+      width:100%;
+      text-align:center;
+      font-size:12px;
+      color:#fff;
+      pointer-events:none;
+    }
+
+
+    #btnSettings {
+      position:absolute;
+      bottom:10px;
+      right:10px;
+      font-size:24px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#fff;
+      text-shadow:2px 2px 4px #000;
+      z-index:15;
+    }
+
+    #settingsPanel {
+      display:none;
+      position:absolute;
+      bottom:60px;
+      right:10px;
+      background:rgba(0,0,0,0.7);
+      padding:8px;
+      border-radius:6px;
+      color:#fff;
+      z-index:30;
+    }
+
+    #btnPause {
+      position:absolute;
+      top:70px;
+      right:10px;
+      font-size:24px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#fff;
+      text-shadow:2px 2px 4px #000;
+      z-index:15;
+    }
+    #pauseOverlay {
+      display:none;
+      position:absolute;
+      left:0;
+      top:100px;
+      bottom:80px;
+      width:100%;
+      background:rgba(0,0,0,0.5);
+      color:#fff;
+      font:18px sans-serif;
+      text-align:center;
+      padding-top:20px;
+      z-index:30;
+    }
+    #resumeTimer { margin-bottom:10px; font-size:1.2rem; }
+    #pauseOverlay button { font-size:1rem; padding:6px 12px; margin-top:10px; }
+
+    /* ── Power-Up Spin Overlay ───────────────────────────── */
+    #spinOverlay {
+      display:none;
+      position:absolute;
+      left:0; right:0;
+      top:100px; bottom:80px;
+      padding:20px;
+      background:rgba(0,0,0,0.5);
+      color:#fff;
+      font:18px sans-serif;
+      text-align:center;
+      z-index:20;
+    }
+    #spinCoinDisplay {
+      margin-bottom:8px;
+      font-size:1.2rem;
+    }
+    #rouletteWrap {
+      position:relative;
+      width:260px;
+      height:200px;
+      margin:0 auto;
+      overflow:hidden;
+    }
+    #roulette-frame {
+      position:absolute;
+      top:0; left:0;
+      width:100%;
+      pointer-events:none;
+      z-index:1;
+    }
+    .reel {
+      position:absolute;
+      top:22px;
+      height:140px;
+      width:33.3333%;
+      overflow:hidden;
+      z-index:2;
+    }
+    .reel:nth-child(2) { left:33.3333%; }
+    .reel:nth-child(3) { left:66.6666%; }
+    .strip {
+      position:absolute; top:0; left:0; right:0;
+    }
+    .symbol {
+      display:block;
+      width:100%;
+      height:40px;
+      object-fit:contain;
+      transform-origin:center center;
+    }
+    #prizeText {
+      margin-top:12px;
+      height:1.5rem;
+      font-size:1rem;
+      text-shadow:0 0 2px #000;
+    }
+    #spin-btn {
+      margin-top:12px;
+      cursor:pointer;
+      user-select:none;
+      width:120px;
+    }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%,60%{transform:translateX(-10px)}
+      40%,80%{transform:translateX(10px)}
+    }
+    .shake { animation:shake 0.5s ease-out; }
+    @keyframes blink {
+      0%,49%{opacity:1}
+      50%,100%{opacity:0}
+    }
+    .blink { animation:blink 1s step-end infinite; }
+
+    @keyframes confetti-fall {
+      0% { transform:translateY(-100px) rotate(0); opacity:1; }
+      100% { transform:translateY(300px) rotate(360deg); opacity:0; }
+    }
+    .confetti {
+      position:absolute; width:8px; height:8px; background:var(--c);
+      animation: confetti-fall 1s ease-out forwards;
+      pointer-events:none;
+    }
+    @keyframes firework {
+      from { transform:scale(0); opacity:1; }
+      to   { transform:scale(1.5); opacity:0; }
+    }
+    .firework {
+      position:absolute; width:6px; height:6px; border-radius:50%;
+      background:var(--c); pointer-events:none;
+      animation:firework 0.6s ease-out forwards;
+    }
+
+    @media (max-width: 400px) {
+      #menu {
+        padding:16px;
+        max-width:90vw;
+      }
+      .menu-btn.primary, .menu-btn.secondary {
+        height:48px;
+        font-size:1rem;
+      }
+      #menu h1 { font-size:2rem; }
+      #menu h2 { font-size:1rem; }
+    }
+
+  </style>
+
+
 </head>
+
 <body>
   <!-- header -->
   <header>
-    <div class="wrap">
-      <span class="brand">Aviar — Rocket Birdie</span>
-      <nav aria-label="Primary">
-        <a href="/index.html" aria-current="page">Play</a>
-        <a href="/how-to-play.html">How to Play</a>
-        <a href="/changelog.html">Changelog</a>
-        <a href="/about.html">About</a>
-        <a href="/blog/">Blog</a>
-        <a href="/contact.html">Contact</a>
-        <span style="float:right"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></span>
-      </nav>
-    </div>
+    
+    <div class="logo">Aviar — Rocket Birdie</div>
+    <div class="hamburger" id="burger">☰</div>
+    <nav id="navLinks">
+      <a href="/index.html">Play</a>
+      <a href="/how-to-play.html">How to Play</a>
+      <a href="/changelog.html">Changelog</a>
+      <a href="/about.html">About</a>
+      <a href="/blog/">Blog</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </nav>
   </header>
 
-  <main class="wrap">
-    <div class="grid grid-2">
-      <div class="card">
-        <span class="badge">ChatGPT-assisted indie game</span>
-        <h1>Play Aviar</h1>
-        <p class="lead">Tap/Space to flap. Avoid hazards, collect cores, beat bosses. Headphones recommended.</p>
-        <!-- Your existing canvas/game -->
-        <canvas id="game" width="800" height="450" class="card" style="width:100%;height:auto"></canvas>
-        <script src="/js/main.js"></script>
-      </div>
-      <aside class="card">
-        <h2>Quick Tips</h2>
-        <ul class="inline">
-          <li>Short taps = fine control; long press = burst.</li>
-          <li>Save cores for boss phases.</li>
-          <li>Pause: <kbd>P</kbd> • Mute: <kbd>M</kbd></li>
-        </ul>
-        <p class="small">We keep ads off the gameplay page to prevent accidental clicks and preserve flow.</p>
-      </aside>
-    </div>
-  </main>
+  <audio id="bgMusic"
+         src="assets/dream.guitar.mp3"
+         loop
+         preload="metadata"></audio>
+  <audio id="spinSound" src="assets/slot_spin.mp3"></audio>
+  <audio id="explosionSound" src="assets/explosion.mp3"></audio>
+  <audio id="winSound" src="assets/casino_fun.mp3"></audio>
+  <audio id="loseSound" src="assets/losing-horn.mp3"></audio>
 
-  <!-- footer -->
-  <footer>
-    <div class="wrap small">
-      © <span id="y"></span> Aviar. All rights reserved. • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a> • <a href="/ads.txt">ads.txt</a> • Built with help from ChatGPT
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="score">0</div>
+  <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
+  <div id="effectDisplay"></div>
+  <div id="overlay"><div id="gameOverContent"></div></div>
+  <div id="spinOverlay">
+    <div id="spinCoinDisplay"></div>
+    <div id="rouletteWrap">
+      <img src="assets/spin_face.png" id="roulette-frame" alt=""/>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
     </div>
-  </footer>
-  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+    <div id="prizeText"></div>
+    <img id="spin-btn" src="assets/spin_button.png" alt="Spin">
+  </div>
+  <div id="menu">
+    <h1>AVIAR</h1>
+    <h2>Rocket Birdie</h2>
+
+    <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
+
+    <div class="adventure-info">
+      <span id="adventureCount">20/20</span>
+      <span id="adventureTimer" class="flash"></span><br/>
+      <button id="buyBirdBtn" class="menu-btn primary" style="height:40px;font-size:1rem;margin-top:8px;">
+        Buy Bird – 20 Coins
+      </button>
+    </div>
+
+    <button id="btnMarathon" class="menu-btn primary marathon">∞ Marathon</button>
+    <button id="btnGauntlet" class="menu-btn primary gauntlet">⚔️ Gauntlet</button>
+
+    <div class="menu-row">
+      <button id="btnAchievements" class="menu-btn secondary">
+        🏆<span>Achievements</span>
+      </button>
+      <button id="btnStory" class="menu-btn secondary">
+        <span class="flash">📖</span><span>Story Log</span>
+      </button>
+      <button id="btnShop" class="menu-btn secondary">
+        🛒<span>Shop</span>
+      </button>
+    </div>
+
+    <div class="stats">
+      <div>🪙 <span id="coinDisplay">0</span></div>
+      <div>Best <span id="bestScore">0</span></div>
+    </div>
+  </div>
+  <div id="achievementPopup"></div>
+  <div id="stageScore"></div>
+  <div id="storyPopup"></div>
+  <div id="cheeseMessage" class="flash"></div>
+  <button id="btnSettings">⚙️</button>
+  <div id="settingsPanel">
+    <input id="volumeSlider" type="range" min="0" max="1" step="0.01">
+  </div>
+  <button id="btnPause">⏸️</button>
+  <div id="pauseOverlay">
+    <div id="resumeTimer"></div>
+    <button id="resumeBtn">Resume</button><br/>
+    <button id="mainMenuBtn">Main Menu</button>
+  </div>
+
+  <!-- ──  FIREBASE GLOBAL LEADERBOARD  ── -->
+  <script type="module" src="app.js"></script>
+  <script>
+    const burger = document.getElementById('burger');
+    const navLinks = document.getElementById('navLinks');
+    burger.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+    });
+  </script>
+
 </body>
 </html>
