@@ -734,6 +734,9 @@ let globalVolume = parseFloat(localStorage.getItem('birdyVolume') || '0.5');
 bgMusic.volume = globalVolume;
 mechaMusic.volume = globalVolume;
 explosionSfx.volume = 0.4 * globalVolume;
+let musicMuted = localStorage.getItem('birdyMusicMuted') === 'true';
+bgMusic.muted = musicMuted;
+mechaMusic.muted = musicMuted;
 
 // simple WebAudioContext for playTone()
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -741,20 +744,43 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 // play bgMusic once upon first user interaction
 function initMusic() {
     bgMusic.load();             // kick off buffering immediately
-  bgMusic.play()
-    .then(()=>console.log('Music started'))
-    .catch(e=>console.error('Play() failed:', e))
+  if(!musicMuted){
+    bgMusic.play()
+      .then(()=>console.log('Music started'))
+      .catch(e=>console.error('Play() failed:', e));
+  }
   document.removeEventListener('mousedown', initMusic);
   document.removeEventListener('keydown',   initMusic);
 }
 document.addEventListener('mousedown', initMusic, {passive:true});
 document.addEventListener('keydown',   initMusic, {passive:true});
 
+const musicToggleBtn = document.getElementById('btnMusicToggle');
+if(musicToggleBtn){
+  const updateMusicBtn = () => {
+    musicToggleBtn.textContent = musicMuted ? '🔇 Music: Off' : '🎵 Music: On';
+  };
+  updateMusicBtn();
+  musicToggleBtn.onclick = () => {
+    musicMuted = !musicMuted;
+    bgMusic.muted = musicMuted;
+    mechaMusic.muted = musicMuted;
+    localStorage.setItem('birdyMusicMuted', musicMuted);
+    if(musicMuted){
+      bgMusic.pause();
+      mechaMusic.pause();
+    } else {
+      bgMusic.play().catch(()=>{});
+    }
+    updateMusicBtn();
+  };
+}
+
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         bgMusic.pause();
         mechaMusic.pause();
-      } else if (!paused) {
+      } else if (!paused && !musicMuted) {
         if (state === STATE.Boss || inMecha || state === STATE.MechaTransit) {
           mechaMusic.play().catch(()=>{});
         } else {
@@ -5712,14 +5738,5 @@ if (state === STATE.Play) {
     updateAdventureInfo();
     updateAdventureTimer();
     setInterval(updateAdventureTimer,1000);
-    Promise.all([
-      fetchTopGlobalScores('adv'),
-      fetchTopGlobalScores('marathon'),
-      fetchTopGlobalScores('gauntlet')
-    ]).then(([adv, mar, gau]) => {
-      const ov = document.getElementById('overlay');
-      ov.style.display = 'block';
-      showHighScores(adv, mar, gau, true);
-    });
 
   })();
