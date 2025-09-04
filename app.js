@@ -42,11 +42,22 @@ function trackEvent(eventName, params={}) {
 
     const ADV_COLLECTION = "leaderboard";
     const MAR_COLLECTION = "leaderboard_marathon";
+    const GAU_COLLECTION = "leaderboard_gauntlet";
 
     // write a score
-    async function saveGlobalScore(name, score, marathon = false) {
-      const col = marathon ? MAR_COLLECTION : ADV_COLLECTION;
-      const ls  = marathon ? 'birdyHighScoresMarathon' : 'birdyHighScores';
+    async function saveGlobalScore(name, score, mode = 'adv') {
+      const colMap = {
+        adv: ADV_COLLECTION,
+        marathon: MAR_COLLECTION,
+        gauntlet: GAU_COLLECTION
+      };
+      const lsMap = {
+        adv: 'birdyHighScores',
+        marathon: 'birdyHighScoresMarathon',
+        gauntlet: 'birdyHighScoresGauntlet'
+      };
+      const col = colMap[mode] || ADV_COLLECTION;
+      const ls  = lsMap[mode] || 'birdyHighScores';
       try {
         await addDoc(collection(db, col), {
           name, score, ts: serverTimestamp()
@@ -60,9 +71,19 @@ function trackEvent(eventName, params={}) {
     }
 
     // fetch top-50
-    async function fetchTopGlobalScores(marathon = false) {
-      const col = marathon ? MAR_COLLECTION : ADV_COLLECTION;
-      const ls  = marathon ? 'birdyHighScoresMarathon' : 'birdyHighScores';
+    async function fetchTopGlobalScores(mode = 'adv') {
+      const colMap = {
+        adv: ADV_COLLECTION,
+        marathon: MAR_COLLECTION,
+        gauntlet: GAU_COLLECTION
+      };
+      const lsMap = {
+        adv: 'birdyHighScores',
+        marathon: 'birdyHighScoresMarathon',
+        gauntlet: 'birdyHighScoresGauntlet'
+      };
+      const col = colMap[mode] || ADV_COLLECTION;
+      const ls  = lsMap[mode] || 'birdyHighScores';
       try {
         const q    = query(
           collection(db, col),
@@ -515,12 +536,13 @@ let marathonMoving = false;
       leaderboardBtn.onclick = () => {
         menuEl.style.display = "none";
         Promise.all([
-          fetchTopGlobalScores(false),
-          fetchTopGlobalScores(true)
-        ]).then(([adv, mar]) => {
+          fetchTopGlobalScores('adv'),
+          fetchTopGlobalScores('marathon'),
+          fetchTopGlobalScores('gauntlet')
+        ]).then(([adv, mar, gau]) => {
           const ov = document.getElementById("overlay");
           ov.style.display = "block";
-          showHighScores(adv, mar, true);
+          showHighScores(adv, mar, gau, true);
         });
       };
     }
@@ -666,7 +688,8 @@ const tossBombs   = [];   // upward‐toss bombs
   overlay.addEventListener('click', e => {
     if (e.target === overlay) {
       if (!hasSubmittedScore) {
-        saveGlobalScore('Anon', score);
+        const mode = gauntletMode ? 'gauntlet' : (marathonMode ? 'marathon' : 'adv');
+        saveGlobalScore('Anon', score, mode);
         trackEvent('submit_score', { score });
         hasSubmittedScore = true;
       }
@@ -680,7 +703,8 @@ const tossBombs   = [];   // upward‐toss bombs
   function outsideScreenHandler(e) {
     if (state === STATE.Over && !overlay.contains(e.target)) {
       if (!hasSubmittedScore) {
-        saveGlobalScore('Anon', score);
+        const mode = gauntletMode ? 'gauntlet' : (marathonMode ? 'marathon' : 'adv');
+        saveGlobalScore('Anon', score, mode);
         trackEvent('submit_score', { score });
         hasSubmittedScore = true;
       }
@@ -4724,7 +4748,8 @@ function handleHit(){
     // cancel any leftover auto-hide from a boss-defeat popup
     clearTimeout(achievementHideTimer);
     // compute whether this score belongs in top-50
-    const top = await fetchTopGlobalScores(marathonMode);
+    const mode = gauntletMode ? 'gauntlet' : (marathonMode ? 'marathon' : 'adv');
+    const top = await fetchTopGlobalScores(mode);
     const lowestTopScore = top.length < 50
       ? -Infinity
       : top[top.length - 1].score;
@@ -4745,14 +4770,17 @@ function handleHit(){
       const name = document.getElementById('nameInput').value.trim() || 'Anon';
       localStorage.setItem('birdyName', name);
       lastPlayerName = name;
-      await saveGlobalScore(name, score, marathonMode);
+      await saveGlobalScore(name, score, mode);
       trackEvent('submit_score', { score });
       hasSubmittedScore = true;
 
       // refresh the board
-      const newAdv = await fetchTopGlobalScores(false);
-      const newMar = await fetchTopGlobalScores(true);
-      showHighScores(newAdv, newMar);
+      const [newAdv, newMar, newGau] = await Promise.all([
+        fetchTopGlobalScores('adv'),
+        fetchTopGlobalScores('marathon'),
+        fetchTopGlobalScores('gauntlet')
+      ]);
+      showHighScores(newAdv, newMar, newGau);
     };
   }
 
@@ -4783,12 +4811,14 @@ function startAutoScroll(boxId){
   }, 2000);
 }
 
-function showHighScores(hsAdv, hsMar, autoScroll = false){
+function showHighScores(hsAdv, hsMar, hsGau, autoScroll = false){
   const ct = document.getElementById('gameOverContent');
   let html = `<h2>Top 50 Adventure</h2>` +
              renderBoard(hsAdv, 'hs') +
              `<h2 style="margin-top:16px;">Top 50 Marathon</h2>` +
              renderBoard(hsMar, 'ms') +
+             `<h2 style="margin-top:16px;">Top 50 Gauntlet</h2>` +
+             renderBoard(hsGau, 'gs') +
              `<br/><button id="retryBtn">Play Again</button> <button id="scoreHome">Home</button>`;
   ct.innerHTML = html;
   document.getElementById('retryBtn').onclick = () => {
@@ -4804,6 +4834,7 @@ function showHighScores(hsAdv, hsMar, autoScroll = false){
   if(autoScroll){
     startAutoScroll('hsBox');
     startAutoScroll('msBox');
+    startAutoScroll('gsBox');
   }
 }
 function showAchievement(message, duration = 2000) {
@@ -5682,12 +5713,13 @@ if (state === STATE.Play) {
     updateAdventureTimer();
     setInterval(updateAdventureTimer,1000);
     Promise.all([
-      fetchTopGlobalScores(false),
-      fetchTopGlobalScores(true)
-    ]).then(([adv, mar]) => {
+      fetchTopGlobalScores('adv'),
+      fetchTopGlobalScores('marathon'),
+      fetchTopGlobalScores('gauntlet')
+    ]).then(([adv, mar, gau]) => {
       const ov = document.getElementById('overlay');
       ov.style.display = 'block';
-      showHighScores(adv, mar, true);
+      showHighScores(adv, mar, gau, true);
     });
 
   })();
