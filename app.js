@@ -103,6 +103,12 @@ function trackEvent(eventName, params={}) {
     window.saveGlobalScore      = saveGlobalScore;
     window.fetchTopGlobalScores = fetchTopGlobalScores;
 
+    // ── Time Scaling ────────────────────────────────────────────
+    const TIME_SCALE = 1.0;
+    const GRAVITY = 15;
+    const FLAP_VELOCITY = 300;
+    const PIPE_SPEED = 120;
+    const PIPE_SPAWN_INTERVAL = 1.5;
 
     // ── 2) GAME + AUDIO + RENDER LOOP ────────────────────────────
   (function(){
@@ -937,7 +943,6 @@ let shieldCount= 0;
 let pipeCount  = 0;
 let paused     = false;
 let animationId;
-const FRAME_DURATION = 1000 / 60;
 let lastFrameTime = 0;
 
 // boss fight state
@@ -962,9 +967,10 @@ let altMechaTimer = 0;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
     const pipes=[], apples=[], coins=[];
-    const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60, baseSpeed=2;
+    const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60, baseSpeed=PIPE_SPEED;
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
     let mechSpeed = baseSpeed;
+    let pipeSpawnTimer = PIPE_SPAWN_INTERVAL;
     const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const movingPipeChanceBase   = 0.3;  // initial chance a pipe oscillates
     const movingPipeChanceActive = 0.6;  // after movement unlocked
@@ -1750,7 +1756,7 @@ for (let i = radialBombs.length - 1; i >= 0; i--) {
   if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
     if (radialHitCooldown <= 0) {
       handleHit();
-      radialHitCooldown = 10; // short immunity window
+      radialHitCooldown = 10 / 60; // short immunity window
     }
     radialBombs.splice(i, 1);
     continue;
@@ -2104,7 +2110,7 @@ function drawBackground(){
 }
     // ── Bird object ──
     const bird = {
-      x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
+      x:80, y:H/2, vel:0, rad:32, gravity:GRAVITY, lift:FLAP_VELOCITY,
       flashTimer:0,
       stunTimer:0,
       shakeTimer:0,
@@ -2146,9 +2152,8 @@ function drawBackground(){
         ctx.translate(this.x, this.y);
         if (this.shakeTimer > 0) {
           ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
-          this.shakeTimer--;
         }
-        ctx.rotate(Math.min(Math.PI/4, this.vel/10));
+        ctx.rotate(Math.min(Math.PI/4, this.vel/300));
         if (this.flashTimer > 0 && Math.floor(this.flashTimer/2)%2===0) {
           ctx.filter = 'brightness(2)';
         }
@@ -2172,8 +2177,6 @@ function drawBackground(){
         const ih = 64;
         ctx.drawImage(img, -iw/2, -ih/2, iw, ih);
         ctx.restore();
-        if (this.flashTimer > 0) this.flashTimer--;
-        if (this.penguinShootTimer > 0) this.penguinShootTimer--;
       },
       flap(){
         if (this.stunTimer > 0) {
@@ -2239,7 +2242,10 @@ function drawBackground(){
           if (inMecha) this.penguinShootTimer = 6;
         }
       },
-      update(){
+      update(dt){
+        if (this.shakeTimer > 0) this.shakeTimer -= dt * 60;
+        if (this.flashTimer > 0) this.flashTimer -= dt * 60;
+        if (this.penguinShootTimer > 0) this.penguinShootTimer -= dt * 60;
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
           if (revivePromptActive) {
@@ -2247,10 +2253,10 @@ function drawBackground(){
           }
           if (reviveTimer > 0) {
             this.vel = 0;
-            this.y += (H/2 - this.y) * 0.1;
+            this.y += (H/2 - this.y) * 6 * dt;
           } else {
             if (this.stunTimer > 0) {
-              this.stunTimer--;
+              this.stunTimer -= dt * 60;
               this.vel = 0;
               if (frames % 5 === 0) {
                 electricRings.push({ x:this.x, y:this.y, r:20,
@@ -2258,9 +2264,9 @@ function drawBackground(){
                   color: Math.random()<0.5?'cyan':'magenta' });
               }
             } else {
-              this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1);
+              this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1) * dt;
             }
-            this.y += this.vel;
+            this.y += this.vel * dt;
             if (isBatSkin() && !inMecha) {
               batThrust.push({
                 x: this.x - 10,
@@ -3032,7 +3038,7 @@ function updateReviveEffect() {
   ctx.fillStyle = 'white';
   ctx.font = '48px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(Math.ceil(reviveTimer/60), W/2, H/2);
+  ctx.fillText(Math.ceil(reviveTimer), W/2, H/2);
   ctx.restore();
 }
 
@@ -3223,7 +3229,7 @@ function updateReviveEffect() {
         }
       });
     }
-function updateRockets() {
+function updateRockets(dt) {
   // only run rockets logic during Mecha or Boss fight
   if (!(inMecha || state === STATE.Boss)) return;
   const ts = slowMoTimer > 0 ? 0.5 : 1;
@@ -3231,18 +3237,18 @@ function updateRockets() {
   // ── OUTGOING ROCKETS ────────────────────────────────
   rocketsOut.forEach((r, i) => {
     // advance & draw the outgoing rocket
-    r.x += r.vx * ts;
+    r.x += r.vx * ts * dt;
     if (r.erratic) {
-      r.vy += (Math.random() - 0.5) * 0.3;
+      r.vy += (Math.random() - 0.5) * 0.3 * dt * 60;
       if (bossActive && bossObj) {
         const dx = bossObj.x - r.x;
         if (dx < 80) {
-          r.vy += r.y < bossObj.y ? -0.5 : 0.5;
-          r.vx = Math.min(r.vx, 2);
+          r.vy += (r.y < bossObj.y ? -0.5 : 0.5) * dt * 60;
+          r.vx = Math.min(r.vx, 120);
         }
       }
     }
-    r.y += (r.vy || 0) * ts;
+    r.y += (r.vy || 0) * ts * dt;
     const size = r.size || (r.triple ? 20 : 16);
     const img = r.bat
                ? BAT_ROCKET_FRAMES[Math.floor(frames/4)%BAT_ROCKET_FRAMES.length]
@@ -3460,18 +3466,19 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
         const dx = bird.x - r.x;
         const dy = bird.y - r.y;
         const accel = r.homingStrength || 0.001;
-        r.vx += dx * accel;
-        r.vy += dy * accel;
+        r.vx += dx * accel * dt * 60;
+        r.vy += dy * accel * dt * 60;
         if (!r.homingStrength) {
-          r.vx *= 0.98;
-          r.vy *= 0.98;
+          const damp = Math.pow(0.98, dt * 60);
+          r.vx *= damp;
+          r.vy *= damp;
         }
       }
     }
 
     // 2) advance
-    r.x += r.vx * ts;
-    r.y += (r.vy || 0) * ts;
+    r.x += r.vx * ts * dt;
+    r.y += (r.vy || 0) * ts * dt;
     if (r.electric && frames % 4 === 0) {
       electricRings.push({ x:r.x, y:r.y, r:r.big?8:4, alpha:0.5,
         color: Math.random()<0.5?'cyan':'magenta' });
@@ -3811,25 +3818,31 @@ function updateCheeseKiller() {
   }
 }
 
-  function updatePipes(){
+  function updatePipes(dt){
   // only run during play or boss
   if (state !== STATE.Play && state !== STATE.Boss) return;
 
   const ts = slowMoTimer > 0 ? 0.5 : 1;
 
-  // — handle coin boosts & dynamic speed (unchanged) —
+  // — handle coin boosts & dynamic speed —
   coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
   const activeBoosts = coinBoostExpiries.length;
   const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount/200;
-  currentSpeed += (targetSpeed - currentSpeed) * 0.05;
+  currentSpeed += (targetSpeed - currentSpeed) * 3 * dt;
 
   // spawn new pipes only in normal modes
-  if (state === STATE.Play && frames % 90 === 0 && !inMecha && !gauntletMode) spawnPipe();
+  if (state === STATE.Play && !inMecha && !gauntletMode) {
+    pipeSpawnTimer -= dt;
+    if (pipeSpawnTimer <= 0) {
+      spawnPipe();
+      pipeSpawnTimer = PIPE_SPAWN_INTERVAL;
+    }
+  }
 
   // ── pipe movement, scoring & collision ──
   pipes.forEach((p,i) => {
     // move pipe horizontally
-    p.x -= currentSpeed * ts;
+    p.x -= currentSpeed * ts * dt;
 
     // optional vertical oscillation
     if (p.moving) {
@@ -3899,7 +3912,7 @@ function updateCheeseKiller() {
 
   // ── apple pickup (unchanged) ──
   apples.forEach((a,i)=>{
-    a.x -= currentSpeed * ts;
+    a.x -= currentSpeed * ts * dt;
     if(!a.taken){
       ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(a.x,a.y,appleR,0,2*Math.PI); ctx.fill();
       ctx.fillStyle='green'; ctx.beginPath();
@@ -3919,10 +3932,10 @@ function updateCheeseKiller() {
       const dx = bird.x - c.x;
       const dy = bird.y - c.y;
       const dist = Math.hypot(dx, dy) || 1;
-      c.x += (dx/dist) * 4;
-      c.y += (dy/dist) * 4;
+      c.x += (dx/dist) * 240 * dt;
+      c.y += (dy/dist) * 240 * dt;
     } else {
-      c.x -= coinSpeed * ts;
+      c.x -= coinSpeed * ts * dt;
     }
 
     if (!c.taken) {
@@ -3933,8 +3946,8 @@ function updateCheeseKiller() {
         const dist = Math.hypot(dx, dy);
         const range = Math.max(magnetActive ? 80 : 0, batAttract ? 120 : 0);
         if(dist < range){
-          c.x += dx * 0.1;
-          c.y += dy * 0.1;
+          c.x += dx * 0.1 * dt * 60;
+          c.y += dy * 0.1 * dt * 60;
           if(frames % 4 === 0) spawnMagnetParticle(c.x, c.y);
           if(batAttract && frames % 6 === 0){
             sonarRings.push({ x: bird.x, y: bird.y, r: 10, alpha: 0.8 });
@@ -3989,8 +4002,8 @@ function updateCheeseKiller() {
   // ── shock drop pickup ──
   shockDrops.forEach((p,i)=>{
     const spd = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
-    p.x -= spd * ts;
-    p.frame++;
+    p.x -= spd * ts * dt;
+    p.frame += dt * 60;
     if(!p.taken){
       const img = jellyFrames[Math.floor(p.frame/8)%jellyFrames.length];
       const shockImg = jellyShockFrames[Math.floor(p.frame/4)%jellyShockFrames.length];
@@ -4029,10 +4042,10 @@ function updateCheeseKiller() {
       const dx = bird.x - p.x;
       const dy = bird.y - p.y;
       const dist = Math.hypot(dx, dy) || 1;
-      p.x += (dx/dist) * 4;
-      p.y += (dy/dist) * 4;
+      p.x += (dx/dist) * 240 * dt;
+      p.y += (dy/dist) * 240 * dt;
     } else {
-      p.x -= powerSpeed * ts;
+      p.x -= powerSpeed * ts * dt;
     }
     if(!p.taken){
       ctx.save();
@@ -4083,7 +4096,7 @@ function updateCheeseKiller() {
   // ── story rocket symbol pickup ──
   rocketSymbols.forEach((s,i)=>{
     const spd = baseSpeed * 0.6 * (inMecha ? 0.66 : 1);
-    s.x -= spd * ts;
+    s.x -= spd * ts * dt;
     if(!s.taken){
       const img = s.type === 'fire' ? fireRocketSprite : iceRocketSprite;
       ctx.drawImage(img, s.x - 8, s.y - 8, 16, 16);
@@ -4212,7 +4225,7 @@ function updateUpgradeStats(){
 
 function startReviveEffect(){
   usedRevive = true;
-  reviveTimer = 180;         // 3 second countdown
+  reviveTimer = 3;         // 3 second countdown
   reviveRings.length = 0;
   bird.vel = 0;
   bird.y = H/2;              // bring player back to mid-screen
@@ -4726,6 +4739,7 @@ function handleHit(){
   frames       = 0;
   superTimer   = 0;
   speedFlashTimer = 0;
+  pipeSpawnTimer = PIPE_SPAWN_INTERVAL;
 
   // reposition bird
   bird.reset();
@@ -5350,12 +5364,12 @@ function triggerShake(mag) {
   shakeTimer = 15;
   shakeMagnitude = mag;
 }
-function applyShake() {
+function applyShake(dt) {
   if (shakeTimer > 0) {
     const dx = (Math.random() * 2 - 1) * shakeMagnitude;
     const dy = (Math.random() * 2 - 1) * shakeMagnitude;
     canvas.style.transform = `translate(${dx}px,${dy}px)`;
-    shakeTimer--;
+    shakeTimer -= dt * 60;
   } else {
     canvas.style.transform = '';
   }
@@ -5364,33 +5378,32 @@ function applyShake() {
     function loop(now){
       if (paused) return;
       if (!lastFrameTime) lastFrameTime = now;
-      if (now - lastFrameTime < FRAME_DURATION) {
-        animationId = requestAnimationFrame(loop);
-        return;
-      }
+      let dt = (now - lastFrameTime) / 1000;
+      if (dt > 0.033) dt = 0.033;
+      dt *= TIME_SCALE;
       lastFrameTime = now;
       frames++;
-      if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
+      if (bird.y < H * 0.1) topStayTimer += dt; else topStayTimer = 0;
 
-      if (topStayTimer > 180 && !cheeseKiller) {
+      if (topStayTimer > 3 && !cheeseKiller) {
         spawnCheeseKiller();
       }
-      if (slowMoTimer > 0) slowMoTimer--;
+      if (slowMoTimer > 0) slowMoTimer -= dt;
       if (inMecha && !storyLog['Arcane_Harmony'] && frames - mechaStartFrame >= 1800) {
         triggerStoryEvent('Arcane_Harmony');
       }
       if (inMecha && !storyLog['Mecha_Mastery'] && frames - mechaStartFrame >= 3600) {
         triggerStoryEvent('Mecha_Mastery');
       }
-      if(reviveTimer>0) reviveTimer--;
-      if (radialHitCooldown > 0) radialHitCooldown--;
+      if(reviveTimer>0) reviveTimer -= dt;
+      if (radialHitCooldown > 0) radialHitCooldown -= dt;
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
   // 1) clear the canvas
   ctx.clearRect(0, 0, W, H);
 
   // 2) redraw your world with effects
-  applyShake();
+  applyShake(dt);
   drawBackground();
   updateSkinParticles();
   updateSnowflakes();
@@ -5398,11 +5411,11 @@ if (state === STATE.Boss) {
   updateColumnSnow();
   updateMoneyLeaves();
   updateBoss();
-  updateRockets();
-  updatePipes();
+  updateRockets(dt);
+  updatePipes(dt);
 
   // 3) let the bird respond to gravity/flap
-  bird.update();
+  bird.update(dt);
   updateReviveEffect();
   updateDoubleEffect();
   updateElectricEffect();
@@ -5426,7 +5439,7 @@ if (state === STATE.Boss) {
 if (state === STATE.BossExplode) {
   ctx.clearRect(0,0,W,H);
   drawBackground();
-  applyShake();
+  applyShake(dt);
   if (frames % 12 === 0) {
     const rx = bossObj.x + (Math.random()-0.5) * bossObj.r * 2;
     const ry = bossObj.y + (Math.random()-0.5) * bossObj.r * 2;
@@ -5449,7 +5462,8 @@ if (state === STATE.BossExplode) {
   updateColumnSnow();
   updateMoneyLeaves();
   bird.draw();
-  if (--bossExplosionTimer <= 0) {
+  bossExplosionTimer -= dt * 60;
+  if (bossExplosionTimer <= 0) {
     state = STATE.Play;
     if (gauntletMode) {
       const stageTime = Math.floor((frames - gauntletRocketStart) / 60);
@@ -5585,7 +5599,7 @@ if (state === STATE.MechaTransit) {
       mechaStartScore = score;
     }
   }
-  applyShake();
+  applyShake(dt);
   drawBackground();
   updateSkinParticles();
   updateSnowflakes();
@@ -5609,7 +5623,7 @@ for (let j = flyingArmor.length - 1; j >= 0; j--) {
 }
 
 // then shake
-applyShake();
+applyShake(dt);
 
 drawBackground();
  updateSkinParticles();
@@ -5659,7 +5673,7 @@ if (state === STATE.Play) {
     if(!gauntletMode){
       drawPipes();
     }
-    updatePipes();
+    updatePipes(dt);
 
   // — spawn bigger, evil rocket waves when in Mecha —
   if (inMecha && frames % 60 === 0) {
@@ -5709,13 +5723,13 @@ if (state === STATE.Play) {
 
     if (inMecha) {
     if(reviveTimer<=0){
-      updateRockets();
+      updateRockets(dt);
       updateJellies();
     }
   }
   updateSliceDisks();
   updateCheeseKiller();
-  bird.update();
+  bird.update(dt);
 
 } else {
   // Start or Over screen
