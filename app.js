@@ -866,7 +866,7 @@ if(musicToggleBtn){
       } else {
         bgMusic.play().catch(()=>{});
       }
-      loop();
+      requestAnimationFrame(loop);
     }
 
     settingsBtn.onclick = () => {
@@ -898,7 +898,7 @@ if(musicToggleBtn){
       } else {
         bgMusic.play().catch(()=>{});
       }
-      loop();
+      requestAnimationFrame(loop);
     }
 
     pauseBtn.onclick = openPause;
@@ -937,6 +937,9 @@ let shieldCount= 0;
 let pipeCount  = 0;
 let paused     = false;
 let animationId;
+const GAME_SPEED     = 1; // adjust to speed up or slow down the game
+const FRAME_DURATION = 1000 / 60 / GAME_SPEED;
+let lastFrameTime = 0;
 
 // boss fight state
 let bossActive      = false;
@@ -5359,8 +5362,14 @@ function applyShake() {
   }
 }
 
-    function loop(){
+    function loop(now){
       if (paused) return;
+      if (!lastFrameTime) lastFrameTime = now;
+      if (now - lastFrameTime < FRAME_DURATION) {
+        animationId = requestAnimationFrame(loop);
+        return;
+      }
+      lastFrameTime = now;
       frames++;
       if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
 
@@ -5734,7 +5743,7 @@ if (state === STATE.Play) {
       animationId = requestAnimationFrame(loop);
     }
     updateScore();
-    loop();
+    requestAnimationFrame(loop);
     updateAdventureInfo();
     updateAdventureTimer();
     setInterval(updateAdventureTimer,1000);
