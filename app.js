@@ -931,8 +931,6 @@ const STATE = {
 // core game state
 let state      = STATE.Start;
 let frames     = 0;
-let lastTime   = 0;           // ←─ HERE ─────────────────
-let deltaTime  = 0;           // ←─ HERE ─────────────────
 let score      = 0;
 let superTimer = 0;
 let shieldCount= 0;
@@ -962,15 +960,10 @@ let altMechaTimer = 0;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
     const pipes=[], apples=[], coins=[];
-    const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60; // ←─ HERE ─────────────────
-    const PIPE_SPEED_PPS = 120;       // ←─ HERE ─────────────────
-    const PIPE_SPAWN_COOLDOWN_S = 1.5; // ←─ HERE ─────────────────
-    const BIRD_GRAVITY = 15;          // ←─ HERE ─────────────────
-    const BIRD_FLAP_PPS = 300;        // ←─ HERE ─────────────────
-    const baseSpeed = PIPE_SPEED_PPS; // ←─ HERE ─────────────────
+    const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60, baseSpeed=2;
     let coinCount=0, coinBoostExpiries=[], currentSpeed=baseSpeed, speedFlashTimer = 0;
-    let spawnTimer = 0;               // ←─ HERE ─────────────────
     let mechSpeed = baseSpeed;
+    const pipeColors=['#2E7D32','#1565C0','#D84315','#6A1B9A','#F9A825'];
     const movingPipeChanceBase   = 0.3;  // initial chance a pipe oscillates
     const movingPipeChanceActive = 0.6;  // after movement unlocked
     const pipeMoveAmplitude = 15;   // max up/down movement in pixels
@@ -1755,7 +1748,7 @@ for (let i = radialBombs.length - 1; i >= 0; i--) {
   if (Math.hypot(bird.x - b.x, bird.y - b.y) < bird.rad + b.r) {
     if (radialHitCooldown <= 0) {
       handleHit();
-      radialHitCooldown = 0.166; // ←─ HERE ─────────────────
+      radialHitCooldown = 10; // short immunity window
     }
     radialBombs.splice(i, 1);
     continue;
@@ -2109,12 +2102,12 @@ function drawBackground(){
 }
     // ── Bird object ──
     const bird = {
-      x:80, y:H/2, vel:0, rad:32, gravity:BIRD_GRAVITY, lift:BIRD_FLAP_PPS, // ←─ HERE ─────────────────
+      x:80, y:H/2, vel:0, rad:32, gravity:0.25, lift:5,
       flashTimer:0,
       stunTimer:0,
       shakeTimer:0,
       penguinShootTimer:0,
-      draw(dt = deltaTime){ // ←─ HERE ─────────────────
+      draw(){
         if(shieldCount>0){
           ctx.save(); ctx.strokeStyle='silver'; ctx.lineWidth=3;
           for(let i=0;i<8;i++){
@@ -2151,7 +2144,7 @@ function drawBackground(){
         ctx.translate(this.x, this.y);
         if (this.shakeTimer > 0) {
           ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
-          this.shakeTimer -= dt*60; // ←─ HERE ─────────────────
+          this.shakeTimer--;
         }
         ctx.rotate(Math.min(Math.PI/4, this.vel/10));
         if (this.flashTimer > 0 && Math.floor(this.flashTimer/2)%2===0) {
@@ -2177,8 +2170,8 @@ function drawBackground(){
         const ih = 64;
         ctx.drawImage(img, -iw/2, -ih/2, iw, ih);
         ctx.restore();
-        if (this.flashTimer > 0) this.flashTimer -= dt; // ←─ HERE ─────────────────
-        if (this.penguinShootTimer > 0) this.penguinShootTimer -= dt; // ←─ HERE ─────────────────
+        if (this.flashTimer > 0) this.flashTimer--;
+        if (this.penguinShootTimer > 0) this.penguinShootTimer--;
       },
       flap(){
         if (this.stunTimer > 0) {
@@ -2241,10 +2234,10 @@ function drawBackground(){
               life:40
             });
           }
-          if (inMecha) this.penguinShootTimer = 0.1; // ←─ HERE ─────────────────
+          if (inMecha) this.penguinShootTimer = 6;
         }
       },
-      update(dt){ // ←─ HERE ─────────────────
+      update(){
         if(state===STATE.Start) this.y = H/2 + 10*Math.sin(frames/10);
         else {
           if (revivePromptActive) {
@@ -2255,7 +2248,7 @@ function drawBackground(){
             this.y += (H/2 - this.y) * 0.1;
           } else {
             if (this.stunTimer > 0) {
-              this.stunTimer -= dt; // ←─ HERE ─────────────────
+              this.stunTimer--;
               this.vel = 0;
               if (frames % 5 === 0) {
                 electricRings.push({ x:this.x, y:this.y, r:20,
@@ -2263,9 +2256,9 @@ function drawBackground(){
                   color: Math.random()<0.5?'cyan':'magenta' });
               }
             } else {
-              this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1) * dt; // ←─ HERE ─────────────────
+              this.vel += this.gravity * (heavyLoadActive ? 1.5 : 1);
             }
-            this.y += this.vel * dt; // ←─ HERE ─────────────────
+            this.y += this.vel;
             if (isBatSkin() && !inMecha) {
               batThrust.push({
                 x: this.x - 10,
@@ -3037,7 +3030,7 @@ function updateReviveEffect() {
   ctx.fillStyle = 'white';
   ctx.font = '48px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(Math.ceil(reviveTimer), W/2, H/2); // ←─ HERE ─────────────────
+  ctx.fillText(Math.ceil(reviveTimer/60), W/2, H/2);
   ctx.restore();
 }
 
@@ -3546,7 +3539,7 @@ for (let i = stage2Bombs.length - 1; i >= 0; i--) {
           flyingArmor.push({ img: armorPiece2, x: bird.x, y: bird.y, vx: 2, vy:-3 });
         }
         if (r.shock && Math.random() < (r.big ? 0.6 : 0.3)) {
-          bird.stunTimer = 3; // ←─ HERE ─────────────────
+          bird.stunTimer = 180;
         }
       } else {
         bossTriggerActive = false;
@@ -3816,7 +3809,7 @@ function updateCheeseKiller() {
   }
 }
 
-  function updatePipes(dt){
+  function updatePipes(){
   // only run during play or boss
   if (state !== STATE.Play && state !== STATE.Boss) return;
 
@@ -3825,22 +3818,16 @@ function updateCheeseKiller() {
   // — handle coin boosts & dynamic speed (unchanged) —
   coinBoostExpiries = coinBoostExpiries.filter(exp => exp > frames);
   const activeBoosts = coinBoostExpiries.length;
-  const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount*0.3; // ←─ HERE ─────────────────
-  currentSpeed += (targetSpeed - currentSpeed) * 0.05 * dt * 60; // ←─ HERE ─────────────────
+  const targetSpeed = baseSpeed * Math.pow(1.3, activeBoosts) + pipeCount/200;
+  currentSpeed += (targetSpeed - currentSpeed) * 0.05;
 
   // spawn new pipes only in normal modes
-  if (state === STATE.Play && !inMecha && !gauntletMode) { // ←─ HERE ─────────────────
-    spawnTimer -= dt;                                     // ←─ HERE ─────────────────
-    if (spawnTimer <= 0) {                                // ←─ HERE ─────────────────
-      spawnPipe();                                        // ←─ HERE ─────────────────
-      spawnTimer = PIPE_SPAWN_COOLDOWN_S;                 // ←─ HERE ─────────────────
-    }
-  }
+  if (state === STATE.Play && frames % 90 === 0 && !inMecha && !gauntletMode) spawnPipe();
 
   // ── pipe movement, scoring & collision ──
   pipes.forEach((p,i) => {
     // move pipe horizontally
-    p.x -= currentSpeed * ts * dt; // ←─ HERE ─────────────────
+    p.x -= currentSpeed * ts;
 
     // optional vertical oscillation
     if (p.moving) {
@@ -3910,7 +3897,7 @@ function updateCheeseKiller() {
 
   // ── apple pickup (unchanged) ──
   apples.forEach((a,i)=>{
-    a.x -= currentSpeed * ts * dt; // ←─ HERE ─────────────────
+    a.x -= currentSpeed * ts;
     if(!a.taken){
       ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(a.x,a.y,appleR,0,2*Math.PI); ctx.fill();
       ctx.fillStyle='green'; ctx.beginPath();
@@ -3930,10 +3917,10 @@ function updateCheeseKiller() {
       const dx = bird.x - c.x;
       const dy = bird.y - c.y;
       const dist = Math.hypot(dx, dy) || 1;
-      c.x += (dx/dist) * 240 * dt; // ←─ HERE ─────────────────
-      c.y += (dy/dist) * 240 * dt; // ←─ HERE ─────────────────
+      c.x += (dx/dist) * 4;
+      c.y += (dy/dist) * 4;
     } else {
-      c.x -= coinSpeed * ts * dt; // ←─ HERE ─────────────────
+      c.x -= coinSpeed * ts;
     }
 
     if (!c.taken) {
@@ -3944,8 +3931,8 @@ function updateCheeseKiller() {
         const dist = Math.hypot(dx, dy);
         const range = Math.max(magnetActive ? 80 : 0, batAttract ? 120 : 0);
         if(dist < range){
-          c.x += dx * 6 * dt; // ←─ HERE ─────────────────
-          c.y += dy * 6 * dt; // ←─ HERE ─────────────────
+          c.x += dx * 0.1;
+          c.y += dy * 0.1;
           if(frames % 4 === 0) spawnMagnetParticle(c.x, c.y);
           if(batAttract && frames % 6 === 0){
             sonarRings.push({ x: bird.x, y: bird.y, r: 10, alpha: 0.8 });
@@ -4223,7 +4210,7 @@ function updateUpgradeStats(){
 
 function startReviveEffect(){
   usedRevive = true;
-  reviveTimer = 3;           // ←─ HERE ─────────────────
+  reviveTimer = 180;         // 3 second countdown
   reviveRings.length = 0;
   bird.vel = 0;
   bird.y = H/2;              // bring player back to mid-screen
@@ -4674,7 +4661,7 @@ function handleHit(){
   tripleElectric = false;
   electricTimer = 0;
   specialRocket = null;
-  bird.flashTimer = 0.133; // ←─ HERE ─────────────────
+  bird.flashTimer = 8;
   if (coinCount > 0) {
     coinCount--;
     updateScore();
@@ -5372,28 +5359,23 @@ function applyShake() {
   }
 }
 
-    function loop(now){ // ←─ HERE ─────────────────
+    function loop(){
       if (paused) return;
-      if (!lastTime) lastTime = now;                 // ←─ HERE ─────────────────
-      let dt = (now - lastTime) / 1000;              // ←─ HERE ─────────────────
-      if (dt > 0.033) dt = 0.033;                   // ←─ HERE ─────────────────
-      lastTime = now;                                // ←─ HERE ─────────────────
-      deltaTime = dt;                                // ←─ HERE ─────────────────
       frames++;
-      if (bird.y < H * 0.1) topStayTimer += dt; else topStayTimer = 0; // ←─ HERE ─────────────────
+      if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
 
-      if (topStayTimer > 3 && !cheeseKiller) {       // ←─ HERE ─────────────────
+      if (topStayTimer > 180 && !cheeseKiller) {
         spawnCheeseKiller();
       }
-      if (slowMoTimer > 0) slowMoTimer -= dt;        // ←─ HERE ─────────────────
+      if (slowMoTimer > 0) slowMoTimer--;
       if (inMecha && !storyLog['Arcane_Harmony'] && frames - mechaStartFrame >= 1800) {
         triggerStoryEvent('Arcane_Harmony');
       }
       if (inMecha && !storyLog['Mecha_Mastery'] && frames - mechaStartFrame >= 3600) {
         triggerStoryEvent('Mecha_Mastery');
       }
-      if(reviveTimer>0) reviveTimer -= dt; // ←─ HERE ─────────────────
-      if (radialHitCooldown > 0) radialHitCooldown -= dt; // ←─ HERE ─────────────────
+      if(reviveTimer>0) reviveTimer--;
+      if (radialHitCooldown > 0) radialHitCooldown--;
   // ── Boss fight branch ──────────────────────────────────
 if (state === STATE.Boss) {
   // 1) clear the canvas
@@ -5409,10 +5391,10 @@ if (state === STATE.Boss) {
   updateMoneyLeaves();
   updateBoss();
   updateRockets();
-  updatePipes(dt); // ←─ HERE ─────────────────
+  updatePipes();
 
   // 3) let the bird respond to gravity/flap
-  bird.update(dt); // ←─ HERE ─────────────────
+  bird.update();
   updateReviveEffect();
   updateDoubleEffect();
   updateElectricEffect();
@@ -5669,7 +5651,7 @@ if (state === STATE.Play) {
     if(!gauntletMode){
       drawPipes();
     }
-    updatePipes(dt); // ←─ HERE ─────────────────
+    updatePipes();
 
   // — spawn bigger, evil rocket waves when in Mecha —
   if (inMecha && frames % 60 === 0) {
@@ -5725,7 +5707,7 @@ if (state === STATE.Play) {
   }
   updateSliceDisks();
   updateCheeseKiller();
-  bird.update(dt); // ←─ HERE ─────────────────
+  bird.update();
 
 } else {
   // Start or Over screen
