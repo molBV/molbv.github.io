@@ -937,8 +937,10 @@ let shieldCount= 0;
 let pipeCount  = 0;
 let paused     = false;
 let animationId;
-const GAME_SPEED     = 1; // adjust to speed up or slow down the game
+
+const GAME_SPEED     = 1.5; // adjust to speed up or slow down the game
 const FRAME_DURATION = 1000 / 60 / GAME_SPEED;
+
 let lastFrameTime = 0;
 
 // boss fight state
