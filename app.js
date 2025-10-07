@@ -4818,7 +4818,7 @@ function handleHit(){
 
 // showHighScores: display list + Play Again button
 function renderBoard(hs, prefix){
-  let html = `<div id="${prefix}Box" style="height:200px;overflow:hidden;display:inline-block;">`+
+  let html = `<div id="${prefix}Box" style="height:200px;overflow-y:auto;overflow-x:hidden;display:inline-block;-webkit-overflow-scrolling:touch;">`+
              `<ol id="${prefix}List" style="text-align:left;margin:0;padding-left:20px;list-style:none;">`;
   hs.forEach((i, idx) => html += `<li>${idx + 1}. ${i.name} — ${i.score}</li>`);
   html += `</ol></div>`;
@@ -4827,7 +4827,9 @@ function renderBoard(hs, prefix){
 
 function startAutoScroll(boxId){
   const box  = document.getElementById(boxId);
+  if(!box) return;
   const max  = box.scrollHeight - box.clientHeight;
+  if(max <= 0) return;
   let dir    = 1;
   let pos    = 0;
   setTimeout(()=>{
