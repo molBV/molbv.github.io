@@ -47,6 +47,22 @@
       text-shadow:2px 2px 4px #000;
       z-index:10;
     }
+    #streakDisplay {
+      position:absolute;
+      top:122px;
+      left:50%;
+      transform:translateX(-50%);
+      color:#FFE082;
+      font:1rem var(--font-heading);
+      text-shadow:0 2px 6px rgba(0,0,0,0.65);
+      z-index:11;
+      display:none;
+      letter-spacing:0.4px;
+      padding:4px 10px;
+      border-radius:999px;
+      background:rgba(0,0,0,0.25);
+      border:1px solid rgba(255,255,255,0.25);
+    }
     #reviveDisplay {
       position:absolute; bottom:10px; left:10px;
       color:#fff; font:1rem sans-serif;
@@ -103,7 +119,13 @@
       font-size:1.25rem;
       color:#FFF;
       text-shadow:0 2px 4px rgba(0,0,0,0.4);
-      margin-bottom:24px;
+      margin-bottom:6px;
+    }
+    #menu .controls-hint {
+      color:rgba(255,255,255,0.9);
+      font-size:0.85rem;
+      margin-bottom:16px;
+      text-shadow:0 1px 3px rgba(0,0,0,0.45);
     }
     .menu-btn.primary {
       display:block;
@@ -502,6 +524,7 @@
 
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   <div id="score">0</div>
+  <div id="streakDisplay">🔥 Combo x2</div>
   <div id="reviveDisplay"><img src="assets/Revive.png" width="24" height="24" style="margin-right:4px;"/><span id="reviveCount">0/1</span></div>
   <div id="effectDisplay"></div>
   <div id="overlay"><div id="gameOverContent"></div></div>
@@ -519,6 +542,7 @@
   <div id="menu">
     <h1>AVIAR</h1>
     <h2>Rocket Birdie</h2>
+    <div class="controls-hint">Tap / Click / Space to flap & fire</div>
 
     <button id="btnAdventure" class="menu-btn primary adventure">&#9654; Adventure</button>
 
