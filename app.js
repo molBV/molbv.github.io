@@ -792,16 +792,17 @@ if(musicToggleBtn){
     const ORIGINAL_WIDTH  = canvas.width,
           ORIGINAL_HEIGHT = canvas.height;
     function resizeCanvas(){
+      const adOffset = 60;
       const scale = Math.min(
         window.innerWidth  / ORIGINAL_WIDTH,
-        window.innerHeight / ORIGINAL_HEIGHT
+        (window.innerHeight - adOffset) / ORIGINAL_HEIGHT
       );
       const dispW = ORIGINAL_WIDTH * scale,
             dispH = ORIGINAL_HEIGHT * scale;
       canvas.style.width  = dispW + 'px';
       canvas.style.height = dispH + 'px';
       canvas.style.left   = (window.innerWidth  - dispW) / 2 + 'px';
-      canvas.style.top    = (window.innerHeight - dispH) / 2 + 'px';
+      canvas.style.top    = Math.max(adOffset, (window.innerHeight - dispH) / 2) + 'px';
       initBackgroundSprites();
     }
     window.addEventListener('resize', resizeCanvas);
@@ -932,6 +933,8 @@ const STATE = {
 let state      = STATE.Start;
 let frames     = 0;
 let score      = 0;
+let comboStreak = 0;
+let comboTimer = 0;
 let superTimer = 0;
 let shieldCount= 0;
 let pipeCount  = 0;
@@ -940,6 +943,7 @@ let animationId;
 
 const GAME_SPEED     = 1.5; // adjust to speed up or slow down the game
 const FRAME_DURATION = 1000 / 60 / GAME_SPEED;
+const COMBO_TIMEOUT_FRAMES = 240;
 
 let lastFrameTime = 0;
 
@@ -963,6 +967,7 @@ let altMechaTimer = 0;
     const baseAppleProb=0.03,baseCoinProb=0.18;
     const cycleLength=6000;
     const stars=[]; for(let i=0;i<50;i++) stars.push({ x:Math.random()*W, y:Math.random()*(H*0.5) });
+    const shootingStars = [];
     const dayColor1='#70d0ee', dayColor2='#8ff1f5', nightColor1='#000011', nightColor2='#001133';
     const pipes=[], apples=[], coins=[];
     const appleR=10, coinR=8, initialGap=300, minGap=154, pipeW=60, baseSpeed=2;
@@ -2097,9 +2102,34 @@ function drawBackground(){
   //    wN = 0 at tC=0 & 1 (day), peaks at tC=0.5 (midnight)
   const starAlpha = Math.max(0, wN) * 0.8;
   if (starAlpha > 0) {
+    if (Math.random() < 0.01 && shootingStars.length < 2) {
+      shootingStars.push({
+        x: Math.random() * (W * 0.8),
+        y: Math.random() * (H * 0.3),
+        vx: 5 + Math.random() * 2,
+        vy: 2 + Math.random() * 1.5,
+        life: 40
+      });
+    }
     ctx.globalAlpha = starAlpha;
     ctx.fillStyle   = '#fff';
     stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+    for (let i = shootingStars.length - 1; i >= 0; i--) {
+      const s = shootingStars[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life--;
+      const a = Math.max(0, s.life / 40);
+      ctx.strokeStyle = `rgba(255,255,255,${a})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x - s.vx * 4, s.y - s.vy * 4);
+      ctx.stroke();
+      if (s.life <= 0 || s.x > W + 20 || s.y > H + 20) {
+        shootingStars.splice(i, 1);
+      }
+    }
   }
   // restore
   ctx.globalAlpha = 1;
@@ -3843,7 +3873,15 @@ function updateCheeseKiller() {
     if (!p.passed && p.x + pipeW < bird.x) {
       p.passed = true;
       score++;
+      comboStreak++;
+      comboTimer = COMBO_TIMEOUT_FRAMES;
+      if (comboStreak > 0 && comboStreak % 5 === 0) {
+        const reward = comboStreak >= 10 ? 2 : 1;
+        coinCount += reward;
+        showAchievement(`🔥 Combo x${comboStreak}! +${reward} coin${reward > 1 ? 's' : ''}`);
+      }
       updateScore();
+      updateComboDisplay();
       playTone(600, 0.08);
       runPipes++;
       if (runPipes >= 20) {
@@ -4144,6 +4182,19 @@ function updateScore(){
   if (marathonMode && score >= 100) unlockAchievement("mar100");
   if (marathonMode && score >= 250) unlockAchievement("mar250");
   if (marathonMode && score >= 500) unlockAchievement("mar500");
+}
+
+function updateComboDisplay() {
+  const el = document.getElementById('streakDisplay');
+  if (!el) return;
+  if (comboStreak >= 2 && comboTimer > 0 && state === STATE.Play) {
+    el.style.display = 'block';
+    const boost = comboStreak >= 10 ? ' ⚡' : '';
+    el.textContent = `🔥 Combo x${comboStreak}${boost}`;
+    el.style.opacity = String(0.6 + 0.4 * Math.sin(frames / 10));
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 function updateReviveDisplay(){
@@ -4662,6 +4713,9 @@ function showRevivePrompt(){
 function handleHit(){
   if (revivePromptActive || reviveTimer > 0) return;
   if (bossActive) bossHitless = false;
+  comboStreak = 0;
+  comboTimer = 0;
+  updateComboDisplay();
   tripleShot = false;
   tripleElectric = false;
   electricTimer = 0;
@@ -4695,6 +4749,8 @@ function handleHit(){
   // ── reset all game state ──
   state = STATE.Start;
   score = 0;
+  comboStreak = 0;
+  comboTimer = 0;
   shieldCount = 0;
   runPipes = runCoins = runJellies = runPowerups = runPipeBreaks = 0;
   marathonMoving = false;
@@ -4756,6 +4812,7 @@ function handleHit(){
 
   // finally, update the on-screen score/coin display:
   updateScore();
+  updateComboDisplay();
   usedRevive = false;
   reviveTimer = 0;
   updateReviveDisplay();
@@ -5375,6 +5432,10 @@ function applyShake() {
       }
       lastFrameTime = now;
       frames++;
+      if (comboTimer > 0) {
+        comboTimer--;
+        if (comboTimer <= 0) comboStreak = 0;
+      }
       if (bird.y < H * 0.1) topStayTimer++; else topStayTimer = 0;
 
       if (topStayTimer > 180 && !cheeseKiller) {
@@ -5744,9 +5805,11 @@ if (state === STATE.Play) {
          ctx.restore();
  }
       if(superTimer>0) superTimer--;
+      updateComboDisplay();
       animationId = requestAnimationFrame(loop);
     }
     updateScore();
+    updateComboDisplay();
     requestAnimationFrame(loop);
     updateAdventureInfo();
     updateAdventureTimer();
