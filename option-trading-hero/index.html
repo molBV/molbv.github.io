@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Option Trading Hero V4</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="topbar">
+      <div class="brand">
+        <div class="logoPulse"></div>
+        <div>
+          <div class="title">OPTION TRADING HERO <span class="vtag">V4</span></div>
+          <div class="subtitle" id="levelTitle">QQQ // Sonic replay trainer</div>
+        </div>
+      </div>
+      <div class="hudGrid">
+        <div><span>Cash</span><b id="cashVal">$1,000</b></div>
+        <div><span>Equity</span><b id="equityVal">$1,000</b></div>
+        <div><span>P/L</span><b id="pnlVal">$0</b></div>
+        <div><span>Score</span><b id="scoreVal">0</b></div>
+        <div><span>Combo</span><b id="comboVal">0x</b></div>
+      </div>
+    </div>
+
+    <div id="gameShell">
+      <canvas id="game"></canvas>
+
+      <div id="floatingHud">
+        <div class="pill" id="timePill">09:30</div>
+        <div class="pill" id="pricePill">QQQ $--</div>
+        <div class="pill sonicPill" id="sonicPill">SONIC: warming up</div>
+      </div>
+
+      <div id="sonicPanel">
+        <div class="sonicHeader">
+          <div>
+            <b>SONIC ENGINE</b>
+            <span id="sonicState">No read yet</span>
+          </div>
+          <button id="runSonicBtn">Run Sonic ␣</button>
+        </div>
+        <div id="choiceCards"></div>
+      </div>
+
+      <div id="positionPanel">
+        <div class="positionHeader">CURRENT POSITION <span>click or press S to sell</span></div>
+        <div id="positionBody">Flat. Wait for a clean setup.</div>
+      </div>
+
+      <div id="tradeDeck">
+        <div class="tradeTop">
+          <div>
+            <div class="deckTitle">OPTION CHAIN PRACTICE</div>
+            <div class="deckSub" id="deckSub">Buy at ask, sell at bid. Drag/zoom the chart like a broker screen. Future candles are hidden.</div>
+          </div>
+          <div class="deckControls">
+            <label>Qty <select id="qtySelect"><option>1</option><option>2</option><option>3</option><option>5</option><option>10</option><option>25</option></select></label>
+            <button id="followBtn" title="Snap chart back to live candle">Follow live</button>
+          </div>
+        </div>
+        <div id="optionChain"></div>
+      </div>
+
+      <div id="startOverlay" class="overlay show">
+        <div class="panel heroPanel">
+          <div class="badge">Sonic V4 Arcade Trainer</div>
+          <h1>Replay the trading day as a skill game.</h1>
+          <p>
+            The chart only reveals candles as time passes. In V4 the current candle is drawn naturally from a synthetic tick path, so the high/low only appear after price reaches them. Sonic refreshes every 5 market minutes, but you can hit Space to force a read.
+            Use the Sonic buttons or the option chain to practice calls, puts, strike selection, and fast exits.
+          </p>
+
+          <div class="settingsGrid">
+            <label>
+              Difficulty
+              <select id="difficultySelect">
+                <option value="easy">Easy // $10,000 bankroll</option>
+                <option value="normal" selected>Normal // $1,000 bankroll</option>
+                <option value="hard">Hard // $100 bankroll</option>
+              </select>
+            </label>
+
+            <label>
+              Level mode
+              <select id="levelModeSelect">
+                <option value="recorded" selected>Recorded day // exact uploaded candles</option>
+                <option value="simulation">Simulation // generated from loaded level</option>
+              </select>
+            </label>
+
+            <label>
+              Seconds per 1-minute candle
+              <input id="speedSlider" type="range" min="3" max="30" step="1" value="10" />
+              <span id="speedLabel">10s / candle · 6.0x market speed</span>
+            </label>
+
+            <label>
+              Music volume
+              <input id="volumeSlider" type="range" min="0" max="100" step="1" value="42" />
+              <span id="volumeLabel">Volume 42%</span>
+            </label>
+
+            <label>
+              Simulation seed
+              <input id="simSeed" type="text" value="" placeholder="auto-random, or type a seed" />
+            </label>
+
+            <label>
+              Load another Sonic JSON level
+              <input id="fileLoader" type="file" accept=".json,application/json" />
+            </label>
+          </div>
+
+          <div class="buttonRow">
+            <button id="startBtn" class="primary">Start Level</button>
+            <button id="generateSimBtn">Generate Simulation Level</button>
+            <button id="musicBtn">Music: off</button>
+          </div>
+
+          <div class="finePrint" id="musicNowPlaying">
+            V4 includes a <code>music/</code> folder. The game cycles through tracks automatically when each song ends.
+          </div>
+        </div>
+      </div>
+
+      <div id="pauseOverlay" class="overlay">
+        <div class="panel smallPanel">
+          <h2>Paused</h2>
+          <p>Press <b>P</b> or click resume.</p>
+          <button id="resumeBtn" class="primary">Resume</button>
+        </div>
+      </div>
+
+      <div id="endOverlay" class="overlay">
+        <div class="panel endPanel">
+          <div class="badge">Level Complete</div>
+          <h1 id="endTitle">Nice session.</h1>
+          <div class="endStats" id="endStats"></div>
+          <div class="buttonRow">
+            <button id="restartBtn" class="primary">Replay Level</button>
+            <button id="closeEndBtn">Review Chart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="controls">
+      <div><b>Controls:</b> Space = run Sonic · 1/2/3 = Sonic choice · S = sell · P = pause · R = restart · M = music · mouse wheel = zoom · drag chart = pan · double-click chart = reset view</div>
+      <div id="highScoreLine">High score: --</div>
+    </div>
+  </div>
+
+  <audio id="bgAudio" preload="auto"></audio>
+  <script src="levels/default-level.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
